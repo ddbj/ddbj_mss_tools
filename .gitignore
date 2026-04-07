@@ -1,5 +1,6 @@
 example/GCA*
 example/SAMD*
+bin/
 ~$*
 OUT
 .vscode
