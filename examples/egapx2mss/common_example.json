@@ -1,0 +1,52 @@
+{
+    "DBLINK": {
+      "project": "PRJD000001",
+      "sample": "SAMD000001",
+      "DRA": ["DRA000001", "DRA000002"],
+    },
+    "SUBMITTER": {
+        "ab_name": [
+            "Suzuki,K.",
+            "Doe,J."
+        ],
+        "contact": "Jane Doe",
+        "email": "xxx@ddbj.nig.ac.jp",
+        "phone": "000-000-000-000",
+        "institute": "National Institute of Genetics",
+        "country": "Japan",
+        "city": "Mishima",
+        "street": "Yata 1111",
+        "zip": "411-8540",
+        "department": "DDBJ",
+        "state": "Shizuoka"
+    },
+    "REFERENCE": [
+        {
+            "ab_name": [
+                "Suzuki,K.",
+                "Smith,J.",
+                "Doe,J."
+            ],
+            "status": "Published",
+            "year": 2024,
+            "title": "Draft genome sequencing of XXX",
+            "journal": "Nature",
+            "volume": "10",
+            "start_page": "100",
+            "end_page": "200"
+        }
+    ],
+    "SOURCE": {
+        "organism": "Brassica rapa",
+        "cultivar": "NAPPA",
+        "collection_date": "2020-01-01",
+        "country": "Japan",
+        "geo_loc_name": "Japan: Shizuoka, Mishima",
+        "mol_type": "genomic DNA"
+    },
+    "SOURCE_IDENTIFIER": "cultivar",
+    "ASSEMBLY_GAP": {
+        "linkage_evidence": "proximity ligation",
+        "min_gap_length": 10
+    }
+}

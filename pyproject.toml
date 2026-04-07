@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ddbj-mss-tools"
+version = "0.1.0"
+description = "Tools to create DDBJ MSS submission files"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "biopython",
+    "pandas",
+    "openpyxl",
+    "jsonschema",
+]
+
+[project.scripts]
+egapx2mss = "egapx2mss.cli:main"
+wgs_maker  = "wgs_maker.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/common",
+    "src/egapx2mss",
+    "src/wgs_maker",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
