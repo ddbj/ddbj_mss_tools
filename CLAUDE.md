@@ -216,13 +216,14 @@ AUTHORS 行に個人著者名が存在しない場合は AUTHORS 行を省略し
 ロケーション文字列から実際のギャップ長を計算して数値に置き換える。
 (例: ロケーション `100..109` → `estimated_length=10`)
 
-### ST_COMMENT タグセットID変換
+### ST_COMMENT タグセットID
 
-MSS での `tagset_id` 値を DDBJ FF の `##` セクション名に変換する:
+`tagset_id` の値をそのままヘッダ/フッタに使用する:
 
-| MSS tagset_id | FF セクション名 |
+| tagset_id | ヘッダ/フッタ |
 |---|---|
-| `Genome-Assembly-Data` | `Assembly-Data` |
+| `Genome-Assembly-Data` | `##Genome-Assembly-Data-START##` / `##Genome-Assembly-Data-END##` |
+| `Assembly-Data` | `##Assembly-Data-START##` / `##Assembly-Data-END##` |
 
 ### FASTA/FSA フォーマット
 

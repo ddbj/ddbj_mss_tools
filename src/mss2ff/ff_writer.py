@@ -14,7 +14,7 @@ from Bio.SeqFeature import SeqFeature
 
 from .ann_parser import CommonBlock, EntryBlock, Feature
 from .location import expand_location, parse_mss_location
-from .taxonomy import get_lineage, map_tagset_id
+from .taxonomy import get_lineage
 
 # Qualifiers that use integer format (no quotes)
 _INT_QUALS = frozenset({"codon_start", "transl_table", "estimated_length"})
@@ -252,11 +252,11 @@ def _dblink_lines(common: CommonBlock) -> list[str]:
         lines.append(f"{prefix}BioSample:{common.dblink.biosample}")
         prefix = cont
     if common.dblink.sra:
-        accessions = ", ".join(common.dblink.sra)
-        lines.append(f"{prefix}Sequence Read Archive:{accessions}")
+        sra_text = "Sequence Read Archive: " + ", ".join(common.dblink.sra)
+        lines.extend(_wrap(sra_text, cont, prefix))
         prefix = cont
     for label, val in common.dblink.extra:
-        lines.append(f"{prefix}{label}:{val}")
+        lines.extend(_wrap(f"{label}:{val}", cont, prefix))
         prefix = cont
     return lines
 
@@ -406,9 +406,8 @@ def _comment_lines(common: CommonBlock) -> list[str]:
             lines.extend(_wrap(line_text, cont, cont))
 
     for st in st_blocks:
-        mapped = map_tagset_id(st.tagset_id)
-        header = f"##{mapped}-START##"
-        footer = f"##{mapped}-END##"
+        header = f"##{st.tagset_id}-START##"
+        footer = f"##{st.tagset_id}-END##"
 
         if lines:
             lines.append(cont)  # blank separator line
@@ -421,7 +420,9 @@ def _comment_lines(common: CommonBlock) -> list[str]:
             lines.append(f"{cont}{header}")
 
         for key, val in st.fields:
-            lines.append(f"{cont}{key:<22}:: {val}")
+            field_prefix = f"{cont}{key:<22}:: "
+            field_cont = " " * len(field_prefix)
+            lines.extend(_wrap(val, field_cont, field_prefix))
 
         lines.append(f"{cont}{footer}")
 

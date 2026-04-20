@@ -8,7 +8,7 @@ exampleディレクトリにサブディレクトリ作成してダウンロー�
 実際にDDBJから登録されている正しいDDBJ Flat Fileの例として　https://getentry.ddbj.nig.ac.jp/getentry/na/AP014680?filetype=text　を参考にしてください。これもexampleにダウンロードしてください
 1. lineage情報として Bacteria; Bacillati; Bacillota; Bacilli; Lactobacillales; Lactobacillaceae; Paucilactobacillus. のような情報が入ります。lineageはNCBIのAPIなどを利用して作成してください。
 2. DDBJでは登録者情報は1番目のREFERENCE情報に記載されます (通称Reference 1と呼ばれ、https://www.ddbj.nig.ac.jp/ddbj/flat-file.html#Reference1B　に詳細が記載されます)上記の例では2番目にDirect Submissionとして記載されているので正しくありません。
-3. ##Genome-Assembly-Data-START## と ##Genome-Assembly-Data-END## に囲まれた部分はST_COMMENTと呼ばれるものです。これはCOMMENTの項目に書かれますが、ST_COMMENTの前に通常のコメントが挿入され、間に１行空行が挿入されます。ST_COMMENTのヘッダとフッタには tagset_id で指定されているものを使ってください。DDBJでは現在のところ Genome-Assembly-Data を Assembly-Data に対応しています
+3. ##Genome-Assembly-Data-START## と ##Genome-Assembly-Data-END## に囲まれた部分はST_COMMENTと呼ばれるものです。これはCOMMENTの項目に書かれますが、ST_COMMENTの前に通常のコメントが挿入され、間に１行空行が挿入されます。ST_COMMENTのヘッダとフッタには tagset_id で指定されているものを使ってください。DDBJでは現在のところ Genome-Assembly-Data と Assembly-Data に対応しています
 4. 塩基配列が記載されている ORIGIN という行の前に配列中のacgtの塩基数が "BASE COUNT       702912 a       437272 c       431103 g       706698 t" のような文字列で挿入されています
 また、ファイル作成における諸注意として以下を留意してください
 a. DIVISION情報はannファイルには含まれないのでコマンドオプションとして受け取れるように。ない場合には不明 (UNK) にしてください。
@@ -69,3 +69,12 @@ annファイル中でestimated_lengthがknownになっている場合には実�
 オプションでアクセッション番号を割り振る機能をつけて。
 AA000001 AAXJ010000001 AAXJEM010000001 などの形式で与えられると、最初のエントリーにはそのアクセッション番号は、以下エントリーごとに１ずつインクリメントしながら同じprefixのアクセション番号が割り振られる仕組みです。AAXJ01 や AAXJEM01 のような4桁あるいは6桁のアルファベット+2桁のバージョンを表す部分はprefixで不変です。prefix部分はこの例では7桁ですが、最低6桁以上の可変の桁数にしてください。
 flat fileのLOCUSおよびACCESSIONの部分には割り振ったアクセッション番号を記載、VERSIONのところにはそれに ".1" をつけたしたものを指定してください。なお、DEFINITION部分にアクセッション番号が記載されることはありません。
+
+バグがあります
+3. ##Genome-Assembly-Data-START## と ##Genome-Assembly-Data-END## に囲まれた部分はST_COMMENTと呼ばれるものです。これはCOMMENTの項目に書かれますが、ST_COMMENTの前に通常のコメントが挿入され、間に１行空行が挿入されます。ST_COMMENTのヘッダとフッタには tagset_id で指定されているものを使ってください。DDBJでは現在のところ Genome-Assembly-Data と Assembly-Data に対応しています
+が対応できていません。
+ST_COMMENT の tagset_id が Genome-Assembly-Data のときは
+ST_COMMENTの始まりと終わりは ##Genome-Assembly-Data-START## と##Genome-Assembly-Data-END##
+ST_COMMENT の tagset_id が Assembly-Data のときは
+ST_COMMENTの始まりと終わりは ##Assembly-Data-START## と##Assembly-Data-END##
+
