@@ -1,4 +1,4 @@
-# ddbj_mss_tools
+# ddbj_mss_tools [beta version, under development]
 
 DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツール群。
 
