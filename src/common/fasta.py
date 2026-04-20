@@ -1,6 +1,8 @@
-"""FASTA utilities for egapx2mss."""
+"""FASTA utilities shared by egapx2mss and wgs_maker."""
 
 from __future__ import annotations
+
+import gzip
 
 
 def parse_fasta_lengths(fasta_path: str) -> dict[str, int]:
@@ -82,3 +84,12 @@ def write_clean_fasta(raw_fsa: str, out_fsa: str) -> None:
                 fout.write(line)
         if in_seq:
             fout.write("//\n")
+
+
+def read_fasta(file_name: str) -> list:
+    """Read a FASTA file (optionally gzip-compressed) and return a list of SeqRecord objects."""
+    from Bio import SeqIO
+    if file_name.endswith(".gz"):
+        return list(SeqIO.parse(gzip.open(file_name, "rt"), "fasta"))
+    else:
+        return list(SeqIO.parse(file_name, "fasta"))

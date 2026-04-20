@@ -5,10 +5,24 @@ import os
 
 import pandas as pd
 
-from common.json2mss import create_common
-from .gap_annotator import GapAnnotator
+from common.common_builder import create_common
+from common.fasta import read_fasta
+from common.gap_annotator import GapAnnotator
+from common.source_builder import create_source_feature
 from .schema_util import get_subschema_for_category, set_default_to_json
-from .seq_util import check_number_of_seqs, create_source_feature, read_fasta
+
+
+def check_number_of_seqs(seq_list, dict_sequence):
+    seq_names, seq_types, seq_topologies = (
+        dict_sequence.setdefault("seq_names", []),
+        dict_sequence.setdefault("seq_types", []),
+        dict_sequence.setdefault("seq_topologies", []),
+    )
+    if not seq_names:
+        for seq in seq_list:
+            seq_names.append(seq.id)
+    if not (len(seq_list) == len(seq_names) == len(seq_types) == len(seq_topologies)):
+        raise AssertionError("The number of sequences is not consistent.")
 
 
 def initialize_json_data_and_schema(base_json_data, base_schema, _trad_submission_category):
@@ -85,7 +99,16 @@ def create_mss(
     )
 
     print(f"Creating MSS submission files for {_trad_submission_category} from {file_path}")
-    annot = create_common(json_data)
+
+    # For WGS/MAG-WGS the source feature lives in COMMON with meta-notation.
+    # Merge per-row source qualifiers (dict_source) into json_data["SOURCE"] so that
+    # create_common can build the COMMON source feature; TSV values take priority.
+    include_source = _trad_submission_category in ["WGS", "MAG-WGS"]
+    if include_source:
+        merged_source = {**json_data.get("SOURCE", {}), **dict_source}
+        json_data["SOURCE"] = merged_source
+
+    annot = create_common(json_data, include_source=include_source)
     if hold_date:
         annot.append(["", "DATE", "", "hold_date", hold_date])
 
@@ -103,22 +126,18 @@ def create_mss(
             )
             annot += source_feature
             if gap_annotator:
-                annot += gap_annotator.create_gap_feature(str(seq_record.seq), seq_name=None)
+                annot += gap_annotator.annotate(str(seq_record.seq), seq_name=None)
             seq_record.id = seq_name
             seq_record.name, seq_record.description = "", ""
 
     elif _trad_submission_category in ["WGS", "MAG-WGS"]:
         seq_records = read_fasta(file_path)
         seq_prefix = dict_sequence.get("seq_prefix")
-        source_feature = create_source_feature(
-            _trad_submission_category, None, None, None, dict_source
-        )
-        annot += source_feature
         num_width = int(math.log10(len(seq_records))) + 1
         for i, seq_record in enumerate(seq_records, 1):
             seq_name = f"{seq_prefix}_{str(i).zfill(num_width)}" if seq_prefix else seq_record.id
             if gap_annotator:
-                annot += gap_annotator.create_gap_feature(str(seq_record.seq), seq_name)
+                annot += gap_annotator.annotate(str(seq_record.seq), seq_name)
             seq_record.id = seq_name
             seq_record.name, seq_record.description = "", ""
 

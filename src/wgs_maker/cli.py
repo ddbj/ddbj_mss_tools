@@ -9,8 +9,8 @@ import sys
 
 import pandas as pd
 
+from common.gap_annotator import GapAnnotator
 from .core import create_mss
-from .gap_annotator import GapAnnotator
 from .schema_util import get_local_schema, load_json_file
 
 LINKAGE_EVIDENCES = [
@@ -71,7 +71,15 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    gap_annotator = GapAnnotator.initialize(args)
+    linkage_evidence = args.linkage_evidence.replace("_", " ")
+    gap_type = None if args.gap_type == "auto" else args.gap_type.replace("_", " ")
+    estimated_length = None if args.gap_length == "auto" else args.gap_length
+    gap_annotator = GapAnnotator(
+        linkage_evidence=linkage_evidence,
+        min_gap_length=args.min_gap_length,
+        gap_type=gap_type,
+        estimated_length=estimated_length,
+    )
     base_json_data = load_json_file(args.metadata_json_file)
     base_schema    = get_local_schema()
 

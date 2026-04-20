@@ -22,9 +22,10 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from .ann_writer import load_chromosomes, write_ddbj_ann
+from .ann_writer import write_ddbj_ann
+from common.source_builder import load_chromosomes
 from .asn_tools import DEFAULT_BIN_DIR, ensure_tools, run_asn2fsa, run_asn2gb_tbl
-from .fasta import write_clean_fasta
+from common.fasta import write_clean_fasta
 from .models import CommonModel, load_common_json
 
 

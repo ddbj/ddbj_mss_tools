@@ -20,9 +20,9 @@ ptg000120c	organelle	mitochondrion	complete	circular
 ptg000123l	organelle	chloroplast	partial
 ```
 
-## SOURCE_IDENTIFIER
-common.json の SOURCE_IDENTIFIER で指定された文字列に等しい qualifier が個体を識別する情報としてFF_DEFINITION に使われる
-たとえば SOURCE_IDENTIFIER に strain が指定されていた場合、/strain qualifierの値が FF_DEFINITION  (例: "{organism} {source_identifier} DNA, chromosome {seq_name}, complete sequence") の {source_identifier} に使われる。
+## SOURCE_MODIFIER
+common.json の SOURCE_MODIFIER で指定された文字列に等しい qualifier が個体を識別する情報としてFF_DEFINITION に使われる
+たとえば SOURCE_MODIFIER に strain が指定されていた場合、/strain qualifierの値が FF_DEFINITION  (例: "{organism} {source_identifier} DNA, chromosome {seq_name}, complete sequence") の {source_identifier} に使われる。
 
 
 ## source feature と FF_DEFITION
