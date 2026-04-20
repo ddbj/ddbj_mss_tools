@@ -13,13 +13,18 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class DblinkModel(BaseModel):
-    project: str          # required
-    sample: str           # required
-    DRA: Optional[list[str]] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    project: str = Field(validation_alias=AliasChoices("project", "bioproject"))
+    sample: str = Field(validation_alias=AliasChoices("sample", "biosample"))
+    sequence_read_archive: Optional[list[str]] = Field(
+        default=None,
+        validation_alias=AliasChoices("sequence read archive", "DRA", "sra"),
+    )
 
 
 class SubmitterModel(BaseModel):

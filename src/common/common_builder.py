@@ -82,8 +82,9 @@ def create_common(common_json: dict, include_source: bool = False) -> list[list[
         if feature_name.startswith("_") or feature_name in _NON_COMMON_KEYS:
             continue
         if feature_name == "DBLINK" and isinstance(feature_values, dict):
+            _dblink_key_map = {"sample": "biosample", "sequence_read_archive": "sequence read archive"}
             feature_values = {
-                ("biosample" if k == "sample" else k): v
+                _dblink_key_map.get(k, k): v
                 for k, v in feature_values.items()
             }
         ret.extend(create_feature(feature_name, feature_values))
