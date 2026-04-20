@@ -93,7 +93,7 @@ egapx2mss input.asn \
         "mol_type": "genomic DNA",
         "cultivar": "NAPPA"
     },
-    "SOURCE_IDENTIFIER": "cultivar",
+    "SOURCE_MODIFIER": "cultivar",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "proximity ligation",
         "min_gap_length": 10
@@ -107,7 +107,7 @@ egapx2mss input.asn \
 #### SOURCE セクション
 
 `SOURCE` に記載した qualifier がそのまま source フィーチャーに書き込まれます。
-`SOURCE_IDENTIFIER` に qualifier 名を指定すると、`ff_definition` の生物名に続く識別子として使われます（例: `"cultivar"` → `Brassica rapa NAPPA DNA, ...`）。
+`SOURCE_MODIFIER` に qualifier 名を指定すると、`ff_definition` の生物名に続く識別子として使われます（例: `"cultivar"` → `Brassica rapa NAPPA DNA, ...`）。
 
 #### ASSEMBLY_GAP セクション
 
@@ -271,7 +271,7 @@ The JSON file specified with `--common` describes submitter information, referen
         "mol_type": "genomic DNA",
         "cultivar": "NAPPA"
     },
-    "SOURCE_IDENTIFIER": "cultivar",
+    "SOURCE_MODIFIER": "cultivar",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "proximity ligation",
         "min_gap_length": 10
@@ -285,7 +285,7 @@ The JSON file specified with `--common` describes submitter information, referen
 #### SOURCE Section
 
 Qualifiers listed under `SOURCE` are written directly into the source feature.
-`SOURCE_IDENTIFIER` specifies which qualifier name is appended to the organism name in `ff_definition`
+`SOURCE_MODIFIER` specifies which qualifier name is appended to the organism name in `ff_definition`
 (e.g. `"cultivar"` → `Brassica rapa NAPPA DNA, ...`).
 
 #### ASSEMBLY_GAP Section

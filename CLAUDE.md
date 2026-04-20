@@ -7,6 +7,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
 
 - **egapx2mss**: NCBI EGAPx の出力 (ASN.1形式) を DDBJ MSS形式 (.ann / .fa) に変換
 - **wgs_maker**: FASTAファイルと Excel/TSV のメタデータから DDBJ MSS形式ファイルを一括生成
+- **mss2ff**: MSS アノテーションファイル (.ann / .annt.tsv) と FASTA から DDBJ Flat File を生成
 
 ## リポジトリ構成
 
@@ -59,11 +60,16 @@ pydantic>=2.0, biopython, pandas, openpyxl, jsonschema
 ## コマンド使用例
 
 ```bash
-# egapx2mss
-egapx2mss input.asn --organism "Brassica rapa" --common examples/egapx2mss/common_example.json
+# egapx2mss (organism は --common の JSON 内 SOURCE.organism で指定)
+egapx2mss input.asn --common examples/egapx2mss/common_example.json
 
 # wgs_maker
 wgs_maker --tsv examples/wgs_maker/sample_list_WGS.tsv -m examples/wgs_maker/common_example.json -o OUT
+
+# mss2ff
+mss2ff examples/mss2ff/DDBJ.annt.tsv --fasta examples/mss2ff/DDBJ.seq.fa --division BCT -o output.ff
+# --no-taxonomy でNCBI分類取得をスキップ
+# --submission-date / --file-date で日付を指定 (省略時は実行日)
 ```
 
 ## DDBJ MSSファイル形式
