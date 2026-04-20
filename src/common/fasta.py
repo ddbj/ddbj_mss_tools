@@ -80,7 +80,7 @@ def write_clean_fasta(raw_fsa: str, out_fsa: str) -> None:
                     seq_id = seq_id[4:]
                 fout.write(f">{seq_id}\n")
                 in_seq = True
-            else:
+            elif line.rstrip() != "//":
                 fout.write(line)
         if in_seq:
             fout.write("//\n")

@@ -77,4 +77,27 @@ ST_COMMENT の tagset_id が Genome-Assembly-Data のときは
 ST_COMMENTの始まりと終わりは ##Genome-Assembly-Data-START## と##Genome-Assembly-Data-END##
 ST_COMMENT の tagset_id が Assembly-Data のときは
 ST_COMMENTの始まりと終わりは ##Assembly-Data-START## と##Assembly-Data-END##
+になるようにしてください。
 
+
+１行の文字数について
+Dも反映できていません。
+BLINKでもアクセッション番号の数が多いと改行が必要になることもあります。
+また、ST_COMMENTについても同様です。
+文字数が多い場合に改行の処理を追加してください
+具体的には
+```
+            Sequence Read Archive:DRR413180, DRR413181, DRR413182, DRR413183, DRR413184, DRR413185, DRR413186, DRR413187, DRR413188, DRR413189"
+
+            Assembly Method       :: Hifiasm v 0.13;Bionano Solve v 3.7;ALLMAPS v 0.7.3
+
+```
+というような場合、それぞれ下記のように改行が必要です。
+"""
+            Sequence Read Archive: DRR413180, DRR413181, DRR413182, DRR413183,
+            DRR413184, DRR413185, DRR413186, DRR413187, DRR413188, DRR413189
+
+            Assembly Method       :: Hifiasm v 0.13;Bionano Solve v 3.7;ALLMAPS
+                                     v 0.7.3
+"""
+ORIGIN以降の配列データ部分以外は80文字を超えないようにして。

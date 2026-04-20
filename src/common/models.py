@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class DblinkModel(BaseModel):
@@ -23,11 +23,13 @@ class DblinkModel(BaseModel):
 
 
 class SubmitterModel(BaseModel):
-    ab_name: list[str]
+    ab_name: list[str] = []
+    consrtm: Optional[str] = None
     contact: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     fax: Optional[str] = None
+    url: Optional[str] = None
     institute: Optional[str] = None
     department: Optional[str] = None
     country: Optional[str] = None
@@ -36,23 +38,50 @@ class SubmitterModel(BaseModel):
     street: Optional[str] = None
     zip: Optional[str] = None
 
-    @field_validator("ab_name")
-    @classmethod
-    def ab_name_not_empty(cls, v: list[str]) -> list[str]:
-        if not v:
-            raise ValueError("SUBMITTER.ab_name must contain at least one name")
-        return v
+    @model_validator(mode="after")
+    def require_author_or_consrtm(self) -> "SubmitterModel":
+        if not self.ab_name and not self.consrtm:
+            raise ValueError("SUBMITTER must have at least one ab_name or a consrtm")
+        return self
+
+
+_VALID_STATUSES = {"Unpublished", "In press", "Published"}
 
 
 class ReferenceModel(BaseModel):
     title: str
-    ab_name: list[str]
+    ab_name: list[str] = []
+    consrtm: Optional[str] = None
     status: str
-    year: int
+    year: Optional[int] = None
     journal: Optional[str] = None
     volume: Optional[str] = None
     start_page: Optional[str] = None
     end_page: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_status_fields(self) -> "ReferenceModel":
+        if not self.ab_name and not self.consrtm:
+            raise ValueError("REFERENCE must have at least one ab_name or a consrtm")
+        status = self.status
+        if status not in _VALID_STATUSES:
+            raise ValueError(
+                f"REFERENCE.status must be one of {sorted(_VALID_STATUSES)}, got '{status}'"
+            )
+        if status == "In press":
+            if not self.journal:
+                raise ValueError("REFERENCE.journal is required when status='In press'")
+            if self.year is None:
+                raise ValueError("REFERENCE.year is required when status='In press'")
+        elif status == "Published":
+            missing = [f for f in ("journal", "volume", "start_page") if not getattr(self, f)]
+            if missing:
+                raise ValueError(
+                    f"REFERENCE fields required when status='Published': {', '.join(missing)}"
+                )
+            if self.year is None:
+                raise ValueError("REFERENCE.year is required when status='Published'")
+        return self
 
 
 _VALID_LINKAGE_EVIDENCE = {"paired-ends", "proximity ligation", "align genus"}
