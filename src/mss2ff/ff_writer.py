@@ -703,6 +703,14 @@ def write_ff(
                 accession=accession,
             )
             output.write(record_str)
+
+        if acc_prefix is not None and entries:
+            first_acc = _accession_at(acc_prefix, acc_serial, 0)
+            last_acc = _accession_at(acc_prefix, acc_serial, len(entries) - 1)
+            if len(entries) == 1:
+                print(f"Assigned accession number: {first_acc}", file=sys.stderr)
+            else:
+                print(f"Assigned accession numbers: {first_acc}-{last_acc}", file=sys.stderr)
     finally:
         if close_after:
             output.close()
