@@ -428,6 +428,45 @@ def _comment_lines(common: CommonBlock) -> list[str]:
     return lines
 
 
+# ── Accession number utilities ────────────────────────────────────────────────
+
+# Accession patterns — longest prefix match first to avoid ambiguity.
+# Serial number is ≥6 digits (variable length).
+_ACC_PATTERNS = [
+    re.compile(r"^([A-Z]{6}\d{2})(\d{6,})$"),   # AAXJEM010000001 …
+    re.compile(r"^([A-Z]{4}\d{2})(\d{6,})$"),   # AAXJ010000001 …
+    re.compile(r"^([A-Z]{2})(\d{6,})$"),         # AA000001 …
+]
+
+
+def _parse_accession(acc: str) -> tuple[str, str]:
+    """Split accession into (prefix, serial_str).
+
+    AA000001        → ('AA',       '000001')
+    AAXJ010000001   → ('AAXJ01',   '0000001')
+    AAXJEM010000001 → ('AAXJEM01', '0000001')
+
+    The serial portion can be any length ≥ 6 digits; the padding width is
+    preserved when incrementing.
+    """
+    acc = acc.strip().upper()
+    for pat in _ACC_PATTERNS:
+        m = pat.match(acc)
+        if m:
+            return m.group(1), m.group(2)
+    raise ValueError(
+        f"Cannot parse accession {acc!r}. "
+        "Expected format: AA000001, AAXJ010000001, or AAXJEM010000001 "
+        "(2/4/6 letters [+ 2-digit version] + ≥6 digit serial)."
+    )
+
+
+def _accession_at(prefix: str, serial_str: str, offset: int) -> str:
+    """Return the accession number at *offset* steps from (prefix, serial_str)."""
+    new_serial = int(serial_str) + offset
+    return f"{prefix}{new_serial:0{len(serial_str)}d}"
+
+
 # ── BASE COUNT ────────────────────────────────────────────────────────────────
 
 def _base_count_line(seq: str) -> str:
@@ -464,8 +503,13 @@ def build_entry(
     file_date: Optional[date] = None,
     email: str = "mss2ff@ddbj.nig.ac.jp",
     no_taxonomy: bool = False,
+    accession: Optional[str] = None,
 ) -> str:
-    """Build one DDBJ flat file record and return it as a string."""
+    """Build one DDBJ flat file record and return it as a string.
+
+    *accession* overrides the entry ID in LOCUS/ACCESSION/VERSION lines.
+    DEFINITION always comes from ff_definition (no accession substitution).
+    """
     today = date.today()
     if submission_date is None:
         submission_date = today
@@ -474,6 +518,7 @@ def build_entry(
 
     seq_len = len(seq)
     entry_id = entry.entry_id
+    locus_acc = accession or entry_id   # used for LOCUS name, ACCESSION, VERSION
     parent_seq = Seq(seq) if seq else None
 
     # Collect source qualifiers for meta expansion
@@ -508,17 +553,17 @@ def build_entry(
     def wl(line: str = ""):
         out.write(line + "\n")
 
-    # LOCUS
-    wl(_locus_line(entry_id, seq_len, entry.topology, division, file_date))
+    # LOCUS  (uses accession if assigned, otherwise entry_id)
+    wl(_locus_line(locus_acc, seq_len, entry.topology, division, file_date))
 
-    # DEFINITION (period at end)
+    # DEFINITION (period at end) — never contains the accession number
     def_str = definition if definition.endswith(".") else definition + "."
     for line in _definition_lines(def_str):
         wl(line)
 
-    # ACCESSION / VERSION
-    wl(f"ACCESSION   {entry_id}")
-    wl(f"VERSION     {entry_id}.1")
+    # ACCESSION / VERSION  (uses accession if assigned)
+    wl(f"ACCESSION   {locus_acc}")
+    wl(f"VERSION     {locus_acc}.1")
 
     # DBLINK
     for line in _dblink_lines(common):
@@ -603,15 +648,29 @@ def write_ff(
     file_date: Optional[date] = None,
     email: str = "mss2ff@ddbj.nig.ac.jp",
     no_taxonomy: bool = False,
+    start_accession: Optional[str] = None,
 ) -> None:
-    """Write DDBJ flat file to *output* (file object or path string)."""
+    """Write DDBJ flat file to *output* (file object or path string).
+
+    If *start_accession* is given (e.g. 'AAXJ010000001'), each entry is
+    assigned a sequential accession number starting from that value.
+    """
     close_after = False
     if isinstance(output, (str, __import__("pathlib").Path)):
         output = open(output, "w", encoding="utf-8")
         close_after = True
 
+    # Pre-compute accession list if a starting accession is given
+    acc_prefix: Optional[str] = None
+    acc_serial: Optional[str] = None
+    if start_accession:
+        try:
+            acc_prefix, acc_serial = _parse_accession(start_accession)
+        except ValueError as exc:
+            print(f"[ff_writer] Warning: {exc}", file=sys.stderr)
+
     try:
-        for entry in entries:
+        for idx, entry in enumerate(entries):
             seq = sequences.get(entry.entry_id, "")
             if not seq:
                 # Try partial-match fallback
@@ -625,6 +684,12 @@ def write_ff(
                     file=sys.stderr,
                 )
 
+            accession = (
+                _accession_at(acc_prefix, acc_serial, idx)
+                if acc_prefix is not None
+                else None
+            )
+
             record_str = build_entry(
                 entry=entry,
                 common=common,
@@ -634,6 +699,7 @@ def write_ff(
                 file_date=file_date,
                 email=email,
                 no_taxonomy=no_taxonomy,
+                accession=accession,
             )
             output.write(record_str)
     finally:

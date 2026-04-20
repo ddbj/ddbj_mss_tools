@@ -101,6 +101,17 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Skip NCBI taxonomy lookup (no lineage or taxon db_xref)",
     )
+    parser.add_argument(
+        "--accession", "-a",
+        metavar="ACC",
+        default=None,
+        help=(
+            "Starting accession number. Entries are numbered sequentially from this value. "
+            "Formats: AA000001 (2-letter + ≥6 digits), "
+            "AAXJ010000001 (4-letter + 2-digit version + ≥6 digits), "
+            "AAXJEM010000001 (6-letter + 2-digit version + ≥6 digits)."
+        ),
+    )
 
     args = parser.parse_args(argv)
 
@@ -149,6 +160,7 @@ def main(argv: list[str] | None = None) -> None:
             file_date=args.file_date,
             email=args.email,
             no_taxonomy=args.no_taxonomy,
+            start_accession=args.accession,
         )
     finally:
         if args.output != "-":

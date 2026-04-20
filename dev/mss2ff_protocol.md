@@ -56,3 +56,16 @@ REFERENCE   2
   CONSRTM   Consortium for microbial genome studies
   TITLE     Genome sequences for Lactic acid bacteria
   JOURNAL   Unpublished
+
+
+assembly_gapのestimated_lengthの展開について
+annファイル中でestimated_lengthがknownになっている場合には実際のギャップの長さを数値で記載してください。unknownの場合はそのままで良いです。
+例
+     assembly_gap    885061..889246
+                     /estimated_length=4186
+                     /gap_type="within scaffold"
+                     /linkage_evidence="map"
+
+オプションでアクセッション番号を割り振る機能をつけて。
+AA000001 AAXJ010000001 AAXJEM010000001 などの形式で与えられると、最初のエントリーにはそのアクセッション番号は、以下エントリーごとに１ずつインクリメントしながら同じprefixのアクセション番号が割り振られる仕組みです。AAXJ01 や AAXJEM01 のような4桁あるいは6桁のアルファベット+2桁のバージョンを表す部分はprefixで不変です。prefix部分はこの例では7桁ですが、最低6桁以上の可変の桁数にしてください。
+flat fileのLOCUSおよびACCESSIONの部分には割り振ったアクセッション番号を記載、VERSIONのところにはそれに ".1" をつけたしたものを指定してください。なお、DEFINITION部分にアクセッション番号が記載されることはありません。
