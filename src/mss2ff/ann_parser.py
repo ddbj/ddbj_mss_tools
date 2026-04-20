@@ -19,6 +19,7 @@ class DbLink:
 @dataclass
 class Submitter:
     ab_names: list[str] = field(default_factory=list)
+    consrtm: str = ""
     contact: str = ""
     email: str = ""
     url: str = ""
@@ -35,6 +36,7 @@ class Submitter:
 class Reference:
     title: str = ""
     ab_names: list[str] = field(default_factory=list)
+    consrtm: str = ""
     status: str = "Unpublished"
     year: str = ""
     journal: str = ""
@@ -172,11 +174,15 @@ def _parse_common(rows: list[list[str]], i: int, common: CommonBlock) -> int:
         elif section == "SUBMITTER":
             if key == "ab_name":
                 common.submitter.ab_names.append(val)
+            elif key == "consrtm":
+                common.submitter.consrtm = val
             else:
                 setattr(common.submitter, key.replace(" ", "_"), val)
         elif section == "REFERENCE" and current_ref is not None:
             if key == "ab_name":
                 current_ref.ab_names.append(val)
+            elif key == "consrtm":
+                current_ref.consrtm = val
             elif key == "title":
                 current_ref.title = val
             elif key == "status":

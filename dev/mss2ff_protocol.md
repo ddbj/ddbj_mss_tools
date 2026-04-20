@@ -31,3 +31,28 @@ status が In press の場合、journal と year を記載して
 status が “Published” の場合は、Qualifier: journal, volume, start_pageが必要で end_page をオプショナルで指定可能
 {journal} {volume}, (start_page)[-{end_page}] ({year})
 という形式
+
+
+１行の文字数について
+DBLINKでもアクセッション番号の数が多いと改行が必要になることもあります。
+また、ST_COMMENTについても同様です。
+文字数が多い場合に改行の処理を追加してください
+
+REFERENCEやSUBMITTERのCONSRTMについて
+annファイルに consrtm が記載されている場合、下記のように記載されます。consrtmが記載されている場合、AUTHORSが空になる場合、記載をする必要はありません。
+また、SUBMITTERの所属のdepartmentやurl, stateが存在していた場合、下記の例のように記載して
+下の例で department="DNA Data Bank of Japan", state="Shizuoka", url="https://www.ddbj.nig.ac.jp/"です。いずれも必須項目ではないので指定がない場合は記載する必要ありません。
+REFERENCE   1  (bases 1 to 29751)
+  AUTHORS   Tanizawa,Y., Suzuki,K., ...
+  CONSRTM   Consortium for microbial genome studies
+  TITLE     Direct Submission
+  JOURNAL   Submitted (30-MAR-2026)
+            Contact:Yasuhiro Tanizawa
+            DNA Data Bank of Japan, National Institute of Genetics;
+            Yata 1111, Mishima, Shizuoka 411-8540, Japan
+            URL    :https://www.ddbj.nig.ac.jp/
+REFERENCE   2
+  AUTHORS   Tanizawa,Y., Suzuki,K., ...
+  CONSRTM   Consortium for microbial genome studies
+  TITLE     Genome sequences for Lactic acid bacteria
+  JOURNAL   Unpublished

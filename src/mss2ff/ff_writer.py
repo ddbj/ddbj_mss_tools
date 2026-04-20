@@ -173,6 +173,15 @@ def _format_feature_block(
         if key == "ff_definition":
             continue  # used for DEFINITION, not written as qualifier
         resolved = _resolve_meta(val.strip(), source_quals, entry_id, seq_len)
+
+        # assembly_gap: expand estimated_length=known to actual gap length
+        if (
+            feat.name == "assembly_gap"
+            and key == "estimated_length"
+            and resolved.lower() == "known"
+        ):
+            resolved = str(_calc_location_length(location))
+
         lines.extend(_format_qualifier(key, resolved))
 
     if translation_needed:
@@ -181,6 +190,14 @@ def _format_feature_block(
             lines.extend(_format_qualifier("translation", translation))
 
     return lines
+
+
+def _calc_location_length(loc_str: str) -> int:
+    """Return total base count covered by a location string."""
+    try:
+        return len(parse_mss_location(loc_str))
+    except Exception:
+        return 0
 
 
 def _translate_cds(feat: Feature, location: str, parent_seq: Seq, seq_len: int) -> str:
@@ -271,49 +288,55 @@ def _reference_1_lines(
 ) -> list[str]:
     """Reference 1: Direct Submission (SUBMITTER information)."""
     sub = common.submitter
+    cont = " " * 12
     lines = []
     lines.append(f"REFERENCE   1  (bases 1 to {seq_len})")
-    authors = _authors_str(sub.ab_names)
-    lines.extend(_wrap(authors, " " * 12, "  AUTHORS   "))
+
+    # AUTHORS line (omit if no names but CONSRTM is present)
+    if sub.ab_names:
+        lines.extend(_wrap(_authors_str(sub.ab_names), cont, "  AUTHORS   "))
+    if sub.consrtm:
+        lines.extend(_wrap(sub.consrtm, cont, "  CONSRTM   "))
+
     lines.append("  TITLE     Direct Submission")
 
-    # Build JOURNAL lines
+    # JOURNAL
     date_str = _format_date(submission_date)
-    journal_prefix = "  JOURNAL   "
-    cont = " " * 12
+    lines.append(f"  JOURNAL   Submitted ({date_str})")
 
-    lines.append(f"{journal_prefix}Submitted ({date_str})")
     if sub.contact:
         lines.extend(_wrap(f"Contact:{sub.contact}", cont, cont))
 
-    # Address: institute[, department][; street, city[, state] zip][, country]
-    address_parts = []
-    if sub.institute:
-        address_parts.append(sub.institute)
+    # Affiliation: [department, ]institute; (department first per DDBJ format)
+    affil_parts = []
     if sub.department:
-        address_parts.append(sub.department)
+        affil_parts.append(sub.department)
+    if sub.institute:
+        affil_parts.append(sub.institute)
+    if affil_parts:
+        lines.extend(_wrap(", ".join(affil_parts) + ";", cont, cont))
 
-    addr = ", ".join(address_parts)
-    location_parts = []
+    # Location: street, city, state zip, country
+    loc_parts = []
     if sub.street:
-        location_parts.append(sub.street)
+        loc_parts.append(sub.street)
     if sub.city:
-        location_parts.append(sub.city)
-
-    loc_str = ", ".join(location_parts)
+        loc_parts.append(sub.city)
+    state_zip = ""
     if sub.state:
-        loc_str = (loc_str + ", " if loc_str else "") + sub.state
+        state_zip = sub.state
     if sub.zip:
-        loc_str = (loc_str + " " if loc_str else "") + sub.zip
-    if loc_str:
-        addr = addr + "; " + loc_str if addr else loc_str
+        state_zip = (state_zip + " " if state_zip else "") + sub.zip
+    if state_zip:
+        loc_parts.append(state_zip)
     if sub.country:
-        addr = addr + ", " + sub.country if addr else sub.country
+        loc_parts.append(sub.country)
+    if loc_parts:
+        lines.extend(_wrap(", ".join(loc_parts), cont, cont))
 
-    if addr:
-        lines.extend(_wrap(addr, cont, cont))
+    # URL    : aligned with Contact: (both 7 chars before colon)
     if sub.url:
-        lines.extend(_wrap(f"URL:{sub.url}", cont, cont))
+        lines.append(f"{cont}URL    :{sub.url}")
 
     return lines
 
@@ -327,11 +350,15 @@ def _reference_n_lines(ref_num: int, ref) -> list[str]:
       In press               : journal (year) In press
       Published              : journal volume, start_page[-end_page] (year)
     """
+    cont = " " * 12
     lines = []
     lines.append(f"REFERENCE   {ref_num}  ")
-    authors = _authors_str(ref.ab_names)
-    lines.extend(_wrap(authors, " " * 12, "  AUTHORS   "))
-    lines.extend(_wrap(ref.title, " " * 12, "  TITLE     "))
+    # AUTHORS line (omit if no names but CONSRTM is present)
+    if ref.ab_names:
+        lines.extend(_wrap(_authors_str(ref.ab_names), cont, "  AUTHORS   "))
+    if ref.consrtm:
+        lines.extend(_wrap(ref.consrtm, cont, "  CONSRTM   "))
+    lines.extend(_wrap(ref.title, cont, "  TITLE     "))
 
     status = (ref.status or "").strip().lower()
 
@@ -346,12 +373,12 @@ def _reference_n_lines(ref_num: int, ref) -> list[str]:
         # Unpublished (default)
         journal_str = f"Unpublished. ({ref.year})" if ref.year else "Unpublished."
 
-    lines.extend(_wrap(journal_str, " " * 12, "  JOURNAL   "))
+    lines.extend(_wrap(journal_str, cont, "  JOURNAL   "))
 
     if ref.doi:
-        lines.extend(_wrap(f"DOI:{ref.doi}", " " * 12, "  REMARK    "))
+        lines.extend(_wrap(f"DOI:{ref.doi}", cont, "  REMARK    "))
     elif ref.pubmed:
-        lines.extend(_wrap(f"PUBMED:{ref.pubmed}", " " * 12, "  REMARK    "))
+        lines.extend(_wrap(f"PUBMED:{ref.pubmed}", cont, "  REMARK    "))
 
     return lines
 
