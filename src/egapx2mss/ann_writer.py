@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional
 
 from common.common_builder import create_common
 from common.gap_annotator import GapAnnotator
-from common.fasta import parse_fasta_lengths, parse_fasta_sequences
+from common.fasta import parse_fasta_sequences
 from common.source_builder import (
     ChromosomeEntry,
     load_chromosomes,
@@ -100,10 +100,12 @@ def write_ddbj_ann(
     import sys
 
     entries = parse_tbl(tbl_path)
-    lengths = parse_fasta_lengths(fsa_path)
+    sequences = parse_fasta_sequences(fsa_path)
+    lengths = {seq_id: len(seq) for seq_id, seq in sequences.items()}
 
     gap_cfg = common.ASSEMBLY_GAP if common is not None else None
-    sequences = parse_fasta_sequences(fsa_path) if gap_cfg else {}
+    if not gap_cfg:
+        sequences = {}
     gap_annotator = (
         GapAnnotator(
             linkage_evidence=gap_cfg.linkage_evidence,

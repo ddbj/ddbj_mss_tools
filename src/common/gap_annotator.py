@@ -11,9 +11,9 @@ Row = list[str]
 
 # Recommended (gap_type, estimated_length) per linkage_evidence
 _RECOMMENDED: dict[str, tuple[str, str]] = {
-    "paired-ends":        ("within scaffolds", "known"),
-    "proximity ligation": ("within scaffolds", "unknown"),
-    "align genus":        ("within scaffolds", "unknown"),
+    "paired-ends":        ("within scaffold", "known"),
+    "proximity ligation": ("within scaffold", "unknown"),
+    "align genus":        ("within scaffold", "unknown"),
 }
 
 

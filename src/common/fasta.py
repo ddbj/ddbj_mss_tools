@@ -7,53 +7,31 @@ import gzip
 
 def parse_fasta_lengths(fasta_path: str) -> dict[str, int]:
     """Return {seq_id: length} for every record in *fasta_path*."""
-    lengths: dict[str, int] = {}
-    current_id: str | None = None
-    current_len = 0
-
-    with open(fasta_path) as fh:
-        for raw in fh:
-            line = raw.rstrip()
-            if line.startswith(">"):
-                if current_id is not None:
-                    lengths[current_id] = current_len
-                header = line[1:].split()[0]
-                if header.startswith("lcl|"):
-                    header = header[4:]
-                current_id = header
-                current_len = 0
-            elif current_id is not None:
-                current_len += len(line)
-
-    if current_id is not None:
-        lengths[current_id] = current_len
-
-    return lengths
+    return {seq_id: len(seq) for seq_id, seq in parse_fasta_sequences(fasta_path).items()}
 
 
 def parse_fasta_sequences(fasta_path: str) -> dict[str, str]:
     """Return {seq_id: sequence} for every record in *fasta_path*."""
-    seqs: dict[str, str] = {}
-    current_id: str | None = None
-    buf: list[str] = []
-
     with open(fasta_path) as fh:
-        for raw in fh:
-            line = raw.rstrip()
-            if line.startswith(">"):
-                if current_id is not None:
-                    seqs[current_id] = "".join(buf)
-                header = line[1:].split()[0]
-                if header.startswith("lcl|"):
-                    header = header[4:]
-                current_id = header
-                buf = []
-            elif current_id is not None:
-                buf.append(line)
+        content = fh.read()
 
-    if current_id is not None:
-        seqs[current_id] = "".join(buf)
-
+    seqs: dict[str, str] = {}
+    blocks = content.split("\n>")
+    for i, block in enumerate(blocks):
+        if i == 0:
+            if block.startswith(">"):
+                block = block[1:]
+            else:
+                continue
+        lines = block.splitlines()
+        if not lines:
+            continue
+        header = lines[0].split()[0]
+        if header.startswith("lcl|"):
+            header = header[4:]
+        seq = "".join(lines[1:]).rstrip("/")
+        if header:
+            seqs[header] = seq
     return seqs
 
 
@@ -63,27 +41,13 @@ def write_clean_fasta(raw_fsa: str, out_fsa: str) -> None:
 
     - Strip the 'lcl|' prefix from sequence IDs
     - Keep only the first whitespace-delimited token as the ID
-    - Append '//' after each sequence entry (DDBJ MSS requires this separator)
-
-    Each sequence line is 70 bases and already ends with '\\n', so the
-    separator is written as '//\\n' with no extra blank line in between,
-    regardless of whether the total sequence length is a multiple of 70.
+    - Strip any trailing '/' or '//' separator from sequence content
+    - Append '//' after each sequence entry on its own line
     """
-    with open(raw_fsa) as fin, open(out_fsa, "w") as fout:
-        in_seq = False
-        for line in fin:
-            if line.startswith(">"):
-                if in_seq:
-                    fout.write("//\n")
-                seq_id = line[1:].split()[0]
-                if seq_id.startswith("lcl|"):
-                    seq_id = seq_id[4:]
-                fout.write(f">{seq_id}\n")
-                in_seq = True
-            elif line.rstrip() != "//":
-                fout.write(line)
-        if in_seq:
-            fout.write("//\n")
+    with open(out_fsa, "w") as fout:
+        for seq_id, seq in parse_fasta_sequences(raw_fsa).items():
+            seq_out = "\n".join(seq[i:i+70] for i in range(0, len(seq), 70))
+            fout.write(f">{seq_id}\n{seq_out}\n//\n" if seq_out else f">{seq_id}\n//\n")
 
 
 def read_fasta(file_name: str) -> list:
