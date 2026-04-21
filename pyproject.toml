@@ -17,7 +17,6 @@ dependencies = [
 
 [project.scripts]
 egapx2mss         = "egapx2mss.cli:main"
-wgs_maker         = "wgs_maker.cli:main"
 mss_builder       = "mss_builder.cli:main"
 mss2ff            = "mss2ff.cli:main"
 batch_wgs_builder = "batch_wgs_builder.cli:main"
@@ -26,7 +25,6 @@ batch_wgs_builder = "batch_wgs_builder.cli:main"
 packages = [
     "src/common",
     "src/egapx2mss",
-    "src/wgs_maker",
     "src/mss_builder",
     "src/mss2ff",
     "src/batch_wgs_builder",

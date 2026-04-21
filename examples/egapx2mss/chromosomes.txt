@@ -1,7 +1,7 @@
 #seq_id	type	seq_name	status	topology
-NC_024795.2_RagTag	chromosome	0	complete
-NW_022610937.1_RagTag	chromosome	1	partial	
-ptg000034l	chromosome	1	partial	
-ptg000046l	chromosome	3	complete	circular
-ptg000120c	organelle	mitochondrion	complete	circular
-ptg000123l	organelle	chloroplast	partial
+chr_1	chromosome	1	complete    
+chr_2_1	chromosome	2	partial	
+chr_2_2	chromosome	2	partial	
+chr_3	chromosome	3	complete	circular
+mt	organelle	mitochondrion	complete	circular
+cl	organelle	chloroplast	partial

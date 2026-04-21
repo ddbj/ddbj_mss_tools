@@ -1,8 +1,8 @@
 {
     "DBLINK": {
       "project": "PRJD000001",
-      "sample": "SAMD000001",
-      "DRA": ["DRA000001", "DRA000002"],
+      "biosample": "SAMD000001",
+      "sequence read archive": ["DRA000001", "DRA000002"]
     },
     "SUBMITTER": {
         "ab_name": [
@@ -27,24 +27,18 @@
                 "Smith,J.",
                 "Doe,J."
             ],
-            "status": "Published",
-            "year": 2024,
-            "title": "Draft genome sequencing of XXX",
-            "journal": "Nature",
-            "volume": "10",
-            "start_page": "100",
-            "end_page": "200"
+            "status": "Unpublished",
+            "title": "Draft genome sequencing of XXX"
         }
     ],
     "SOURCE": {
         "organism": "Brassica rapa",
         "cultivar": "NAPPA",
         "collection_date": "2020-01-01",
-        "country": "Japan",
-        "geo_loc_name": "Japan: Shizuoka, Mishima",
+        "geo_loc_name": "Japan:Shizuoka, Mishima",
         "mol_type": "genomic DNA"
     },
-    "SOURCE_IDENTIFIER": "cultivar",
+    "SOURCE_MODIFIER": "cultivar",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "proximity ligation",
         "min_gap_length": 10

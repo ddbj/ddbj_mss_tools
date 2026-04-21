@@ -8,7 +8,7 @@
     "DBLINK": {
         "project": "PRJD000001",
         "sample": "SAMD000001",
-        "DRA": ["DRA000001", "DRA000002"],
+        "sequence read archive": ["DRA000001", "DRA000002"]
     },
     "SUBMITTER": {
         "ab_name": [
@@ -33,26 +33,21 @@
                 "Smith,J.",
                 "Doe,J."
             ],
-            "status": "Published",
-            "year": 2024,
-            "title": "Draft genome sequencing of XXX",
-            "journal": "Nature",
-            "volume": "10",
-            "start_page": "100",
-            "end_page": "200"
+            "status": "Unpublished",
+            "title": "Draft genome sequencing of XXX"
         }
     ],
     "ASSEMBLY_GAP": {
-        "linkage_evidence": "proximity ligation",
+        "linkage_evidence": "paired-ends",
         "min_gap_length": 10
     },
-    "SOURCE_IDENTIFIER": "cultivar",
+    "SOURCE_MODIFIER": "strain",
     "SOURCE": {
-        "organism": "Brassica rapa",
-        "cultivar": "NAPPA",
-        "collection_date": "2020-01-01",
-        "country": "Japan",
-        "geo_loc_name": "Japan: Shizuoka, Mishima",
+        "organism": "Lactobacillus paragasseri",
+        "strain": "JCM 5343",
+        "culture_collection": "JCM:5343",
+        "collection_date": "missing: lab stock",
+        "geo_loc_name": "Japan: Shizuoka",
         "mol_type": "genomic DNA"
     }
 }
