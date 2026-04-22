@@ -76,16 +76,16 @@ def source_qualifier(entry: Optional[ChromosomeEntry], seq_id: str,
 
 
 def ff_definition(entry: Optional[ChromosomeEntry], seq_id: str, organism: str,
-                  source_modifier: str, is_wgs: bool = False) -> str:
+                  infraspecific_name_modifier: str, is_wgs: bool = False) -> str:
     """
     Build the ff_definition qualifier value following mss_format.md.
 
-    *source_modifier* is the value of the qualifier named by SOURCE_MODIFIER
+    *infraspecific_name_modifier* is the value of the qualifier named by INFRASPECIFIC_NAME_MODIFIER
     (e.g. the value of 'strain' or 'isolate') from common.SOURCE.
 
     *is_wgs* is True when all entries in the submission are unplaced (WGS mode).
     """
-    prefix = f"{organism} {source_modifier}".strip() if source_modifier else organism
+    prefix = f"{organism} {infraspecific_name_modifier}".strip() if infraspecific_name_modifier else organism
 
     if entry is None or entry.type == "unplaced":
         if is_wgs:
@@ -130,8 +130,9 @@ def create_source_feature(
     When *use_meta_expression* is True the feature is built for inclusion in the
     COMMON block: location is ``1..E``, ``submitter_seqid`` is ``@@[entry]@@``,
     and ``ff_definition`` uses ``@@[...]@@`` meta-notation.  *source_modifier_key*
-    (e.g. ``"strain"``, ``"cultivar"``) is used to select the modifier placeholder
-    in ``ff_definition``; when empty only ``@@[organism]@@`` is included.
+    (from ``INFRASPECIFIC_NAME_MODIFIER``, e.g. ``"strain"``, ``"cultivar"``) is used
+    to select the modifier placeholder in ``ff_definition``; when empty only
+    ``@@[organism]@@`` is included.
     """
     if use_meta_expression:
         return _create_source_with_meta(

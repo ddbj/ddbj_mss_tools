@@ -119,7 +119,7 @@ egapx2mss input.asn \
         "collection_date": "2025-05-13",
         "geo_loc_name": "Japan:Shizuoka, Mishima"
     },
-    "SOURCE_MODIFIER": "cultivar",
+    "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "proximity ligation",
         "min_gap_length": 10
@@ -134,8 +134,8 @@ egapx2mss input.asn \
 
 `SOURCE` に記載した qualifier がそのまま source フィーチャーに書き込まれます。
 
-`SOURCE_MODIFIER` には、SOURCE 内に記載した qualifier のうち、**種内での個体を識別する名称**として用いるものを指定します。
-登録後の公開ファイルの DEFINITION 行に反映され、たとえば `"SOURCE_MODIFIER": "cultivar"` と指定した場合、
+`INFRASPECIFIC_NAME_MODIFIER` には、SOURCE 内に記載した qualifier のうち、**種内での個体を識別する名称**として用いるものを指定します。
+登録後の公開ファイルの DEFINITION 行に反映され、たとえば `"INFRASPECIFIC_NAME_MODIFIER": "cultivar"` と指定した場合、
 `Brassica rapa NAPPA DNA, chromosome 1, complete sequence.` のような形式で生物名に続けて記載されます。
 
 #### ASSEMBLY_GAP セクション
@@ -315,7 +315,7 @@ path/to/genome.fa.gz  PRJDB99999  SAMD999997  DRR999997  Skesa v. 1.0      ...  
 
 ### common JSON ファイル
 
-SUBMITTER, REFERENCE, ASSEMBLY_GAP, SOURCE_MODIFIER など、全サンプルに共通するメタデータを記載します。
+SUBMITTER, REFERENCE, ASSEMBLY_GAP, INFRASPECIFIC_NAME_MODIFIER など、全サンプルに共通するメタデータを記載します。
 DBLINK や source フィーチャーの情報は TSV で指定するため **DBLINK は不要**ですが、
 共通値を書いておくことも可能で、その場合は TSV の値で上書きされます。
 
@@ -336,7 +336,7 @@ DBLINK や source フィーチャーの情報は TSV で指定するため **DBL
         "status": "Unpublished",
         "title": "Genome sequences for ..."
     }],
-    "SOURCE_MODIFIER": "strain",
+    "INFRASPECIFIC_NAME_MODIFIER": "strain",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "paired-ends",
         "min_gap_length": 10
@@ -522,7 +522,7 @@ The JSON file specified with `--common` describes submitter information, referen
         "mol_type": "genomic DNA",
         "cultivar": "NAPPA"
     },
-    "SOURCE_MODIFIER": "cultivar",
+    "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "proximity ligation",
         "min_gap_length": 10
@@ -537,8 +537,8 @@ The JSON file specified with `--common` describes submitter information, referen
 
 Qualifiers listed under `SOURCE` are written directly into the source feature.
 
-`SOURCE_MODIFIER` specifies which qualifier in `SOURCE` is used as the **intraspecific identifier** for the organism.
-It is reflected in the DEFINITION line of the published flat file — for example, `"SOURCE_MODIFIER": "cultivar"` produces a definition like
+`INFRASPECIFIC_NAME_MODIFIER` specifies which qualifier in `SOURCE` is used as the **intraspecific identifier** for the organism.
+It is reflected in the DEFINITION line of the published flat file — for example, `"INFRASPECIFIC_NAME_MODIFIER": "cultivar"` produces a definition like
 `Brassica rapa NAPPA DNA, chromosome 1, complete sequence.`
 
 #### ASSEMBLY_GAP Section
@@ -712,7 +712,7 @@ Sample file: [examples/batch_wgs_builder/sample_list_WGS.tsv](examples/batch_wgs
 
 ### Common JSON File
 
-Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, SOURCE_MODIFIER, etc.
+Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, INFRASPECIFIC_NAME_MODIFIER, etc.
 **DBLINK is not required** here (it is specified per sample in the TSV), but common DBLINK or SOURCE values may be included and will be overridden by TSV values.
 
 ```json
@@ -732,7 +732,7 @@ Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, SO
         "status": "Unpublished",
         "title": "Genome sequences for ..."
     }],
-    "SOURCE_MODIFIER": "strain",
+    "INFRASPECIFIC_NAME_MODIFIER": "strain",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "paired-ends",
         "min_gap_length": 10

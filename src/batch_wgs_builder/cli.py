@@ -23,7 +23,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--common", "-m",
-        help="Common metadata JSON (SUBMITTER, REFERENCE, ASSEMBLY_GAP, SOURCE_MODIFIER, …)",
+        help="Common metadata JSON (SUBMITTER, REFERENCE, ASSEMBLY_GAP, INFRASPECIFIC_NAME_MODIFIER, …)",
     )
     parser.add_argument(
         "--out-dir", "-o", default=".",

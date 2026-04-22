@@ -123,10 +123,10 @@ def write_ddbj_ann(
     if common is not None and common.SOURCE:
         base_source.update(common.SOURCE)
 
-    # source_modifier: value of the qualifier named by SOURCE_MODIFIER
+    # infraspecific_name_modifier: value of the qualifier named by INFRASPECIFIC_NAME_MODIFIER
     organism = base_source.get("organism", "")
-    source_id_key = common.SOURCE_MODIFIER if common is not None else None
-    source_modifier = base_source.get(source_id_key, "") if source_id_key else ""
+    source_id_key = common.INFRASPECIFIC_NAME_MODIFIER if common is not None else None
+    infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
     # WGS mode: all entries are unplaced (not listed in chromosomes, or all type==unplaced)
     def _is_unplaced(eid: str) -> bool:
@@ -159,7 +159,7 @@ def write_ddbj_ann(
         source_quals: dict[str, str] = dict(base_source)
         source_quals.update(source_qualifier(chr_entry, entry_id, is_wgs))
         source_quals["ff_definition"] = ff_definition(
-            chr_entry, entry_id, organism, source_modifier, is_wgs
+            chr_entry, entry_id, organism, infraspecific_name_modifier, is_wgs
         )
 
         # source feature: entry_id on the TOPOLOGY row if circular, else on source row

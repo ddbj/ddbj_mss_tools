@@ -119,8 +119,8 @@ def write_mss_ann(
         base_source.update(common.SOURCE)
 
     organism = base_source.get("organism", "")
-    source_id_key = common.SOURCE_MODIFIER if common is not None else None
-    source_modifier = base_source.get(source_id_key, "") if source_id_key else ""
+    source_id_key = common.INFRASPECIFIC_NAME_MODIFIER if common is not None else None
+    infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
     rows: list[Row] = []
 
@@ -157,7 +157,7 @@ def write_mss_ann(
             source_quals: dict[str, str] = dict(base_source)
             source_quals.update(source_qualifier(chr_entry, entry_id, is_wgs=False))
             source_quals["ff_definition"] = ff_definition(
-                chr_entry, entry_id, organism, source_modifier, is_wgs=False
+                chr_entry, entry_id, organism, infraspecific_name_modifier, is_wgs=False
             )
 
             source_entry_col = "" if is_circular else entry_id

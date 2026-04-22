@@ -9,7 +9,7 @@ import json
 from common.source_builder import create_source_feature
 
 # Keys in the common JSON that are tool-specific configuration, not DDBJ MSS features
-_NON_COMMON_KEYS = frozenset({"SOURCE", "SOURCE_MODIFIER", "ASSEMBLY_GAP"})
+_NON_COMMON_KEYS = frozenset({"SOURCE", "INFRASPECIFIC_NAME_MODIFIER", "ASSEMBLY_GAP"})
 
 
 def create_qualifier(qualifier_key: str, value: str | list) -> list[list[str]]:
@@ -51,16 +51,16 @@ def _build_common_source(common_json: dict) -> list[list[str]]:
     Delegates to :func:`source_builder.create_source_feature` with
     ``use_meta_expression=True``.  The source qualifiers, submission category, and
     ff_definition modifier key are read from the ``SOURCE``, ``_trad_submission_category``,
-    and ``SOURCE_MODIFIER`` keys of *common_json*.
+    and ``INFRASPECIFIC_NAME_MODIFIER`` keys of *common_json*.
     """
     source_data: dict = common_json.get("SOURCE", {})
-    source_modifier_key: str = common_json.get("SOURCE_MODIFIER", "")
+    infraspecific_name_modifier_key: str = common_json.get("INFRASPECIFIC_NAME_MODIFIER", "")
     category: str = common_json.get("_trad_submission_category", "")
     return create_source_feature(
         category,
         None, None, None,
         source_data,
-        source_modifier_key=source_modifier_key,
+        source_modifier_key=infraspecific_name_modifier_key,
         use_meta_expression=True,
     )
 
@@ -68,14 +68,14 @@ def _build_common_source(common_json: dict) -> list[list[str]]:
 def create_common(common_json: dict, include_source: bool = False) -> list[list[str]]:
     """Convert a common metadata dict to a list of MSS annotation rows (5-element lists).
 
-    Keys starting with '_' and tool-specific keys (SOURCE, SOURCE_MODIFIER, ASSEMBLY_GAP)
+    Keys starting with '_' and tool-specific keys (SOURCE, INFRASPECIFIC_NAME_MODIFIER, ASSEMBLY_GAP)
     are skipped. The DBLINK qualifier 'sample' is output as 'biosample'.
 
     If *include_source* is True a source feature is appended to the COMMON block using
     ``1..E`` location and ``@@[...]@@`` meta-notation for per-entry fields.  This is
     intended for WGS submissions where a single COMMON source feature applies to all
     contigs.  The source qualifiers and ff_definition modifier are taken from the
-    ``SOURCE`` and ``SOURCE_MODIFIER`` keys of *common_json*.
+    ``SOURCE`` and ``INFRASPECIFIC_NAME_MODIFIER`` keys of *common_json*.
     """
     ret = []
     for feature_name, feature_values in common_json.items():

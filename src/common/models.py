@@ -123,7 +123,7 @@ class CommonModel(BaseModel):
     DATATYPE: Optional[dict[str, str]] = None
     KEYWORD: Optional[dict[str, str | list[str]]] = None
     ASSEMBLY_GAP: Optional[AssemblyGapModel] = None
-    SOURCE_MODIFIER: Optional[str] = None
+    INFRASPECIFIC_NAME_MODIFIER: Optional[str] = None
 
 
 def _strip_trailing_commas(text: str) -> str:

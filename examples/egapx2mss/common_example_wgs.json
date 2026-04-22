@@ -41,7 +41,7 @@
         "linkage_evidence": "paired-ends",
         "min_gap_length": 10
     },
-    "SOURCE_MODIFIER": "strain",
+    "INFRASPECIFIC_NAME_MODIFIER": "strain",
     "SOURCE": {
         "organism": "Lactobacillus paragasseri",
         "strain": "JCM 5343",
