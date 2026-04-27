@@ -1,15 +1,4 @@
 {
-    "DATATYPE": {
-        "type": "WGS"
-    },
-    "KEYWORD": {
-        "keyword": ["WGS", "STANDARD_DRAFT"]
-    },
-    "DBLINK": {
-        "project": "PRJD000001",
-        "sample": "SAMD000001",
-        "sequence read archive": ["DRA000001", "DRA000002"]
-    },
     "SUBMITTER": {
         "ab_name": [
             "Suzuki,K.",
@@ -34,9 +23,10 @@
                 "Doe,J."
             ],
             "status": "Unpublished",
-            "title": "Draft genome sequencing of XXX"
+            "title": "Genome sequences for XXXXX XXX"
         }
     ],
+    "INFRASPECIFIC_NAME_MODIFIER": "strain",
     "ASSEMBLY_GAP": [
         {
             "enabled": true,
@@ -45,14 +35,5 @@
             "gap_type": "within scaffold",
             "estimated_length": "known"
         }
-    ],
-    "INFRASPECIFIC_NAME_MODIFIER": "strain",
-    "SOURCE": {
-        "organism": "Lactobacillus paragasseri",
-        "strain": "JCM 5343",
-        "culture_collection": "JCM:5343",
-        "collection_date": "missing: lab stock",
-        "geo_loc_name": "Japan: Shizuoka",
-        "mol_type": "genomic DNA"
-    }
+    ]
 }

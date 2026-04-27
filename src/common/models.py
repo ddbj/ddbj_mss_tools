@@ -93,8 +93,12 @@ _VALID_LINKAGE_EVIDENCE = {"paired-ends", "proximity ligation", "align genus"}
 
 
 class AssemblyGapModel(BaseModel):
+    enabled: bool = True
     linkage_evidence: str
     min_gap_length: int = 10
+    max_gap_length: Optional[int] = None
+    gap_type: Optional[str] = None
+    estimated_length: Optional[str] = None
 
     @field_validator("linkage_evidence")
     @classmethod
@@ -122,7 +126,7 @@ class CommonModel(BaseModel):
     SOURCE: Optional[dict[str, str]] = None
     DATATYPE: Optional[dict[str, str]] = None
     KEYWORD: Optional[dict[str, str | list[str]]] = None
-    ASSEMBLY_GAP: Optional[AssemblyGapModel] = None
+    ASSEMBLY_GAP: Optional[AssemblyGapModel | list[AssemblyGapModel]] = None
     INFRASPECIFIC_NAME_MODIFIER: Optional[str] = None
 
 

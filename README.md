@@ -120,10 +120,23 @@ egapx2mss input.asn \
         "geo_loc_name": "Japan:Shizuoka, Mishima"
     },
     "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
-    "ASSEMBLY_GAP": {
-        "linkage_evidence": "proximity ligation",
-        "min_gap_length": 10
-    }
+    "ASSEMBLY_GAP": [
+        {
+            "enabled": true,
+            "linkage_evidence": "proximity ligation",
+            "min_gap_length": 100,
+            "max_gap_length": 100,
+            "gap_type": "within scaffold",
+            "estimated_length": "unknown"
+        },
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 10,
+            "gap_type": "within scaffold",
+            "estimated_length": "known"
+        }
+    ]
 }
 ```
 
@@ -141,10 +154,30 @@ egapx2mss input.asn \
 #### ASSEMBLY_GAP セクション
 
 連続する N 塩基を自動検出し、`assembly_gap` フィーチャーとしてアノテーションファイルに記載します。
-`min_gap_length` 以上の長さのギャップが対象です。DDBJ では長さ10以上のギャップへの記載を求めているため、
-デフォルト値 (`10`) から変更する必要は通常ありません。
+`ASSEMBLY_GAP` は **配列（配列形式）** で記載し、複数のルールを優先順に指定できます。
+各 N-run に対して、リストの先頭から順に条件を照合し、最初にマッチしたルールが適用されます。
+結果は座標順に出力されます。
 
-`linkage_evidence` にはギャップが導入された理由を記載します。指定できる値:
+各ルールのフィールド:
+
+| フィールド | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `enabled` | — | `true` | `false` にするとこのルールをスキップ |
+| `linkage_evidence` | ✓ | — | ギャップ導入の根拠（下表参照） |
+| `min_gap_length` | — | `10` | アノテーション対象の最小ギャップ長 |
+| `max_gap_length` | — | 上限なし | アノテーション対象の最大ギャップ長 |
+| `gap_type` | — | 推奨値 | `gap_type` qualifier の値 |
+| `estimated_length` | — | 推奨値 | `estimated_length` qualifier の値（`known` または `unknown`） |
+
+`gap_type` と `estimated_length` を省略した場合は `linkage_evidence` に応じた推奨値が自動設定されます:
+
+| linkage_evidence | gap_type | estimated_length |
+|---|---|---|
+| `paired-ends` | within scaffold | known |
+| `proximity ligation` | within scaffold | unknown |
+| `align genus` | within scaffold | unknown |
+
+`linkage_evidence` に指定できる値:
 
 | 値 | 用途 |
 |---|---|
@@ -159,13 +192,31 @@ egapx2mss input.asn \
 | `strobe` | ストローブリードによるスキャフォールディング |
 | `unspecified` | 上記以外 / 不明 |
 
-gap_type と estimated_length の対応:
+**記載例（Hi-C スキャフォールディング + ペアエンドの2ルール）:**
 
-| linkage_evidence | gap_type | estimated_length |
-|---|---|---|
-| `paired-ends` | within scaffolds | known |
-| `proximity ligation` | within scaffolds | unknown |
-| `align genus` | within scaffolds | unknown |
+```json
+"ASSEMBLY_GAP": [
+    {
+        "enabled": true,
+        "linkage_evidence": "proximity ligation",
+        "min_gap_length": 100,
+        "max_gap_length": 100,
+        "gap_type": "within scaffold",
+        "estimated_length": "unknown"
+    },
+    {
+        "enabled": true,
+        "linkage_evidence": "paired-ends",
+        "min_gap_length": 10,
+        "gap_type": "within scaffold",
+        "estimated_length": "known"
+    }
+]
+```
+
+この例では、長さ 100 の N-run には最初のルール (`unknown`) が適用され、
+長さ 10〜99 の N-run には2番目のルール (`known`) が適用されます。
+長さ 9 以下の N-run はどのルールにもマッチしないためアノテーションされません。
 
 ### 染色体テーブル (--chromosomes)
 
@@ -337,12 +388,19 @@ DBLINK や source フィーチャーの情報は TSV で指定するため **DBL
         "title": "Genome sequences for ..."
     }],
     "INFRASPECIFIC_NAME_MODIFIER": "strain",
-    "ASSEMBLY_GAP": {
-        "linkage_evidence": "paired-ends",
-        "min_gap_length": 10
-    }
+    "ASSEMBLY_GAP": [
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 10,
+            "gap_type": "within scaffold",
+            "estimated_length": "known"
+        }
+    ]
 }
 ```
+
+`ASSEMBLY_GAP` の詳細は [egapx2mss の ASSEMBLY_GAP セクション](#assembly_gap-セクション)を参照してください。
 
 - サンプルファイル: [examples/batch_wgs_builder/common_example.json](examples/batch_wgs_builder/common_example.json)
 
@@ -523,10 +581,23 @@ The JSON file specified with `--common` describes submitter information, referen
         "cultivar": "NAPPA"
     },
     "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
-    "ASSEMBLY_GAP": {
-        "linkage_evidence": "proximity ligation",
-        "min_gap_length": 10
-    }
+    "ASSEMBLY_GAP": [
+        {
+            "enabled": true,
+            "linkage_evidence": "proximity ligation",
+            "min_gap_length": 100,
+            "max_gap_length": 100,
+            "gap_type": "within scaffold",
+            "estimated_length": "unknown"
+        },
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 10,
+            "gap_type": "within scaffold",
+            "estimated_length": "known"
+        }
+    ]
 }
 ```
 
@@ -544,9 +615,30 @@ It is reflected in the DEFINITION line of the published flat file — for exampl
 #### ASSEMBLY_GAP Section
 
 Runs of consecutive N bases are automatically detected and written as `assembly_gap` features in the annotation file.
-Only gaps of `min_gap_length` bases or longer are annotated. DDBJ requires annotation of gaps ≥ 10 bases, so the default value (`10`) does not normally need to be changed.
+`ASSEMBLY_GAP` is specified as an **array**, allowing multiple rules with different length ranges to be applied in priority order.
+For each N-run, rules are evaluated from the first entry; the first matching rule is applied.
+Output rows are in ascending coordinate order.
 
-`linkage_evidence` describes how the gap was introduced. Valid values:
+Fields for each rule:
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | — | `true` | Set to `false` to skip this rule |
+| `linkage_evidence` | ✓ | — | Evidence for how the gap was introduced (see table below) |
+| `min_gap_length` | — | `10` | Minimum gap length to annotate |
+| `max_gap_length` | — | no limit | Maximum gap length to annotate |
+| `gap_type` | — | recommended | Value for the `gap_type` qualifier |
+| `estimated_length` | — | recommended | Value for the `estimated_length` qualifier (`known` or `unknown`) |
+
+If `gap_type` and `estimated_length` are omitted, recommended values are applied based on `linkage_evidence`:
+
+| linkage_evidence | gap_type | estimated_length |
+|---|---|---|
+| `paired-ends` | within scaffold | known |
+| `proximity ligation` | within scaffold | unknown |
+| `align genus` | within scaffold | unknown |
+
+Valid values for `linkage_evidence`:
 
 | Value | When to use |
 |---|---|
@@ -561,13 +653,31 @@ Only gaps of `min_gap_length` bases or longer are annotated. DDBJ requires annot
 | `strobe` | Scaffolding with strobe reads |
 | `unspecified` | Other / unknown |
 
-Corresponding gap_type and estimated_length:
+**Example (Hi-C scaffolding + paired-ends, two rules):**
 
-| linkage_evidence | gap_type | estimated_length |
-|---|---|---|
-| `paired-ends` | within scaffolds | known |
-| `proximity ligation` | within scaffolds | unknown |
-| `align genus` | within scaffolds | unknown |
+```json
+"ASSEMBLY_GAP": [
+    {
+        "enabled": true,
+        "linkage_evidence": "proximity ligation",
+        "min_gap_length": 100,
+        "max_gap_length": 100,
+        "gap_type": "within scaffold",
+        "estimated_length": "unknown"
+    },
+    {
+        "enabled": true,
+        "linkage_evidence": "paired-ends",
+        "min_gap_length": 10,
+        "gap_type": "within scaffold",
+        "estimated_length": "known"
+    }
+]
+```
+
+In this example, N-runs of exactly 100 bases are annotated with the first rule (`unknown`),
+while N-runs of 10–99 bases are annotated with the second rule (`known`).
+N-runs shorter than 10 bases match no rule and are not annotated.
 
 ### Chromosome Table (--chromosomes)
 
@@ -733,12 +843,19 @@ Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, IN
         "title": "Genome sequences for ..."
     }],
     "INFRASPECIFIC_NAME_MODIFIER": "strain",
-    "ASSEMBLY_GAP": {
-        "linkage_evidence": "paired-ends",
-        "min_gap_length": 10
-    }
+    "ASSEMBLY_GAP": [
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 10,
+            "gap_type": "within scaffold",
+            "estimated_length": "known"
+        }
+    ]
 }
 ```
+
+For details on `ASSEMBLY_GAP`, see the [ASSEMBLY_GAP Section](#assembly_gap-section) in the egapx2mss documentation.
 
 Sample file: [examples/batch_wgs_builder/common_example.json](examples/batch_wgs_builder/common_example.json)
 

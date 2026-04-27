@@ -127,6 +127,39 @@ mss2ff DDBJ.annt.tsv \
 
 末尾カンマ (JSON5スタイル) は許容される。
 
+### ASSEMBLY_GAP の形式
+
+`ASSEMBLY_GAP` は配列形式で複数ルールを指定できる。各 N-run にリスト先頭から順にマッチし、最初のマッチが適用される。出力は座標昇順。
+
+```json
+"ASSEMBLY_GAP": [
+    {
+        "enabled": true,
+        "linkage_evidence": "proximity ligation",
+        "min_gap_length": 100,
+        "max_gap_length": 100,
+        "gap_type": "within scaffold",
+        "estimated_length": "unknown"
+    },
+    {
+        "enabled": true,
+        "linkage_evidence": "paired-ends",
+        "min_gap_length": 10,
+        "gap_type": "within scaffold",
+        "estimated_length": "known"
+    }
+]
+```
+
+| フィールド | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `enabled` | — | `true` | `false` でこのルールをスキップ |
+| `linkage_evidence` | ✓ | — | `paired-ends` / `proximity ligation` / `align genus` |
+| `min_gap_length` | — | `10` | アノテーション対象の最小ギャップ長 |
+| `max_gap_length` | — | 上限なし | アノテーション対象の最大ギャップ長 |
+| `gap_type` | — | 推奨値 | `gap_type` qualifier の値 |
+| `estimated_length` | — | 推奨値 | `known` または `unknown` |
+
 ## egapx2mss 固有の注意点
 
 ### asn2gb / asn2fsa バイナリ

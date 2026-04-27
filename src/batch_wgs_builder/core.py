@@ -24,7 +24,7 @@ import pandas as pd
 
 from common.common_builder import create_common
 from common.fasta import read_fasta
-from common.gap_annotator import GapAnnotator
+from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.models import AssemblyGapModel
 
 Row = list[str]
@@ -140,16 +140,23 @@ def process_sample(
     file_path: str,
     common_json: dict,
     out_dir: str,
-    gap_cfg: AssemblyGapModel | None,
+    gap_cfg: AssemblyGapModel | list[AssemblyGapModel] | None,
     hold_date: str | None,
 ) -> None:
-    gap_annotator = (
-        GapAnnotator(
-            linkage_evidence=gap_cfg.linkage_evidence,
-            min_gap_length=gap_cfg.min_gap_length,
-        )
-        if gap_cfg else None
-    )
+    gap_annotators: list[GapAnnotator] = []
+    if gap_cfg:
+        cfgs = gap_cfg if isinstance(gap_cfg, list) else [gap_cfg]
+        gap_annotators = [
+            GapAnnotator(
+                linkage_evidence=cfg.linkage_evidence,
+                min_gap_length=cfg.min_gap_length,
+                max_gap_length=cfg.max_gap_length,
+                gap_type=cfg.gap_type,
+                estimated_length=cfg.estimated_length,
+            )
+            for cfg in cfgs
+            if cfg.enabled
+        ]
 
     ann_rows: list[Row] = create_common(common_json, include_source=True)
 
@@ -159,8 +166,8 @@ def process_sample(
     seq_records = read_fasta(file_path)
     for seq_record in seq_records:
         entry_id = seq_record.id
-        if gap_annotator:
-            ann_rows.extend(gap_annotator.annotate(str(seq_record.seq), seq_name=entry_id))
+        if gap_annotators:
+            ann_rows.extend(annotate_gaps(gap_annotators, str(seq_record.seq), seq_name=entry_id))
         seq_record.name = ""
         seq_record.description = ""
 
@@ -183,7 +190,7 @@ def process_sample(
     print(f"  FA  : {out_fa}", file=sys.stderr)
 
 
-def _load_common_base(path: str) -> tuple[dict, AssemblyGapModel | None]:
+def _load_common_base(path: str) -> tuple[dict, AssemblyGapModel | list[AssemblyGapModel] | None]:
     """Load common JSON without requiring DBLINK (which is per-sample in the TSV)."""
     import json
     from pathlib import Path
@@ -192,9 +199,13 @@ def _load_common_base(path: str) -> tuple[dict, AssemblyGapModel | None]:
     raw = Path(path).read_text(encoding="utf-8")
     data: dict = json.loads(_strip_trailing_commas(raw))
 
-    gap_cfg: AssemblyGapModel | None = None
+    gap_cfg: AssemblyGapModel | list[AssemblyGapModel] | None = None
     if "ASSEMBLY_GAP" in data:
-        gap_cfg = AssemblyGapModel.model_validate(data["ASSEMBLY_GAP"])
+        raw_gap = data["ASSEMBLY_GAP"]
+        if isinstance(raw_gap, list):
+            gap_cfg = [AssemblyGapModel.model_validate(item) for item in raw_gap]
+        else:
+            gap_cfg = AssemblyGapModel.model_validate(raw_gap)
 
     return data, gap_cfg
 

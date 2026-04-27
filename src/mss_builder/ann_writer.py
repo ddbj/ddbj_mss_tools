@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional
 
 from common.common_builder import create_common
 from common.fasta import parse_fasta_sequences
-from common.gap_annotator import GapAnnotator
+from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.source_builder import (
     ChromosomeEntry,
     ff_definition,
@@ -94,15 +94,22 @@ def write_mss_ann(
     all_ids = list(lengths.keys())
 
     gap_cfg = common.ASSEMBLY_GAP if common is not None else None
-    if not gap_cfg:
+    gap_annotators: list[GapAnnotator] = []
+    if gap_cfg:
+        cfgs = gap_cfg if isinstance(gap_cfg, list) else [gap_cfg]
+        gap_annotators = [
+            GapAnnotator(
+                linkage_evidence=cfg.linkage_evidence,
+                min_gap_length=cfg.min_gap_length,
+                max_gap_length=cfg.max_gap_length,
+                gap_type=cfg.gap_type,
+                estimated_length=cfg.estimated_length,
+            )
+            for cfg in cfgs
+            if cfg.enabled
+        ]
+    if not gap_annotators:
         sequences = {}
-    gap_annotator = (
-        GapAnnotator(
-            linkage_evidence=gap_cfg.linkage_evidence,
-            min_gap_length=gap_cfg.min_gap_length,
-        )
-        if gap_cfg else None
-    )
 
     # Determine WGS mode: no chromosomes file, or every entry is unplaced
     def _is_unplaced(eid: str) -> bool:
@@ -168,12 +175,12 @@ def write_mss_ann(
                 rows.append(["", "", "", q_key, q_val])
 
         # Assembly gap features
-        if gap_annotator and entry_id in sequences:
+        if gap_annotators and entry_id in sequences:
             # In WGS mode the first gap row carries the entry name (since source
             # is in COMMON). In non-WGS mode source already opened the entry, so
             # gap rows use an empty first column.
             seq_name_for_gap = entry_id if is_wgs and not is_circular else None
-            gap_rows = gap_annotator.annotate(sequences[entry_id], seq_name=seq_name_for_gap)
+            gap_rows = annotate_gaps(gap_annotators, sequences[entry_id], seq_name=seq_name_for_gap)
             rows.extend(gap_rows)
 
     with open(ann_path, "w") as fout:

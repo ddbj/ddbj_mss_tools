@@ -1,0 +1,5 @@
+_	DBLINK	DBLINK	DBLINK	ST_COMMENT	ST_COMMENT	ST_COMMENT	ST_COMMENT	source	source	source	source	source	source	source	COMMENT
+_file_path	project	biosample	sequence read archive	Assembly Method	Assembly Name	Genome Coverage	Sequencing Technology	organism	strain	geo_loc_name	collection_date	isolation_source	culture_collection	type_material	line
+examples/batch_wgs_builder/GCA_003307255.1.fna.gz	PRJDB99999	SAMD999997	DRR999997	Skesa v. 1.0		100x	Illumina NovaSeq	Lactobacillus paragasseri	TO-1000	Japan: Shizuoka	not collected	silage			Data 1
+examples/batch_wgs_builder/GCA_017312485.1.fna.gz	PRJDB99999	SAMD999998	DRR999998	Velvet v. 1.0		120x	Illumina NovaSeq	Clostridium zea	CSC2	Japan	2023−04-01				Data 2; Data 2, line2
+examples/batch_wgs_builder/GCA_003851105.1.fna.gz	PRJDB99999	SAMD999999	DRR999999	Skesa v. 1.0		60.2x	Illumina NovaSeq	Paenibacillus macerans	JCM 2500	Japan	2025-06-26		JCM:2500	type strain	
