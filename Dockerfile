@@ -4,6 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # patch for linbidn11
@@ -21,5 +22,12 @@ COPY examples/ examples/
 COPY tests/ tests/
 
 RUN pip install --no-cache-dir -e .
+
+# ── Layer 3: download NCBI command-line tools ─────────────────────────────
+# These binaries expire periodically; rebuild with --no-cache to refresh.
+RUN mkdir -p bin \
+ && wget -qO- https://ftp.ncbi.nih.gov/toolbox/ncbi_tools/cmdline/asn2gb.linux64.gz  | gunzip > bin/asn2gb \
+ && wget -qO- https://ftp.ncbi.nih.gov/toolbox/ncbi_tools/cmdline/asn2fsa.linux64.gz | gunzip > bin/asn2fsa \
+ && chmod +x bin/asn2gb bin/asn2fsa
 
 CMD ["bash"]

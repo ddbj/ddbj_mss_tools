@@ -10,6 +10,9 @@ Workflow
 The tools asn2gb and asn2fsa are downloaded automatically from
 https://ftp.ncbi.nih.gov/toolbox/ncbi_tools/cmdline/ if they are not found
 in --bin-dir (default: ~/.local/share/ddbj_mss_tools/bin).
+
+When --tbl and --fsa are both provided, steps 1 and 2 are skipped
+and no ASN.1 input file is needed.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from pathlib import Path
 from typing import Optional
 
 from .ann_writer import write_ddbj_ann
+from common.cli_args import validate_prefix, resolve_output
 from common.source_builder import load_chromosomes
 from .asn_tools import DEFAULT_BIN_DIR, ensure_tools, run_asn2fsa, run_asn2gb_tbl
 from common.fasta import write_clean_fasta
@@ -36,10 +40,23 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("input", help="Input ASN.1 file (.asn)")
     parser.add_argument(
-        "-o", "--output",
-        help="Output file prefix (default: input basename without extension)",
+        "input", nargs="?",
+        help="Input ASN.1 file (.asn). Omit when --tbl and --fsa are both provided.",
+    )
+    parser.add_argument(
+        "-o", "--outdir", default=None,
+        help=(
+            "Output directory (created if absent). "
+            "Default: same directory as input .asn or --tbl file."
+        ),
+    )
+    parser.add_argument(
+        "-p", "--prefix", default=None,
+        help=(
+            "Output filename prefix (basename only, no directory separators). "
+            "Default: basename of input .asn or --tbl file without extension."
+        ),
     )
     parser.add_argument(
         "--bin-dir", default=None,
@@ -61,40 +78,93 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--tbl", default=None,
+        help="Pre-existing NCBI feature table (.tbl); skips step 1/3.",
+    )
+    parser.add_argument(
+        "--fsa", default=None,
+        help="Pre-existing FASTA file (.fa/.fsa); skips step 2/3.",
+    )
+    parser.add_argument(
         "--keep-tmp", action="store_true",
         help="Keep intermediate .tbl and raw FASTA files",
     )
+    parser.add_argument(
+        "--preconvert-only", action="store_true",
+        help="Run step 1/3 and step 2/3 only (generate .tbl and .fa); skip MSS annotation conversion",
+    )
     args = parser.parse_args()
 
+    # ── Validate argument combinations ────────────────────────────────────
+    if bool(args.tbl) != bool(args.fsa):
+        parser.error("--tbl and --fsa must be specified together")
+    direct_mode = bool(args.tbl and args.fsa)
+    if not args.input and not direct_mode:
+        parser.error("input .asn file is required unless both --tbl and --fsa are provided")
+    if args.input and (args.tbl or args.fsa):
+        parser.error("input .asn cannot be combined with --tbl / --fsa")
+    validate_prefix(args, parser)
+    if args.preconvert_only and direct_mode:
+        print("Warning: --preconvert-only has no effect when --tbl and --fsa are both provided.", file=sys.stderr)
+
     # ── Resolve paths ──────────────────────────────────────────────────────
-    asn_path = os.path.abspath(args.input)
     bin_dir  = Path(args.bin_dir).resolve() if args.bin_dir else DEFAULT_BIN_DIR
+    ref_path = Path(os.path.abspath(args.tbl if direct_mode else args.input))
 
-    prefix      = args.output if args.output else os.path.splitext(asn_path)[0]
-    out_tbl     = prefix + ".tbl"
-    out_fsa_raw = prefix + "_raw.fa"
-    out_fsa     = prefix + ".fa"
-    out_ann     = prefix + ".ann"
+    out_prefix, out_dir = resolve_output(args, ref_path)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Ensure tools ──────────────────────────────────────────────────────
-    asn2gb, asn2fsa = ensure_tools(bin_dir)
+    base        = out_dir / out_prefix
+    out_tbl     = str(base) + ".tbl"
+    out_fsa_raw = str(base) + "_raw.fa"
+    out_fsa     = str(base) + ".fa"
+    out_ann     = str(base) + ".ann"
+
+    # ── Ensure tools (skip when both files are pre-supplied) ──────────────
+    if not direct_mode:
+        asn2gb, asn2fsa = ensure_tools(bin_dir)
+        asn_path = str(ref_path)
 
     # ── Step 1: feature table ─────────────────────────────────────────────
-    print("[step 1/3] Generating feature table (asn2gb) ...", file=sys.stderr)
-    run_asn2gb_tbl(asn2gb, asn_path, out_tbl)
+    if args.tbl:
+        out_tbl = os.path.abspath(args.tbl)
+        tbl_preexisted = True
+        print(f"[step 1/3] Using provided .tbl: {out_tbl}", file=sys.stderr)
+    else:
+        tbl_preexisted = os.path.exists(out_tbl)
+        if tbl_preexisted:
+            print(f"[step 1/3] Skipping — {out_tbl} already exists.", file=sys.stderr)
+        else:
+            print("[step 1/3] Generating feature table (asn2gb) ...", file=sys.stderr)
+            run_asn2gb_tbl(asn2gb, asn_path, out_tbl)
 
     # ── Step 2: FASTA ────────────────────────────────────────────────────
-    print("[step 2/3] Generating FASTA (asn2fsa) ...", file=sys.stderr)
-    tmpdir = tempfile.mkdtemp(prefix="egapx2mss_")
-    try:
-        run_asn2fsa(asn2fsa, asn_path, out_fsa_raw, tmpdir)
-    finally:
-        if not args.keep_tmp:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+    if args.fsa:
+        out_fsa = os.path.abspath(args.fsa)
+        fsa_preexisted = True
+        print(f"[step 2/3] Using provided .fa: {out_fsa}", file=sys.stderr)
+    else:
+        fsa_preexisted = os.path.exists(out_fsa)
+        if fsa_preexisted:
+            print(f"[step 2/3] Skipping — {out_fsa} already exists.", file=sys.stderr)
+        else:
+            print("[step 2/3] Generating FASTA (asn2fsa) ...", file=sys.stderr)
+            tmpdir = tempfile.mkdtemp(prefix="egapx2mss_")
+            try:
+                run_asn2fsa(asn2fsa, asn_path, out_fsa_raw, tmpdir)
+            finally:
+                if not args.keep_tmp:
+                    shutil.rmtree(tmpdir, ignore_errors=True)
 
-    write_clean_fasta(out_fsa_raw, out_fsa)
-    if not args.keep_tmp:
-        os.unlink(out_fsa_raw)
+            write_clean_fasta(out_fsa_raw, out_fsa)
+            if not args.keep_tmp:
+                os.unlink(out_fsa_raw)
+
+    if args.preconvert_only:
+        print("\nDone (preconvert only).", file=sys.stderr)
+        print(f"  Feature table : {out_tbl}", file=sys.stderr)
+        print(f"  FASTA         : {out_fsa}", file=sys.stderr)
+        return
 
     # ── Step 3: DDBJ MSS annotation ──────────────────────────────────────
     print("[step 3/3] Converting to DDBJ MSS annotation ...", file=sys.stderr)
@@ -118,7 +188,7 @@ def main() -> None:
         chromosomes=chromosomes,
     )
 
-    if not args.keep_tmp:
+    if not args.keep_tmp and not tbl_preexisted:
         os.unlink(out_tbl)
 
     print("\nDone.", file=sys.stderr)

@@ -21,6 +21,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+from common.cli_args import add_output_args, validate_prefix, resolve_output
 from common.fasta import write_clean_fasta
 from common.models import CommonModel, load_common_json
 from common.source_builder import load_chromosomes
@@ -36,10 +37,7 @@ def main() -> None:
         epilog=__doc__,
     )
     parser.add_argument("input", help="Input FASTA file (.fa / .fasta)")
-    parser.add_argument(
-        "-o", "--output",
-        help="Output file prefix (default: input basename without extension)",
-    )
+    add_output_args(parser)
     parser.add_argument(
         "--common",
         help=(
@@ -59,10 +57,14 @@ def main() -> None:
     args = parser.parse_args()
 
     # ── Resolve paths ─────────────────────────────────────────────────────────
+    validate_prefix(args, parser)
     fasta_path = os.path.abspath(args.input)
-    prefix = args.output if args.output else os.path.splitext(fasta_path)[0]
-    out_fsa = os.path.abspath(prefix + ".fa")
-    out_ann = os.path.abspath(prefix + ".ann")
+    ref_path   = Path(fasta_path)
+    out_prefix, out_dir = resolve_output(args, ref_path)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    base    = out_dir / out_prefix
+    out_fsa = str(base) + ".fa"
+    out_ann = str(base) + ".ann"
 
     # ── Load optional metadata ────────────────────────────────────────────────
     common: Optional[CommonModel] = None

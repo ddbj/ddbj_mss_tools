@@ -23,6 +23,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
 - [egapx2mss の使い方](#egapx2mss-の使い方)
   - [基本的な使い方](#基本的な使い方)
   - [オプション一覧](#オプション一覧)
+  - [.tbl / .fa から直接変換する](#tbl--fa-から直接変換する)
   - [common JSON ファイル](#common-json-ファイル)
   - [染色体テーブル (--chromosomes)](#染色体テーブル---chromosomes)
   - [注意点](#注意点)
@@ -66,24 +67,54 @@ NCBI EGAPx が出力する ASN.1 ファイルを DDBJ MSS 形式の `.ann` / `.f
 ### 基本的な使い方
 
 ```bash
+# 通常変換（出力は input.ann / input.fa）
+egapx2mss input.asn --common examples/egapx2mss/common_example.json
+
+# 出力ディレクトリとファイル名を指定
 egapx2mss input.asn \
   --common examples/egapx2mss/common_example.json \
-  --output output_prefix
+  --outdir results/ \
+  --prefix output
 ```
 
-デフォルトでは入力ファイル名（拡張子なし）が出力プレフィックスになります。
-上記の例では `output_prefix.ann` と `output_prefix.fa` が生成されます。
+デフォルトでは入力ファイルと同じディレクトリに、入力ファイル名（拡張子なし）をプレフィックスとして出力します。
+上記2番目の例では `results/output.ann` と `results/output.fa` が生成されます。
 
 ### オプション一覧
 
 | オプション | 説明 |
 |---|---|
-| `input` | 入力 ASN.1 ファイル (.asn) |
-| `-o`, `--output` | 出力ファイルのプレフィックス（省略時は入力ファイル名） |
+| `input` | 入力 ASN.1 ファイル (.asn)。`--tbl` と `--fsa` を両方指定する場合は省略可 |
+| `-o`, `--outdir` | 出力先ディレクトリ（存在しない場合は自動作成。デフォルト: 入力ファイルと同じディレクトリ） |
+| `-p`, `--prefix` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可。デフォルト: 入力ファイルのベースネーム） |
 | `--common` | 共通メタデータ JSON ファイル（DBLINK, SUBMITTER, REFERENCE 等） |
 | `--chromosomes` | 染色体テーブル TSV ファイル（後述） |
-| `--bin-dir` | asn2gb / asn2fsa バイナリの保存ディレクトリ（デフォルト: `bin/`） |
+| `--bin-dir` | asn2gb / asn2fsa バイナリの保存ディレクトリ（デフォルト: `~/.local/share/ddbj_mss_tools/bin`） |
 | `--keep-tmp` | 中間ファイル (.tbl, raw FASTA) を削除せず保持する |
+| `--tbl` | 既存の NCBI feature table (.tbl) を直接指定（step 1/3 をスキップ） |
+| `--fsa` | 既存の FASTA ファイル (.fa/.fsa) を直接指定（step 2/3 をスキップ） |
+| `--preconvert-only` | step 1/3・2/3 のみ実行して終了（.tbl と .fa を生成） |
+
+### .tbl / .fa から直接変換する
+
+`--tbl` と `--fsa` を両方指定すると、ASN.1 ファイルを省略して既存の中間ファイルから step 3/3（MSS アノテーション変換）のみ実行できます。
+この場合 `asn2gb` / `asn2fsa` のダウンロード・実行は不要です。
+
+```bash
+# step 3/3 だけ実行（既存の .tbl と .fa を使用）
+egapx2mss --tbl input.tbl --fsa input.fa \
+  --common common_example.json \
+  --outdir results/ --prefix output
+```
+
+また、`--preconvert-only` を使うと step 1/3・2/3 だけ実行して止めることができます。
+
+```bash
+# step 1/3・2/3 だけ実行（.tbl と .fa を生成して終了）
+egapx2mss input.asn --preconvert-only --outdir tmp/
+```
+
+同じ入力に対して再実行した場合、既に生成済みの `.tbl` や `.fa` が存在するステップは自動的にスキップされます。
 
 ### common JSON ファイル
 
@@ -275,15 +306,18 @@ FASTA ファイルから DDBJ MSS 形式の `.ann` / `.fa` ファイルを生成
 
 ```bash
 # WGS 登録（全配列を unplaced コンティグとして扱う）
+mss_builder genome.fa --common examples/mss_builder/common_example.json
+
+# 出力ディレクトリとファイル名を指定
 mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
-  --output output_prefix
+  --outdir results/ --prefix output
 
 # Complete genome 登録（染色体テーブルを指定）
 mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
   --chromosomes chromosomes.tsv \
-  --output output_prefix
+  --outdir results/ --prefix output
 ```
 
 ### オプション一覧
@@ -291,7 +325,8 @@ mss_builder genome.fa \
 | オプション | 説明 |
 |---|---|
 | `input` | 入力 FASTA ファイル (.fa / .fasta) |
-| `-o`, `--output` | 出力ファイルのプレフィックス（省略時は入力ファイル名） |
+| `-o`, `--outdir` | 出力先ディレクトリ（存在しない場合は自動作成。デフォルト: 入力ファイルと同じディレクトリ） |
+| `-p`, `--prefix` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可。デフォルト: 入力ファイルのベースネーム） |
 | `--common` | 共通メタデータ JSON ファイル（egapx2mss と同形式） |
 | `--chromosomes` | 染色体テーブル TSV（省略時は WGS モード） |
 
@@ -488,6 +523,7 @@ A set of Python tools for generating DDBJ MSS (Mass Submission System) submissio
 - [egapx2mss Usage](#egapx2mss-usage)
   - [Basic Usage](#basic-usage)
   - [Options](#options)
+  - [Converting from .tbl / .fa directly](#converting-from-tbl--fa-directly)
   - [Common JSON File](#common-json-file)
   - [Chromosome Table (--chromosomes)](#chromosome-table---chromosomes)
   - [Important Notes](#important-notes)
@@ -531,24 +567,54 @@ Converts ASN.1 files produced by NCBI EGAPx into DDBJ MSS format `.ann` / `.fa` 
 ### Basic Usage
 
 ```bash
+# Basic conversion (output: input.ann / input.fa)
+egapx2mss input.asn --common examples/egapx2mss/common_example.json
+
+# Specify output directory and filename
 egapx2mss input.asn \
   --common examples/egapx2mss/common_example.json \
-  --output output_prefix
+  --outdir results/ \
+  --prefix output
 ```
 
-By default, the output prefix is the input filename without extension.
-The above example produces `output_prefix.ann` and `output_prefix.fa`.
+By default, output files are written to the same directory as the input file, using the input basename as the prefix.
+The second example above produces `results/output.ann` and `results/output.fa`.
 
 ### Options
 
 | Option | Description |
 |---|---|
-| `input` | Input ASN.1 file (.asn) |
-| `-o`, `--output` | Output file prefix (default: input basename) |
+| `input` | Input ASN.1 file (.asn). Can be omitted when both `--tbl` and `--fsa` are provided. |
+| `-o`, `--outdir` | Output directory (created if absent; default: same directory as input file) |
+| `-p`, `--prefix` | Output filename prefix, basename only — no directory separators (default: input basename) |
 | `--common` | Common metadata JSON file (DBLINK, SUBMITTER, REFERENCE, etc.) |
 | `--chromosomes` | Chromosome table TSV file (see below) |
-| `--bin-dir` | Directory for asn2gb / asn2fsa binaries (default: `bin/`) |
+| `--bin-dir` | Directory for asn2gb / asn2fsa binaries (default: `~/.local/share/ddbj_mss_tools/bin`) |
 | `--keep-tmp` | Keep intermediate files (.tbl, raw FASTA) |
+| `--tbl` | Pre-existing NCBI feature table (.tbl); skips step 1/3 |
+| `--fsa` | Pre-existing FASTA file (.fa/.fsa); skips step 2/3 |
+| `--preconvert-only` | Run steps 1/3 and 2/3 only (generate .tbl and .fa, then stop) |
+
+### Converting from .tbl / .fa directly
+
+When both `--tbl` and `--fsa` are provided, the ASN.1 input file can be omitted.
+Only step 3/3 (MSS annotation conversion) is executed, and `asn2gb` / `asn2fsa` are not needed.
+
+```bash
+# Run step 3/3 only using existing .tbl and .fa files
+egapx2mss --tbl input.tbl --fsa input.fa \
+  --common common_example.json \
+  --outdir results/ --prefix output
+```
+
+You can also run only steps 1/3 and 2/3 using `--preconvert-only`:
+
+```bash
+# Generate .tbl and .fa without MSS conversion
+egapx2mss input.asn --preconvert-only --outdir tmp/
+```
+
+When re-running on the same input, any step whose output file already exists is automatically skipped.
 
 ### Common JSON File
 
@@ -736,15 +802,18 @@ Use this for WGS contig submissions without gene annotations, or for complete ge
 
 ```bash
 # WGS submission (all sequences treated as unplaced contigs)
+mss_builder genome.fa --common examples/mss_builder/common_example.json
+
+# Specify output directory and filename
 mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
-  --output output_prefix
+  --outdir results/ --prefix output
 
 # Complete genome submission (with chromosome table)
 mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
   --chromosomes chromosomes.tsv \
-  --output output_prefix
+  --outdir results/ --prefix output
 ```
 
 ### Options
@@ -752,7 +821,8 @@ mss_builder genome.fa \
 | Option | Description |
 |---|---|
 | `input` | Input FASTA file (.fa / .fasta) |
-| `-o`, `--output` | Output file prefix (default: input basename) |
+| `-o`, `--outdir` | Output directory (created if absent; default: same directory as input file) |
+| `-p`, `--prefix` | Output filename prefix, basename only — no directory separators (default: input basename) |
 | `--common` | Common metadata JSON file (same format as egapx2mss) |
 | `--chromosomes` | Chromosome table TSV (if omitted, WGS mode is used) |
 
