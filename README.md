@@ -461,11 +461,10 @@ MSS アノテーションファイル（`.ann` または `.annt.tsv`）と FASTA
 
 ```bash
 # 基本
-mss2ff annotation.ann --fasta genome.fa --division BCT --output output.ff
+mss2ff annotation.ann genome.fa --division BCT --output output.ff
 
 # 全オプション指定
-mss2ff annotation.ann \
-    --fasta genome.fa \
+mss2ff annotation.ann genome.fa \
     --output output.ff \
     --division BCT \
     --submission-date 2025-04-01 \
@@ -479,7 +478,7 @@ mss2ff annotation.ann \
 | オプション | 省略形 | デフォルト | 説明 |
 |---|---|---|---|
 | `ANN` | — | 必須 | MSS アノテーションファイル (.ann または .annt.tsv) |
-| `--fasta` | `-f` | なし | FASTA シーケンスファイル（CDS 翻訳に必要） |
+| `FASTA` | — | なし | FASTA シーケンスファイル（CDS 翻訳に必要。source が COMMON に定義されている場合も必須） |
 | `--output` | `-o` | 標準出力 | 出力ファイルパス |
 | `--division` | `-d` | `UNK` | DDBJ division コード（BCT, VRL, PLN 等） |
 | `--submission-date` | `-s` | 今日 | REFERENCE 1 の投稿日（YYYY-MM-DD） |
@@ -951,11 +950,10 @@ Generates a DDBJ Flat File from an MSS annotation file (`.ann` or `.annt.tsv`) a
 
 ```bash
 # Basic
-mss2ff annotation.ann --fasta genome.fa --division BCT --output output.ff
+mss2ff annotation.ann genome.fa --division BCT --output output.ff
 
 # All options
-mss2ff annotation.ann \
-    --fasta genome.fa \
+mss2ff annotation.ann genome.fa \
     --output output.ff \
     --division BCT \
     --submission-date 2025-04-01 \
@@ -969,7 +967,7 @@ mss2ff annotation.ann \
 | Option | Short | Default | Description |
 |---|---|---|---|
 | `ANN` | — | required | MSS annotation file (.ann or .annt.tsv) |
-| `--fasta` | `-f` | none | FASTA sequence file (required for CDS translation) |
+| `FASTA` | — | none | FASTA sequence file (required for CDS translation; also required when source is defined only in COMMON) |
 | `--output` | `-o` | stdout | Output file path |
 | `--division` | `-d` | `UNK` | DDBJ division code (BCT, VRL, PLN, etc.) |
 | `--submission-date` | `-s` | today | Submission date for Reference 1 (YYYY-MM-DD) |

@@ -7,8 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# patch for linbidn11
-RUN ln -s /usr/lib/x86_64-linux-gnu/libidn2.so /usr/lib/x86_64-linux-gnu/libidn.so.11
+# libidn11 was removed from Debian 12; install from Debian 11 archive
+RUN wget -q http://archive.debian.org/debian/pool/main/libi/libidn/libidn11_1.33-3_amd64.deb \
+    && dpkg -i libidn11_1.33-3_amd64.deb \
+    && rm libidn11_1.33-3_amd64.deb
 
 # ── Layer 1: install third-party dependencies ─────────────────────────────
 # Copied before source so this layer is cached on source-only changes.

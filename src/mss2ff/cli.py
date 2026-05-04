@@ -60,8 +60,10 @@ def main(argv: list[str] | None = None) -> None:
         help="MSS annotation file (.ann or .annt.tsv)",
     )
     parser.add_argument(
-        "--fasta", "-f",
+        "fasta",
         metavar="FASTA",
+        nargs="?",
+        default=None,
         help="FASTA sequence file (.fa / .fsa / .fasta). Required for translation.",
     )
     parser.add_argument(
@@ -116,7 +118,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     # Lazy imports (keep startup fast)
-    from .ann_parser import parse_ann
+    from .ann_parser import EntryBlock, Feature, parse_ann
     from .ff_writer import write_ff
 
     # Parse annotation file
@@ -124,10 +126,6 @@ def main(argv: list[str] | None = None) -> None:
         common, entries = parse_ann(args.ann)
     except Exception as exc:
         print(f"mss2ff: Error reading annotation file: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if not entries:
-        print("mss2ff: No entries found in annotation file.", file=sys.stderr)
         sys.exit(1)
 
     # Read sequences
@@ -138,6 +136,25 @@ def main(argv: list[str] | None = None) -> None:
         except Exception as exc:
             print(f"mss2ff: Error reading FASTA file: {exc}", file=sys.stderr)
             sys.exit(1)
+
+    # When source is defined only in COMMON (WGS-style), synthesize one entry per FASTA sequence
+    if not entries and sequences and common.source_feature is not None:
+        for seq_id in sequences:
+            entry = EntryBlock(entry_id=seq_id)
+            entry.features.append(Feature(
+                name=common.source_feature.name,
+                location=common.source_feature.location,
+                qualifiers=list(common.source_feature.qualifiers),
+            ))
+            entries.append(entry)
+
+    if entries and not args.fasta:
+        print("mss2ff: FASTA file is required.", file=sys.stderr)
+        sys.exit(1)
+
+    if not entries:
+        print("mss2ff: No entries found in annotation file.", file=sys.stderr)
+        sys.exit(1)
 
     # Open output
     if args.output == "-":

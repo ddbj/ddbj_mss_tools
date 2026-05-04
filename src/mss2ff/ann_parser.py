@@ -63,6 +63,7 @@ class CommonBlock:
     st_comments: list[StComment] = field(default_factory=list)
     hold_date: str = ""
     keywords: list[str] = field(default_factory=list)
+    source_feature: Optional[Feature] = None  # source feature defined in COMMON block
 
 
 @dataclass
@@ -148,7 +149,7 @@ def _parse_common(rows: list[list[str]], i: int, common: CommonBlock) -> int:
             common.comment_blocks.append(current_comment)
             current_comment = None
 
-    def start_section(name: str):
+    def start_section(name: str, loc: str = ""):
         nonlocal current_section, current_ref, current_st, current_comment
         flush_section()
         current_section = name
@@ -158,6 +159,8 @@ def _parse_common(rows: list[list[str]], i: int, common: CommonBlock) -> int:
             current_st = StComment()
         elif name == "COMMENT":
             current_comment = []
+        elif name == "source":
+            common.source_feature = Feature(name="source", location=loc)
 
     def process_row(section: str, key: str, val: str):
         nonlocal current_ref, current_st, current_comment
@@ -209,6 +212,8 @@ def _parse_common(rows: list[list[str]], i: int, common: CommonBlock) -> int:
                 current_st.tagset_id = val
             else:
                 current_st.fields.append((key, val))
+        elif section == "source" and common.source_feature is not None and key:
+            common.source_feature.qualifiers.append((key, val))
         elif section == "DATE":
             if key == "hold_date":
                 common.hold_date = val
@@ -220,11 +225,11 @@ def _parse_common(rows: list[list[str]], i: int, common: CommonBlock) -> int:
     i += 1
 
     while i < n:
-        entry_col, feat_col, _, key_col, val_col = rows[i]
+        entry_col, feat_col, loc_col, key_col, val_col = rows[i]
         if entry_col:  # new top-level block
             break
         if feat_col:
-            start_section(feat_col)
+            start_section(feat_col, loc_col)
         process_row(current_section, key_col, val_col)
         i += 1
 

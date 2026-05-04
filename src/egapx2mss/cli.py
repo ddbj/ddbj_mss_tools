@@ -140,9 +140,13 @@ def main() -> None:
 
     # ── Step 2: FASTA ────────────────────────────────────────────────────
     if args.fsa:
-        out_fsa = os.path.abspath(args.fsa)
+        fsa_source = os.path.abspath(args.fsa)
         fsa_preexisted = True
-        print(f"[step 2/3] Using provided .fa: {out_fsa}", file=sys.stderr)
+        if fsa_source == out_fsa:
+            print(f"[step 2/3] Using provided .fa: {out_fsa}", file=sys.stderr)
+        else:
+            print(f"[step 2/3] Copying provided .fa to output location ...", file=sys.stderr)
+            shutil.copy2(fsa_source, out_fsa)
     else:
         fsa_preexisted = os.path.exists(out_fsa)
         if fsa_preexisted:
