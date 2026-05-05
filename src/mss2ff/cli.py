@@ -5,9 +5,6 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import date, datetime
-from pathlib import Path
-
-from Bio import SeqIO
 
 
 def _parse_date(s: str) -> date:
@@ -137,16 +134,30 @@ def main(argv: list[str] | None = None) -> None:
             print(f"mss2ff: Error reading FASTA file: {exc}", file=sys.stderr)
             sys.exit(1)
 
-    # When source is defined only in COMMON (WGS-style), synthesize one entry per FASTA sequence
-    if not entries and sequences and common.source_feature is not None:
+    # When COMMON has a source feature, apply it to all entries that lack one,
+    # and synthesize entries for FASTA sequences not listed in the ann file.
+    if sequences and common.source_feature is not None:
+        entry_map = {e.entry_id: e for e in entries}
+        for entry in entries:
+            if entry.source_feature is None:
+                entry.features.insert(0, Feature(
+                    name=common.source_feature.name,
+                    location=common.source_feature.location,
+                    qualifiers=list(common.source_feature.qualifiers),
+                ))
         for seq_id in sequences:
-            entry = EntryBlock(entry_id=seq_id)
-            entry.features.append(Feature(
-                name=common.source_feature.name,
-                location=common.source_feature.location,
-                qualifiers=list(common.source_feature.qualifiers),
-            ))
-            entries.append(entry)
+            if seq_id not in entry_map:
+                new_entry = EntryBlock(entry_id=seq_id)
+                new_entry.features.append(Feature(
+                    name=common.source_feature.name,
+                    location=common.source_feature.location,
+                    qualifiers=list(common.source_feature.qualifiers),
+                ))
+                entries.append(new_entry)
+        # Reorder to match FASTA sequence order
+        entry_map = {e.entry_id: e for e in entries}
+        entries[:] = [entry_map[sid] for sid in sequences if sid in entry_map]
+        entries += [e for e in entry_map.values() if e.entry_id not in sequences]
 
     if entries and not args.fasta:
         print("mss2ff: FASTA file is required.", file=sys.stderr)
