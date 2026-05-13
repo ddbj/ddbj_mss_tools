@@ -3,7 +3,7 @@ batch_wgs_builder — Batch-create DDBJ MSS WGS/MAG-WGS submission files.
 
 Workflow
 --------
-1. Read common JSON (SUBMITTER, REFERENCE, ASSEMBLY_GAP, INFRASPECIFIC_NAME_MODIFIER, …)
+1. Read common JSON (SUBMITTER, REFERENCE, ASSEMBLY_GAP, SOURCE_IDENTIFIER, …)
 2. Read sample_list TSV (2-row header: row0=feature names, row1=qualifier names)
 3. For each sample row:
    - Merge DBLINK, ST_COMMENT, source, COMMENT from TSV with common JSON
@@ -49,7 +49,7 @@ def build_sample_json(row: pd.Series, common_base: dict) -> tuple[str, str, dict
     Build (file_path, category, common_json) from one TSV row merged with common_base.
 
     common_base comes from the common JSON and may contain SUBMITTER, REFERENCE,
-    SOURCE (as defaults), INFRASPECIFIC_NAME_MODIFIER, ASSEMBLY_GAP, etc.
+    SOURCE (as defaults), SOURCE_IDENTIFIER, ASSEMBLY_GAP, etc.
     TSV row data overrides common_base values where they overlap.
     """
     file_path = ""
@@ -117,7 +117,9 @@ def build_sample_json(row: pd.Series, common_base: dict) -> tuple[str, str, dict
 
     # Tool-specific config keys (used by create_common / source builder)
     common_json["SOURCE"] = source_dict
-    common_json["INFRASPECIFIC_NAME_MODIFIER"] = common_base.get("INFRASPECIFIC_NAME_MODIFIER", "")
+    common_json["SOURCE_IDENTIFIER"] = (
+        common_base.get("SOURCE_IDENTIFIER") or common_base.get("INFRASPECIFIC_NAME_MODIFIER", "")
+    )
     common_json["_trad_submission_category"] = category
 
     return file_path, category, common_json

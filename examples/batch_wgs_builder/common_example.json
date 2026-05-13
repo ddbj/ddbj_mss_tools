@@ -26,7 +26,7 @@
             "title": "Genome sequences for XXXXX XXX"
         }
     ],
-    "INFRASPECIFIC_NAME_MODIFIER": "strain",
+    "SOURCE_IDENTIFIER": "strain",
     "ASSEMBLY_GAP": [
         {
             "enabled": true,

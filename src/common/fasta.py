@@ -12,7 +12,8 @@ def parse_fasta_lengths(fasta_path: str) -> dict[str, int]:
 
 def parse_fasta_sequences(fasta_path: str) -> dict[str, str]:
     """Return {seq_id: sequence} for every record in *fasta_path*."""
-    with open(fasta_path) as fh:
+    opener = gzip.open if fasta_path.endswith(".gz") else open
+    with opener(fasta_path, "rt") as fh:
         content = fh.read()
 
     seqs: dict[str, str] = {}

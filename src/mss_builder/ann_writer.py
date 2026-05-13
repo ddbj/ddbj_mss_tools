@@ -13,7 +13,7 @@ from common.common_builder import create_common
 from common.fasta import parse_fasta_sequences
 from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.source_builder import (
-    ChromosomeEntry,
+    SequenceRoleEntry,
     ff_definition,
     source_qualifier,
 )
@@ -72,7 +72,7 @@ def write_mss_ann(
     fsa_path: str,
     ann_path: str,
     common: Optional["CommonModel"] = None,
-    chromosomes: Optional[dict[str, ChromosomeEntry]] = None,
+    sequence_roles: Optional[dict[str, SequenceRoleEntry]] = None,
 ) -> None:
     """
     Parse *fsa_path* (FASTA) and write a DDBJ MSS annotation file to *ann_path*.
@@ -80,12 +80,12 @@ def write_mss_ann(
     If *common* is provided (a validated CommonModel), its values are written
     into the COMMON section; otherwise placeholder lines are written.
 
-    For WGS submissions (no *chromosomes* provided, or all entries unplaced):
+    For WGS submissions (no *sequence_roles* provided, or all entries unplaced):
     - The source feature is placed in the COMMON block using ``@@[entry]@@`` and
       ``@@[organism]@@ DNA, @@[submitter_seqid]@@`` meta-notation.
     - Per-entry body contains only assembly_gap features (if any).
 
-    For non-WGS submissions (*chromosomes* provided with placed sequences):
+    For non-WGS submissions (*sequence_roles* provided with placed sequences):
     - Source features are written per entry with chromosome/organelle qualifiers.
     - Assembly_gap features follow the source for each entry.
     """
@@ -111,11 +111,11 @@ def write_mss_ann(
     if not gap_annotators:
         sequences = {}
 
-    # Determine WGS mode: no chromosomes file, or every entry is unplaced
+    # Determine WGS mode: no sequence_roles file, or every entry is unplaced
     def _is_unplaced(eid: str) -> bool:
-        if chromosomes is None:
+        if sequence_roles is None:
             return True
-        e = chromosomes.get(eid)
+        e = sequence_roles.get(eid)
         return e is None or e.type == "unplaced"
 
     is_wgs = all(_is_unplaced(eid) for eid in all_ids)
@@ -126,7 +126,7 @@ def write_mss_ann(
         base_source.update(common.SOURCE)
 
     organism = base_source.get("organism", "")
-    source_id_key = common.INFRASPECIFIC_NAME_MODIFIER if common is not None else None
+    source_id_key = common.SOURCE_IDENTIFIER if common is not None else None
     infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
     rows: list[Row] = []
@@ -151,10 +151,10 @@ def write_mss_ann(
         length = lengths[entry_id]
         location = f"1..{length}"
 
-        chr_entry: Optional[ChromosomeEntry] = (
-            chromosomes.get(entry_id) if chromosomes else None
+        role_entry: Optional[SequenceRoleEntry] = (
+            sequence_roles.get(entry_id) if sequence_roles else None
         )
-        is_circular = chr_entry.is_circular if chr_entry is not None else False
+        is_circular = role_entry.is_circular if role_entry is not None else False
 
         if is_circular:
             rows.append([entry_id, "TOPOLOGY", "", "circular", ""])
@@ -162,9 +162,9 @@ def write_mss_ann(
         if not is_wgs:
             # Source feature per entry
             source_quals: dict[str, str] = dict(base_source)
-            source_quals.update(source_qualifier(chr_entry, entry_id, is_wgs=False))
+            source_quals.update(source_qualifier(role_entry, entry_id, is_wgs=False))
             source_quals["ff_definition"] = ff_definition(
-                chr_entry, entry_id, organism, infraspecific_name_modifier, is_wgs=False
+                role_entry, entry_id, organism, infraspecific_name_modifier, is_wgs=False
             )
 
             source_entry_col = "" if is_circular else entry_id

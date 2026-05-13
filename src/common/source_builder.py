@@ -9,10 +9,10 @@ from typing import Optional
 Row = list[str]
 
 
-# ── ChromosomeEntry (egapx2mss) ───────────────────────────────────────────────
+# ── SequenceRoleEntry ─────────────────────────────────────────────────────────
 
-class ChromosomeEntry:
-    """Represents one row in chromosomes.txt."""
+class SequenceRoleEntry:
+    """Represents one row in a sequence role file (sequence_roles.tsv; legacy name: chromosomes.txt)."""
     __slots__ = ("seq_id", "type", "seq_name", "status", "is_circular")
 
     def __init__(self, seq_id: str, type_: str, seq_name: str, status: str, is_circular: bool):
@@ -23,16 +23,16 @@ class ChromosomeEntry:
         self.is_circular = is_circular
 
 
-def load_chromosomes(path: str) -> dict[str, ChromosomeEntry]:
+def load_sequence_roles(path: str) -> dict[str, SequenceRoleEntry]:
     """
-    Parse a 5-column TSV chromosomes.txt file.
+    Parse a 5-column TSV sequence role file (sequence_roles.tsv; legacy name: chromosomes.txt).
 
     Columns: seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology
     Lines starting with '#' are treated as header/comments and skipped.
 
-    Returns a dict: seq_id → ChromosomeEntry
+    Returns a dict: seq_id → SequenceRoleEntry
     """
-    result: dict[str, ChromosomeEntry] = {}
+    result: dict[str, SequenceRoleEntry] = {}
     with open(path) as fh:
         for lineno, raw in enumerate(fh, 1):
             line = raw.rstrip("\n")
@@ -49,13 +49,13 @@ def load_chromosomes(path: str) -> dict[str, ChromosomeEntry]:
             status   = cols[3].strip() if len(cols) > 3 else "partial"
             topology = cols[4].strip() if len(cols) > 4 else "linear"
             is_circular = topology.lower() == "circular"
-            result[seq_id] = ChromosomeEntry(seq_id, type_, seq_name, status, is_circular)
+            result[seq_id] = SequenceRoleEntry(seq_id, type_, seq_name, status, is_circular)
     return result
 
 
 # ── egapx2mss source qualifier helpers ───────────────────────────────────────
 
-def source_qualifier(entry: Optional[ChromosomeEntry], seq_id: str,
+def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
                      is_wgs: bool = False) -> dict[str, str]:
     """
     Return extra source qualifiers (beyond common.SOURCE) for one sequence entry.
@@ -75,12 +75,12 @@ def source_qualifier(entry: Optional[ChromosomeEntry], seq_id: str,
     return {}
 
 
-def ff_definition(entry: Optional[ChromosomeEntry], seq_id: str, organism: str,
+def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str,
                   infraspecific_name_modifier: str, is_wgs: bool = False) -> str:
     """
     Build the ff_definition qualifier value following mss_format.md.
 
-    *infraspecific_name_modifier* is the value of the qualifier named by INFRASPECIFIC_NAME_MODIFIER
+    *infraspecific_name_modifier* is the value of the qualifier named by SOURCE_IDENTIFIER
     (e.g. the value of 'strain' or 'isolate') from common.SOURCE.
 
     *is_wgs* is True when all entries in the submission are unplaced (WGS mode).
@@ -130,7 +130,7 @@ def create_source_feature(
     When *use_meta_expression* is True the feature is built for inclusion in the
     COMMON block: location is ``1..E``, ``submitter_seqid`` is ``@@[entry]@@``,
     and ``ff_definition`` uses ``@@[...]@@`` meta-notation.  *source_modifier_key*
-    (from ``INFRASPECIFIC_NAME_MODIFIER``, e.g. ``"strain"``, ``"cultivar"``) is used
+    (from ``SOURCE_IDENTIFIER``, e.g. ``"strain"``, ``"cultivar"``) is used
     to select the modifier placeholder in ``ff_definition``; when empty only
     ``@@[organism]@@`` is included.
     """

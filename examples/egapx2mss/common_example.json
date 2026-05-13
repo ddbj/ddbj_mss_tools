@@ -38,7 +38,7 @@
         "geo_loc_name": "Japan:Shizuoka, Mishima",
         "mol_type": "genomic DNA"
     },
-    "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
+    "SOURCE_IDENTIFIER": "cultivar",
     "ASSEMBLY_GAP": {
         "linkage_evidence": "proximity ligation",
         "min_gap_length": 10

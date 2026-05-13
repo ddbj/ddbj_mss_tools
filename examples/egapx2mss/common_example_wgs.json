@@ -46,7 +46,7 @@
             "estimated_length": "known"
         }
     ],
-    "INFRASPECIFIC_NAME_MODIFIER": "strain",
+    "SOURCE_IDENTIFIER": "strain",
     "SOURCE": {
         "organism": "Lactobacillus paragasseri",
         "strain": "JCM 5343",

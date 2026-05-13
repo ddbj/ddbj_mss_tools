@@ -25,7 +25,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
   - [オプション一覧](#オプション一覧)
   - [.tbl / .fa から直接変換する](#tbl--fa-から直接変換する)
   - [common JSON ファイル](#common-json-ファイル)
-  - [染色体テーブル (--chromosomes)](#染色体テーブル---chromosomes)
+  - [Sequence role ファイル (--sequence_roles)](#sequence-role-ファイル---sequence_roles)
   - [注意点](#注意点)
 - [mss_builder の使い方](#mss_builder-の使い方)
   - [基本的な使い方](#基本的な使い方-1)
@@ -88,7 +88,7 @@ egapx2mss input.asn \
 | `-o`, `--outdir` | 出力先ディレクトリ（存在しない場合は自動作成。デフォルト: 入力ファイルと同じディレクトリ） |
 | `-p`, `--prefix` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可。デフォルト: 入力ファイルのベースネーム） |
 | `--common` | 共通メタデータ JSON ファイル（DBLINK, SUBMITTER, REFERENCE 等） |
-| `--chromosomes` | 染色体テーブル TSV ファイル（後述） |
+| `--sequence_roles` | Sequence role ファイル TSV（後述）。旧名 `--chromosomes` も互換のため受け付けます |
 | `--bin-dir` | asn2gb / asn2fsa バイナリの保存ディレクトリ（デフォルト: `~/.local/share/ddbj_mss_tools/bin`） |
 | `--keep-tmp` | 中間ファイル (.tbl, raw FASTA) を削除せず保持する |
 | `--tbl` | 既存の NCBI feature table (.tbl) を直接指定（step 1/3 をスキップ） |
@@ -150,7 +150,7 @@ egapx2mss input.asn --preconvert-only --outdir tmp/
         "collection_date": "2025-05-13",
         "geo_loc_name": "Japan:Shizuoka, Mishima"
     },
-    "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
+    "SOURCE_IDENTIFIER": "cultivar",
     "ASSEMBLY_GAP": [
         {
             "enabled": true,
@@ -178,9 +178,10 @@ egapx2mss input.asn --preconvert-only --outdir tmp/
 
 `SOURCE` に記載した qualifier がそのまま source フィーチャーに書き込まれます。
 
-`INFRASPECIFIC_NAME_MODIFIER` には、SOURCE 内に記載した qualifier のうち、**種内での個体を識別する名称**として用いるものを指定します。
-登録後の公開ファイルの DEFINITION 行に反映され、たとえば `"INFRASPECIFIC_NAME_MODIFIER": "cultivar"` と指定した場合、
+`SOURCE_IDENTIFIER` には、SOURCE 内に記載した qualifier のうち、**種内での個体を識別する名称**として用いるものを指定します。
+登録後の公開ファイルの DEFINITION 行に反映され、たとえば `"SOURCE_IDENTIFIER": "cultivar"` と指定した場合、
 `Brassica rapa NAPPA DNA, chromosome 1, complete sequence.` のような形式で生物名に続けて記載されます。
+旧名 `INFRASPECIFIC_NAME_MODIFIER` も後方互換性のため引き続き受け付けます。
 
 #### ASSEMBLY_GAP セクション
 
@@ -249,9 +250,10 @@ egapx2mss input.asn --preconvert-only --outdir tmp/
 長さ 10〜99 の N-run には2番目のルール (`known`) が適用されます。
 長さ 9 以下の N-run はどのルールにもマッチしないためアノテーションされません。
 
-### 染色体テーブル (--chromosomes)
+### Sequence role ファイル (--sequence_roles)
 
-ゲノムアセンブリの配列を染色体・オルガネラ・unplaced に分類するための5列タブ区切りファイルです。
+ゲノムアセンブリの配列を染色体・オルガネラ・unplaced に分類するための5列タブ区切りファイル（通称 `sequence_roles.tsv`）です。
+以前は「染色体テーブル」と呼ばれており、オプションも `--chromosomes` でした。旧名は互換のため引き続き受け付けます。
 
 ```
 # seq_id    type          seq_name       status    topology
@@ -313,10 +315,10 @@ mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
   --outdir results/ --prefix output
 
-# Complete genome 登録（染色体テーブルを指定）
+# Complete genome 登録（sequence role ファイルを指定）
 mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
-  --chromosomes chromosomes.tsv \
+  --sequence_roles sequence_roles.tsv \
   --outdir results/ --prefix output
 ```
 
@@ -328,22 +330,22 @@ mss_builder genome.fa \
 | `-o`, `--outdir` | 出力先ディレクトリ（存在しない場合は自動作成。デフォルト: 入力ファイルと同じディレクトリ） |
 | `-p`, `--prefix` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可。デフォルト: 入力ファイルのベースネーム） |
 | `--common` | 共通メタデータ JSON ファイル（egapx2mss と同形式） |
-| `--chromosomes` | 染色体テーブル TSV（省略時は WGS モード） |
+| `--sequence_roles` | Sequence role ファイル TSV（省略時は WGS モード）。旧名 `--chromosomes` も互換のため受け付けます |
 
 common JSON の形式は [egapx2mss と同じ](#common-json-ファイル)です。
 `DBLINK.project` と `DBLINK.sample` が必須です。
 
 ### WGS モードと染色体モード
 
-**WGS モード**（`--chromosomes` 省略時）:
+**WGS モード**（`--sequence_roles` 省略時。旧名 `--chromosomes` も同義）:
 
 - source フィーチャーを COMMON ブロックに `@@[entry]@@` メタ記法で記載
 - 各エントリには `assembly_gap` フィーチャーのみ記載
 
-**染色体モード**（`--chromosomes` 指定時）:
+**染色体モード**（`--sequence_roles` 指定時。旧名 `--chromosomes` も同義）:
 
 - 各エントリに独立した source フィーチャーを記載
-- 染色体テーブルの `type` / `seq_name` / `status` / `topology` を反映
+- Sequence role ファイルの `type` / `seq_name` / `status` / `topology` を反映
 
 ---
 
@@ -401,7 +403,7 @@ path/to/genome.fa.gz  PRJDB99999  SAMD999997  DRR999997  Skesa v. 1.0      ...  
 
 ### common JSON ファイル
 
-SUBMITTER, REFERENCE, ASSEMBLY_GAP, INFRASPECIFIC_NAME_MODIFIER など、全サンプルに共通するメタデータを記載します。
+SUBMITTER, REFERENCE, ASSEMBLY_GAP, SOURCE_IDENTIFIER など、全サンプルに共通するメタデータを記載します。
 DBLINK や source フィーチャーの情報は TSV で指定するため **DBLINK は不要**ですが、
 共通値を書いておくことも可能で、その場合は TSV の値で上書きされます。
 
@@ -422,7 +424,7 @@ DBLINK や source フィーチャーの情報は TSV で指定するため **DBL
         "status": "Unpublished",
         "title": "Genome sequences for ..."
     }],
-    "INFRASPECIFIC_NAME_MODIFIER": "strain",
+    "SOURCE_IDENTIFIER": "strain",
     "ASSEMBLY_GAP": [
         {
             "enabled": true,
@@ -524,7 +526,7 @@ A set of Python tools for generating DDBJ MSS (Mass Submission System) submissio
   - [Options](#options)
   - [Converting from .tbl / .fa directly](#converting-from-tbl--fa-directly)
   - [Common JSON File](#common-json-file)
-  - [Chromosome Table (--chromosomes)](#chromosome-table---chromosomes)
+  - [Sequence Role File (--sequence_roles)](#sequence-role-file---sequence_roles)
   - [Important Notes](#important-notes)
 - [mss_builder Usage](#mss_builder-usage)
   - [Basic Usage](#basic-usage-1)
@@ -587,7 +589,7 @@ The second example above produces `results/output.ann` and `results/output.fa`.
 | `-o`, `--outdir` | Output directory (created if absent; default: same directory as input file) |
 | `-p`, `--prefix` | Output filename prefix, basename only — no directory separators (default: input basename) |
 | `--common` | Common metadata JSON file (DBLINK, SUBMITTER, REFERENCE, etc.) |
-| `--chromosomes` | Chromosome table TSV file (see below) |
+| `--sequence_roles` | Sequence role file (TSV; see below). The legacy name `--chromosomes` is still accepted. |
 | `--bin-dir` | Directory for asn2gb / asn2fsa binaries (default: `~/.local/share/ddbj_mss_tools/bin`) |
 | `--keep-tmp` | Keep intermediate files (.tbl, raw FASTA) |
 | `--tbl` | Pre-existing NCBI feature table (.tbl); skips step 1/3 |
@@ -645,7 +647,7 @@ The JSON file specified with `--common` describes submitter information, referen
         "mol_type": "genomic DNA",
         "cultivar": "NAPPA"
     },
-    "INFRASPECIFIC_NAME_MODIFIER": "cultivar",
+    "SOURCE_IDENTIFIER": "cultivar",
     "ASSEMBLY_GAP": [
         {
             "enabled": true,
@@ -673,9 +675,10 @@ The JSON file specified with `--common` describes submitter information, referen
 
 Qualifiers listed under `SOURCE` are written directly into the source feature.
 
-`INFRASPECIFIC_NAME_MODIFIER` specifies which qualifier in `SOURCE` is used as the **intraspecific identifier** for the organism.
-It is reflected in the DEFINITION line of the published flat file — for example, `"INFRASPECIFIC_NAME_MODIFIER": "cultivar"` produces a definition like
+`SOURCE_IDENTIFIER` specifies which qualifier in `SOURCE` is used as the **intraspecific identifier** for the organism.
+It is reflected in the DEFINITION line of the published flat file — for example, `"SOURCE_IDENTIFIER": "cultivar"` produces a definition like
 `Brassica rapa NAPPA DNA, chromosome 1, complete sequence.`
+The legacy key `INFRASPECIFIC_NAME_MODIFIER` is still accepted for backward compatibility.
 
 #### ASSEMBLY_GAP Section
 
@@ -744,9 +747,10 @@ In this example, N-runs of exactly 100 bases are annotated with the first rule (
 while N-runs of 10–99 bases are annotated with the second rule (`known`).
 N-runs shorter than 10 bases match no rule and are not annotated.
 
-### Chromosome Table (--chromosomes)
+### Sequence Role File (--sequence_roles)
 
-A 5-column tab-separated file that classifies sequences into chromosomes, organelles, or unplaced scaffolds.
+A 5-column tab-separated file (conventionally `sequence_roles.tsv`) that classifies sequences into chromosomes, organelles, or unplaced scaffolds.
+Formerly called the *chromosome table* and passed via `--chromosomes`; the legacy option name is still accepted for backward compatibility.
 
 ```
 # seq_id    type          seq_name       status    topology
@@ -808,10 +812,10 @@ mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
   --outdir results/ --prefix output
 
-# Complete genome submission (with chromosome table)
+# Complete genome submission (with a sequence role file)
 mss_builder genome.fa \
   --common examples/mss_builder/common_example.json \
-  --chromosomes chromosomes.tsv \
+  --sequence_roles sequence_roles.tsv \
   --outdir results/ --prefix output
 ```
 
@@ -823,22 +827,22 @@ mss_builder genome.fa \
 | `-o`, `--outdir` | Output directory (created if absent; default: same directory as input file) |
 | `-p`, `--prefix` | Output filename prefix, basename only — no directory separators (default: input basename) |
 | `--common` | Common metadata JSON file (same format as egapx2mss) |
-| `--chromosomes` | Chromosome table TSV (if omitted, WGS mode is used) |
+| `--sequence_roles` | Sequence role file TSV (if omitted, WGS mode is used). The legacy name `--chromosomes` is still accepted. |
 
 The common JSON format is the [same as egapx2mss](#common-json-file).
 `DBLINK.project` and `DBLINK.sample` are required.
 
 ### WGS Mode and Chromosome Mode
 
-**WGS mode** (no `--chromosomes`):
+**WGS mode** (no `--sequence_roles`; the legacy `--chromosomes` option is equivalent):
 
 - The source feature is written in the COMMON block using `@@[entry]@@` meta-notation.
 - Each entry contains only `assembly_gap` features (if `ASSEMBLY_GAP` is configured).
 
-**Chromosome mode** (`--chromosomes` specified):
+**Chromosome mode** (`--sequence_roles` specified; the legacy `--chromosomes` option is equivalent):
 
 - A separate source feature is written per entry.
-- Chromosome/organelle names, topology, and completeness are derived from the chromosome table.
+- Chromosome/organelle names, topology, and completeness are derived from the sequence role file.
 
 ---
 
@@ -891,7 +895,7 @@ Sample file: [examples/batch_wgs_builder/sample_list_WGS.tsv](examples/batch_wgs
 
 ### Common JSON File
 
-Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, INFRASPECIFIC_NAME_MODIFIER, etc.
+Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, SOURCE_IDENTIFIER, etc.
 **DBLINK is not required** here (it is specified per sample in the TSV), but common DBLINK or SOURCE values may be included and will be overridden by TSV values.
 
 ```json
@@ -911,7 +915,7 @@ Describes metadata common to all samples: SUBMITTER, REFERENCE, ASSEMBLY_GAP, IN
         "status": "Unpublished",
         "title": "Genome sequences for ..."
     }],
-    "INFRASPECIFIC_NAME_MODIFIER": "strain",
+    "SOURCE_IDENTIFIER": "strain",
     "ASSEMBLY_GAP": [
         {
             "enabled": true,

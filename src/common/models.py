@@ -32,8 +32,6 @@ class SubmitterModel(BaseModel):
     consrtm: Optional[str] = None
     contact: Optional[str] = None
     email: Optional[str] = None
-    phone: Optional[str] = None
-    fax: Optional[str] = None
     url: Optional[str] = None
     institute: Optional[str] = None
     department: Optional[str] = None
@@ -117,7 +115,9 @@ class StCommentModel(BaseModel):
 
 
 class CommonModel(BaseModel):
-    DBLINK: DblinkModel
+    model_config = ConfigDict(populate_by_name=True)
+
+    DBLINK: Optional[DblinkModel] = None
     SUBMITTER: Optional[SubmitterModel] = None
     REFERENCE: Optional[list[ReferenceModel]] = None
     DATE: Optional[dict[str, str]] = None
@@ -127,7 +127,10 @@ class CommonModel(BaseModel):
     DATATYPE: Optional[dict[str, str]] = None
     KEYWORD: Optional[dict[str, str | list[str]]] = None
     ASSEMBLY_GAP: Optional[AssemblyGapModel | list[AssemblyGapModel]] = None
-    INFRASPECIFIC_NAME_MODIFIER: Optional[str] = None
+    SOURCE_IDENTIFIER: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("SOURCE_IDENTIFIER", "INFRASPECIFIC_NAME_MODIFIER"),
+    )
 
 
 def _strip_trailing_commas(text: str) -> str:

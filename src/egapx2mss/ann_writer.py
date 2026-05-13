@@ -10,15 +10,15 @@ from common.common_builder import create_common
 from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.fasta import parse_fasta_sequences
 from common.source_builder import (
-    ChromosomeEntry,
-    load_chromosomes,
+    SequenceRoleEntry,
+    load_sequence_roles,
     source_qualifier,
     ff_definition,
 )
 from .tbl_parser import collect_qualifiers, format_location, parse_tbl
 
 if TYPE_CHECKING:
-    from .models import CommonModel
+    from common.models import CommonModel
 
 Row = list[str]
 
@@ -82,7 +82,7 @@ def write_ddbj_ann(
     fsa_path: str,
     ann_path: str,
     common: Optional["CommonModel"] = None,
-    chromosomes: Optional[dict[str, ChromosomeEntry]] = None,
+    sequence_roles: Optional[dict[str, SequenceRoleEntry]] = None,
 ) -> None:
     """
     Parse *tbl_path* (NCBI feature table) and *fsa_path* (FASTA),
@@ -93,7 +93,7 @@ def write_ddbj_ann(
     Source feature qualifiers are taken from ``common.SOURCE`` if present.
     Assembly gap detection is driven by ``common.ASSEMBLY_GAP`` if present.
 
-    If *chromosomes* is provided (entry_name → (qualifier_key, qualifier_value, is_circular)),
+    If *sequence_roles* is provided (entry_name → (qualifier_key, qualifier_value, is_circular)),
     the matching qualifier overrides the corresponding key in the source feature.
     Entries absent from the table get ``submitter_seqid`` set to the entry name.
     """
@@ -130,16 +130,16 @@ def write_ddbj_ann(
     if common is not None and common.SOURCE:
         base_source.update(common.SOURCE)
 
-    # infraspecific_name_modifier: value of the qualifier named by INFRASPECIFIC_NAME_MODIFIER
+    # infraspecific_name_modifier: value of the qualifier named by SOURCE_IDENTIFIER
     organism = base_source.get("organism", "")
-    source_id_key = common.INFRASPECIFIC_NAME_MODIFIER if common is not None else None
+    source_id_key = common.SOURCE_IDENTIFIER if common is not None else None
     infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
-    # WGS mode: all entries are unplaced (not listed in chromosomes, or all type==unplaced)
+    # WGS mode: all entries are unplaced (not listed in sequence_roles, or all type==unplaced)
     def _is_unplaced(eid: str) -> bool:
-        if chromosomes is None:
+        if sequence_roles is None:
             return True
-        e = chromosomes.get(eid)
+        e = sequence_roles.get(eid)
         return e is None or e.type == "unplaced"
 
     is_wgs = all(_is_unplaced(eid) for eid in all_ids)
@@ -154,19 +154,19 @@ def write_ddbj_ann(
         length = _lookup_length(entry_id, lengths)
         location = f"1..{length}" if length else "1.."
 
-        # Resolve ChromosomeEntry (None = unplaced/default)
-        chr_entry: Optional[ChromosomeEntry] = chromosomes.get(entry_id) if chromosomes else None
+        # Resolve sequence role (None = unplaced/default)
+        role_entry: Optional[SequenceRoleEntry] = sequence_roles.get(entry_id) if sequence_roles else None
 
-        is_circular = chr_entry.is_circular if chr_entry is not None else False
+        is_circular = role_entry.is_circular if role_entry is not None else False
 
         if is_circular:
             rows.append([entry_id, "TOPOLOGY", "", "circular", ""])
 
         # Build per-entry source qualifiers: base + entry-specific + ff_definition
         source_quals: dict[str, str] = dict(base_source)
-        source_quals.update(source_qualifier(chr_entry, entry_id, is_wgs))
+        source_quals.update(source_qualifier(role_entry, entry_id, is_wgs))
         source_quals["ff_definition"] = ff_definition(
-            chr_entry, entry_id, organism, infraspecific_name_modifier, is_wgs
+            role_entry, entry_id, organism, infraspecific_name_modifier, is_wgs
         )
 
         # source feature: entry_id on the TOPOLOGY row if circular, else on source row

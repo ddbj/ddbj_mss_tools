@@ -6,8 +6,8 @@ Workflow
 1. Read input FASTA; write clean copy with '//' separators → .fa
 2. Build DDBJ MSS annotation → .ann
    - COMMON block from --common JSON (or placeholder if omitted)
-   - WGS mode (default, no --chromosomes): source in COMMON with @@[entry]@@ / @@[organism]@@ meta-notation
-   - Chromosome mode (--chromosomes provided): per-entry source with chromosome/organelle qualifiers
+   - WGS mode (default, no --sequence_roles): source in COMMON with @@[entry]@@ / @@[organism]@@ meta-notation
+   - Chromosome mode (--sequence_roles provided): per-entry source with chromosome/organelle qualifiers
    - assembly_gap features detected from N-runs (requires ASSEMBLY_GAP in --common JSON)
 """
 
@@ -24,7 +24,7 @@ from typing import Optional
 from common.cli_args import add_output_args, validate_prefix, resolve_output
 from common.fasta import write_clean_fasta
 from common.models import CommonModel, load_common_json
-from common.source_builder import load_chromosomes
+from common.source_builder import load_sequence_roles
 
 from .ann_writer import write_mss_ann
 
@@ -47,11 +47,15 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--chromosomes",
+        "--sequence_roles", "--chromosomes",
+        dest="sequence_roles",
+        metavar="TSV",
         help=(
-            "5-column TSV: seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology. "
+            "Sequence role file (5-column TSV): "
+            "seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology. "
             "type is one of: chromosome, organelle, unplaced. "
-            "If omitted, all sequences are treated as WGS (unplaced) contigs."
+            "If omitted, all sequences are treated as WGS (unplaced) contigs. "
+            "(--chromosomes is accepted as a legacy alias.)"
         ),
     )
     args = parser.parse_args()
@@ -74,12 +78,12 @@ def main() -> None:
         except Exception as exc:
             sys.exit(f"Error: failed to load --common file '{args.common}':\n{exc}")
 
-    chromosomes = None
-    if args.chromosomes:
+    sequence_roles = None
+    if args.sequence_roles:
         try:
-            chromosomes = load_chromosomes(args.chromosomes)
+            sequence_roles = load_sequence_roles(args.sequence_roles)
         except Exception as exc:
-            sys.exit(f"Error: failed to load --chromosomes file '{args.chromosomes}':\n{exc}")
+            sys.exit(f"Error: failed to load sequence role file '{args.sequence_roles}':\n{exc}")
 
     # ── Step 1: clean FASTA ───────────────────────────────────────────────────
     print("[step 1/2] Writing clean FASTA with '//' separators ...", file=sys.stderr)
@@ -98,7 +102,7 @@ def main() -> None:
 
     # ── Step 2: DDBJ MSS annotation ───────────────────────────────────────────
     print("[step 2/2] Building DDBJ MSS annotation ...", file=sys.stderr)
-    write_mss_ann(out_fsa, out_ann, common=common, chromosomes=chromosomes)
+    write_mss_ann(out_fsa, out_ann, common=common, sequence_roles=sequence_roles)
 
     print("\nDone.", file=sys.stderr)
     print(f"  Annotation : {out_ann}", file=sys.stderr)

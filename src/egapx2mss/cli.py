@@ -27,10 +27,10 @@ from typing import Optional
 
 from .ann_writer import write_ddbj_ann
 from common.cli_args import validate_prefix, resolve_output
-from common.source_builder import load_chromosomes
+from common.source_builder import load_sequence_roles
 from .asn_tools import DEFAULT_BIN_DIR, ensure_tools, run_asn2fsa, run_asn2gb_tbl
 from common.fasta import write_clean_fasta
-from .models import CommonModel, load_common_json
+from common.models import CommonModel, load_common_json
 
 
 def main() -> None:
@@ -70,11 +70,15 @@ def main() -> None:
         help="JSON file with common submission metadata (DBLINK, SUBMITTER, REFERENCE, DATE)",
     )
     parser.add_argument(
-        "--chromosomes",
+        "--sequence_roles", "--chromosomes",
+        dest="sequence_roles",
+        metavar="TSV",
         help=(
-            "3-column TSV file mapping entry names to source qualifiers "
-            "(entry_name <TAB> qualifier_key <TAB> qualifier_value). "
-            "Entries absent from this file get submitter_seqid set to the entry name."
+            "Sequence role file (5-column TSV): "
+            "seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology. "
+            "type is one of: chromosome, organelle, unplaced. "
+            "Entries absent from this file get submitter_seqid set to the entry name. "
+            "(--chromosomes is accepted as a legacy alias.)"
         ),
     )
     parser.add_argument(
@@ -179,17 +183,17 @@ def main() -> None:
         except Exception as exc:
             sys.exit(f"Error: failed to load --common file '{args.common}':\n{exc}")
 
-    chromosomes = None
-    if args.chromosomes:
+    sequence_roles = None
+    if args.sequence_roles:
         try:
-            chromosomes = load_chromosomes(args.chromosomes)
+            sequence_roles = load_sequence_roles(args.sequence_roles)
         except Exception as exc:
-            sys.exit(f"Error: failed to load --chromosomes file '{args.chromosomes}':\n{exc}")
+            sys.exit(f"Error: failed to load sequence role file '{args.sequence_roles}':\n{exc}")
 
     write_ddbj_ann(
         out_tbl, out_fsa, out_ann,
         common=common,
-        chromosomes=chromosomes,
+        sequence_roles=sequence_roles,
     )
 
     if not args.keep_tmp and not tbl_preexisted:
