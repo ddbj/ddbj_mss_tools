@@ -70,6 +70,14 @@ def main() -> None:
         help="JSON file with common submission metadata (DBLINK, SUBMITTER, REFERENCE, DATE)",
     )
     parser.add_argument(
+        "--submission_category",
+        metavar="CATEGORY",
+        help=(
+            "Submission category (e.g. WGS, GNM, MAG-WGS). "
+            "Overrides _submission_category in --common JSON."
+        ),
+    )
+    parser.add_argument(
         "--sequence_roles", "--chromosomes",
         dest="sequence_roles",
         metavar="TSV",
@@ -194,6 +202,7 @@ def main() -> None:
         out_tbl, out_fsa, out_ann,
         common=common,
         sequence_roles=sequence_roles,
+        submission_category=args.submission_category,
     )
 
     if not args.keep_tmp and not tbl_preexisted:

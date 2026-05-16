@@ -1,0 +1,78 @@
+{
+  "NONE": {},
+
+  "GNM": {
+    "required_tagset_id": "Genome-Assembly-Data",
+    "required_st_comments": ["Sequencing Technology", "Genome Coverage", "Assembly Method"],
+    "required_moltype": ["genomic DNA", "genomic RNA", "viral cRNA", "other DNA", "other RNA"],
+    "invalid_moltype": ["mRNA"]
+  },
+  
+
+  "WGS": {
+    "inherits": ["GNM"],
+    "required_datatype": "WGS",
+    "required_keywords": [
+      ["WGS"],
+      ["STANDARD_DRAFT", "HIGH_QUALITY_DRAFT", "IMPROVED_HIGH_QUALITY_DRAFT",
+       "ANNOTATION_GRADE", "NON_CONTIGUOUS_FINISHED"]
+    ]
+  },
+
+
+  "ENV": {
+    "required_division": "ENV",
+    "required_keywords": [["ENV"]],
+    "auto_source_qualifiers": {"environmental_sample": ""},
+    "required_source_qualifiers": [
+      "environmental_sample"
+    ]
+
+  },
+
+  "MAG": {
+    "inherits": ["ENV", "GNM"],
+    "required_keywords": [["MAG"], ["Metagenome Assembled Genome"]],
+    "required_source_qualifiers": [
+      "metagenome_source",
+      "isolation_source",
+      "isolate"
+    ],
+    "source_identifier": "isolate",
+    "required_dblinks": [
+      "sequence read archive"
+    ]
+  },
+
+  "MAG-WGS": {
+    "inherits": ["MAG", "WGS"]
+  },
+
+  "TSA": {
+    "required_division": "TSA",
+    "required_keywords": [["TSA"], ["Transcriptome Shotgun Assembly"]],
+    "required_tagset_id": "Assembly-Data",
+    "required_st_comments": ["Sequencing Technology", "Coverage", "Assembly Method"],
+    "invalid_moltype": ["genomic DNA", "other DNA"]
+  },
+
+  "TPA": {
+    "required_datatype": "TPA",
+    "required_keywords": [["TPA"], ["Third Party Data"], ["TPA:assembly"]]
+  },
+
+  "TPA-WGS": {
+    "inherits": ["TPA", "WGS"],
+    "required_datatype": "TPA-WGS"
+  },
+
+  "TPA-GNM": {
+    "inherits": ["TPA", "GNM"]
+  },
+
+  "TPA-MAG-WGS": {
+    "inherits": ["TPA", "MAG", "WGS"],
+    "required_datatype": "TPA-WGS"
+  }
+
+}

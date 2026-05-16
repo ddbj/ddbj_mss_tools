@@ -1,6 +1,9 @@
 # Specification for MSS conversion script
 
-## chromosomes.txt ファイルの形式 (egapx2mss)
+## sequence_roles.tsv ファイルの形式 (egapx2mss / mss_builder)
+
+旧名「chromosomes.txt」とも呼ばれる。CLI では `--sequence_roles` で受け取り、旧名 `--chromosomes` も互換のため受け付ける。
+
 5列で左から seq_id, type, seq_name, status, topology とする。
 \#のある列はヘッダーで無視をする。
 seq_id は FASTA ファイルのヘッダーと同じ。
@@ -9,7 +12,7 @@ seq_name は 染色体ならその番号 (例: 1,2,3,4,I,II,V,X,Y)、organelle �
 status は complete か partial のいずれか。デフォルトは partial
 topology は linear か circular のいずれかでデフォルトは linear
 
-chromosomes.txt に記載がない配列についてはすべてデフォルトとし、WGS としての登録扱いにする。
+sequence_roles.tsv (旧名 chromosomes.txt) に記載がない配列についてはすべてデフォルトとし、WGS としての登録扱いにする。
 ```
 #seq_id	type	seq_name	status	topology
 NC_024795.2_RagTag	chromosome	0	complete	
@@ -20,9 +23,10 @@ ptg000120c	organelle	mitochondrion	complete	circular
 ptg000123l	organelle	chloroplast	partial
 ```
 
-## INFRASPECIFIC_NAME_MODIFIER
-common.json の INFRASPECIFIC_NAME_MODIFIER で指定された文字列に等しい qualifier が個体を識別する情報としてFF_DEFINITION に使われる
-たとえば INFRASPECIFIC_NAME_MODIFIER に strain が指定されていた場合、/strain qualifierの値が FF_DEFINITION  (例: "{organism} {source_identifier} DNA, chromosome {seq_name}, complete sequence") の {source_identifier} に使われる。
+## SOURCE_IDENTIFIER
+common.json の SOURCE_IDENTIFIER で指定された文字列に等しい qualifier が個体を識別する情報としてFF_DEFINITION に使われる
+たとえば SOURCE_IDENTIFIER に strain が指定されていた場合、/strain qualifierの値が FF_DEFINITION  (例: "{organism} {source_identifier} DNA, chromosome {seq_name}, complete sequence") の {source_identifier} に使われる。
+旧名 INFRASPECIFIC_NAME_MODIFIER も後方互換性のため受け付ける。
 
 
 ## source feature と FF_DEFITION

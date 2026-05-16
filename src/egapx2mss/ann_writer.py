@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 from common.common_builder import create_common
 from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.fasta import parse_fasta_sequences
+from common.submission_category import get_category_rules, inject_defaults, validate_and_fill
 from common.source_builder import (
     SequenceRoleEntry,
     load_sequence_roles,
@@ -83,6 +84,7 @@ def write_ddbj_ann(
     ann_path: str,
     common: Optional["CommonModel"] = None,
     sequence_roles: Optional[dict[str, SequenceRoleEntry]] = None,
+    submission_category: Optional[str] = None,
 ) -> None:
     """
     Parse *tbl_path* (NCBI feature table) and *fsa_path* (FASTA),
@@ -130,9 +132,15 @@ def write_ddbj_ann(
     if common is not None and common.SOURCE:
         base_source.update(common.SOURCE)
 
+    # Effective category: CLI --submission_category overrides JSON's _submission_category
+    _extra = (common.model_extra or {}) if common is not None else {}
+    effective_category: str = submission_category or _extra.get("_submission_category", "")
+
     # infraspecific_name_modifier: value of the qualifier named by SOURCE_IDENTIFIER
     organism = base_source.get("organism", "")
     source_id_key = common.SOURCE_IDENTIFIER if common is not None else None
+    if not source_id_key and effective_category:
+        source_id_key = get_category_rules(effective_category).source_identifier or None
     infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
     # WGS mode: all entries are unplaced (not listed in sequence_roles, or all type==unplaced)
@@ -148,7 +156,12 @@ def write_ddbj_ann(
     if common is None:
         rows.extend(_common_placeholder())
     else:
-        rows.extend(create_common(common.model_dump(exclude_none=True)))
+        common_dict = common.model_dump(exclude_none=True)
+        if effective_category:
+            common_dict["_submission_category"] = effective_category
+            inject_defaults(common_dict, effective_category)
+            validate_and_fill(common_dict, effective_category)
+        rows.extend(create_common(common_dict))
 
     for entry_id in all_ids:
         length = _lookup_length(entry_id, lengths)

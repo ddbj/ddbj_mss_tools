@@ -3,10 +3,9 @@
 ## プロジェクト概要
 
 DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツール群。
-2つのコマンドラインツールを含む。
 
-- **egapx2mss**: NCBI EGAPx の出力 (ASN.1形式) を DDBJ MSS形式 (.ann / .fa) に変換
-- **wgs_maker**: FASTAファイルと Excel/TSV のメタデータから DDBJ MSS形式ファイルを一括生成
+- **egapx2mss**: NCBI EGAPx の出力 (ASN.1形式) を DDBJ MSS形式 (.ann / .fa) に変換。既存の .tbl / .fa ファイルから直接変換することも可能
+- **batch_wgs_builder**: FASTAファイルと TSV のメタデータから DDBJ MSS WGS/MAG-WGS形式ファイルを一括生成
 - **mss2ff**: MSS アノテーションファイル (.ann / .annt.tsv) と FASTA から DDBJ Flat File を生成
 - **mss_builder**: MSS 登録ファイルのビルド支援ツール
 
@@ -15,23 +14,23 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
 ```
 src/
 ├── common/
-│   ├── json2mss.py          # MSS COMMON行生成ユーティリティ（両ツール共通）
+│   ├── cli_args.py          # 共通CLIオプション (-o/--outdir, -p/--prefix) のargparseヘルパー
+│   ├── common_builder.py    # MSS COMMON行生成ユーティリティ（各ツール共通）
 │   ├── models.py            # 共通 pydantic モデル
 │   ├── fasta.py             # FASTA読み書きユーティリティ
 │   ├── gap_annotator.py     # assembly_gap フィーチャー生成
 │   └── source_builder.py   # source フィーチャー生成
 ├── egapx2mss/
 │   ├── cli.py               # エントリーポイント (egapx2mss コマンド)
-│   ├── models.py            # pydantic モデル・load_common_json
 │   ├── asn_tools.py         # asn2gb/asn2fsa のダウンロード・実行・期限切れリトライ
 │   ├── tbl_parser.py        # NCBI feature table (.tbl) パーサー・ロケーション変換
 │   └── ann_writer.py        # DDBJ MSS アノテーションファイル (.ann) 書き出し
-├── wgs_maker/
-│   ├── cli.py               # エントリーポイント (wgs_maker コマンド)
-│   ├── core.py              # メインロジック (Excel/TSV → MSS変換)
-│   └── schema_util.py       # JSON Schema バリデーション
+├── batch_wgs_builder/
+│   ├── cli.py               # エントリーポイント (batch_wgs_builder コマンド)
+│   └── core.py              # メインロジック (TSV → MSS変換)
 ├── mss_builder/
-│   └── cli.py               # エントリーポイント (mss_builder コマンド)
+│   ├── cli.py               # エントリーポイント (mss_builder コマンド)
+│   └── ann_writer.py        # アノテーションファイル書き出し
 └── mss2ff/
     ├── __init__.py
     ├── cli.py               # エントリーポイント (mss2ff コマンド)
@@ -43,13 +42,14 @@ src/
 
 examples/
 ├── egapx2mss/               # brapa.asn, common_example.json
-├── wgs_maker/               # sample_list_*.tsv, sample_list.xlsx, common_example.json
+├── batch_wgs_builder/       # sample_list.xlsx, *.fna.gz
 └── mss2ff/                  # DDBJ.annt.tsv, DDBJ.seq.fa (入力例)
 
+deprecated/                  # 移行前の旧コード (egapx2mss/, wgs_maker/)
 tests/                       # pytest テスト (今後追加予定)
 ```
 
-**旧ディレクトリ**: `egapx2mss/` と `wgs_maker/` は移行前の旧コードが残っている。新規開発は `src/` 以下で行う。
+新規開発は `src/` 以下で行う。`deprecated/` は参照のみ。
 
 ## セットアップ
 
@@ -70,29 +70,6 @@ docker run --rm -it -v $(pwd):/app ddbj-mss-tools
 pydantic>=2.0, biopython, pandas, openpyxl, jsonschema
 ```
 
-## コマンド使用例
-
-```bash
-# egapx2mss (organism は --common の JSON 内 SOURCE.organism で指定)
-egapx2mss input.asn --common examples/egapx2mss/common_example.json
-
-# wgs_maker
-wgs_maker --tsv examples/wgs_maker/sample_list_WGS.tsv -m examples/wgs_maker/common_example.json -o OUT
-
-# mss2ff (基本)
-mss2ff examples/mss2ff/DDBJ.annt.tsv --fasta examples/mss2ff/DDBJ.seq.fa --division BCT -o output.ff
-
-# mss2ff (全オプション)
-mss2ff DDBJ.annt.tsv \
-    --fasta DDBJ.seq.fa \
-    --output output.ff \
-    --division BCT \
-    --submission-date 2025-04-01 \
-    --file-date 2025-04-01 \
-    --email your@email.com \
-    --accession AP000001 \
-    --no-taxonomy
-```
 
 ## DDBJ MSSファイル形式
 
@@ -127,147 +104,68 @@ mss2ff DDBJ.annt.tsv \
 
 末尾カンマ (JSON5スタイル) は許容される。
 
-### ASSEMBLY_GAP の形式
-
-`ASSEMBLY_GAP` は配列形式で複数ルールを指定できる。各 N-run にリスト先頭から順にマッチし、最初のマッチが適用される。出力は座標昇順。
-
-```json
-"ASSEMBLY_GAP": [
-    {
-        "enabled": true,
-        "linkage_evidence": "proximity ligation",
-        "min_gap_length": 100,
-        "max_gap_length": 100,
-        "gap_type": "within scaffold",
-        "estimated_length": "unknown"
-    },
-    {
-        "enabled": true,
-        "linkage_evidence": "paired-ends",
-        "min_gap_length": 10,
-        "gap_type": "within scaffold",
-        "estimated_length": "known"
-    }
-]
-```
-
-| フィールド | 必須 | デフォルト | 説明 |
-|---|---|---|---|
-| `enabled` | — | `true` | `false` でこのルールをスキップ |
-| `linkage_evidence` | ✓ | — | `paired-ends` / `proximity ligation` / `align genus` |
-| `min_gap_length` | — | `10` | アノテーション対象の最小ギャップ長 |
-| `max_gap_length` | — | 上限なし | アノテーション対象の最大ギャップ長 |
-| `gap_type` | — | 推奨値 | `gap_type` qualifier の値 |
-| `estimated_length` | — | 推奨値 | `known` または `unknown` |
-
-## egapx2mss 固有の注意点
-
-### asn2gb / asn2fsa バイナリ
-- NCBI ツール。プロジェクトルートの `bin/` にキャッシュ (`--bin-dir` で変更可)
-- **利用期限あり**。出力が空のとき自動で最新版を再ダウンロードして1回リトライする
-- ダウンロード元: `https://ftp.ncbi.nih.gov/toolbox/ncbi_tools/cmdline/`
-- macOS: `asn2gb.mac.gz` / `asn2fsa.mac.gz`、Linux: `*.linux64.gz`
-
-### ASN.1 ファイル
-- 1ファイルに複数の `Seq-entry ::=` ブロックが連結されたフォーマット (catenated)
-- `asn2gb` は `-a q` オプションで catenated ファイルに対応
-- `asn2fsa` は catenated 非対応のため、ブロックごとに一時ファイルへ分割して実行する (`asn_tools.py`)
-
-### ロケーション変換 (`tbl_parser.py`)
-- NCBI tbl のマイナス鎖: `start > end` → DDBJ MSS: `complement(start..end)`
-- 部分配列マーカー `<` (5'端) / `>` (3'端) を DDBJ 形式に変換する
-
-## wgs_maker 固有の注意点
-
-- 登録カテゴリ (`_trad_submission_category`): `WGS`, `MAG`, `GNM`, `MAG-WGS`
-- `assembly_gap` フィーチャーは連続する N (デフォルト10塩基以上) を自動検出
-- JSON Schema バリデーションは `src/wgs_maker/MSS_COMMON_template.json` を使用
-  (ネットワーク接続時は GitHub から最新版を取得)
-
-## mss2ff 固有の注意点
-
-### CLIオプション
-
-| オプション | 省略形 | デフォルト | 説明 |
-|---|---|---|---|
-| `ANN` | — | (必須) | MSS アノテーションファイル (.ann または .annt.tsv) |
-| `--fasta` | `-f` | なし | FASTA/FSA シーケンスファイル (CDS翻訳に必要) |
-| `--output` | `-o` | stdout | 出力ファイルパス |
-| `--division` | `-d` | `UNK` | DDBJ division コード (BCT, VRL, PLN 等) |
-| `--submission-date` | `-s` | 今日 | REFERENCE 1 の投稿日 (YYYY-MM-DD または DD-Mon-YYYY) |
-| `--file-date` | — | 今日 | LOCUS 行のファイル作成日 |
-| `--email` | — | `mss2ff@ddbj.nig.ac.jp` | NCBI Entrez API 用メールアドレス |
-| `--accession` | `-a` | なし | 開始アクセッション番号 (後述) |
-| `--no-taxonomy` | — | false | NCBI 分類情報の取得をスキップ |
-
-### アクセッション番号フォーマット (`--accession`)
-
-3種類のフォーマットをサポート。serial 部は6桁以上の可変長。
-
-| フォーマット | 例 | 内訳 |
-|---|---|---|
-| 2文字 + serial | `AP000001` | プレフィックス2文字 + serial6桁以上 |
-| 4文字 + 2桁バージョン + serial | `AAXJ010000001` | プレフィックス4文字 + バージョン2桁 + serial6桁以上 |
-| 6文字 + 2桁バージョン + serial | `AAXJEM010000001` | プレフィックス6文字 + バージョン2桁 + serial6桁以上 |
-
-エントリーはアノテーションファイルの順番に serial を +1 ずつ割り当てる。
-
-### REFERENCE JOURNAL フォーマット
-
-`status` 値により JOURNAL 行のフォーマットが変わる:
-
-| status | JOURNAL 出力形式 |
-|---|---|
-| `Unpublished` (year なし) | `Unpublished.` |
-| `Unpublished` (year あり) | `Unpublished. (year)` |
-| `In press` | `{journal} ({year}) In press` |
-| `Published` | `{journal} {volume}, {from_page}-{to_page} ({year})` |
-
-### REFERENCE 1 (Direct Submission)
-
-COMMON ブロックの SUBMITTER 情報から自動生成。JOURNAL 行の形式:
+## mss_builder コマンドオプション
 
 ```
-Submitted (DD-Mon-YYYY) to the DDBJ/EBI/GenBank databases.
-Contact:contact_name
-[department, ]institute;
-street, city, state zip, country
-URL    :url
+mss_builder input.fa [オプション]
 ```
 
-- `department` が空の場合は省略
-- `URL` フィールドは7文字分のアライメント (`URL    :`)
+| オプション | 説明 |
+|-----------|------|
+| `input` | 入力 FASTA ファイル (.fa / .fasta) |
+| `-o/--outdir DIR` | 出力先ディレクトリ（存在しない場合は自動作成）。デフォルト: 入力ファイルと同じディレクトリ |
+| `-p/--prefix NAME` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可）。デフォルト: 入力ファイルのベースネーム |
+| `--common JSON` | 共通メタデータ JSON ファイル (DBLINK, SUBMITTER, REFERENCE, ASSEMBLY_GAP 等) |
+| `--sequence_roles TSV` | seq_id → 染色体/organelle マッピング sequence role ファイル (5列 TSV)。旧名 `--chromosomes` も互換のため受け付ける |
 
-### CONSRTM (コンソーシアム著者)
+**典型的な使い方:**
+```bash
+# 通常変換 (出力は input.ann / input.fa)
+mss_builder input.fa
 
-REFERENCE および SUBMITTER ブロックで `consrtm` qualifier をサポート。
-AUTHORS 行に個人著者名が存在しない場合は AUTHORS 行を省略し、CONSRTM 行のみ出力する。
+# 出力ディレクトリとファイル名を指定
+mss_builder input.fa -o results/ -p submission --common common.json
+```
 
-### assembly_gap の estimated_length 展開
+## egapx2mss コマンドオプション
 
-アノテーションファイルに `estimated_length=known` と記載されている場合、
-ロケーション文字列から実際のギャップ長を計算して数値に置き換える。
-(例: ロケーション `100..109` → `estimated_length=10`)
+```
+egapx2mss [input.asn] [オプション]
+```
 
-### ST_COMMENT タグセットID
+| オプション | 説明 |
+|-----------|------|
+| `input` | 入力 ASN.1 ファイル (.asn)。`--tbl` と `--fsa` を両方指定する場合は省略可 |
+| `-o/--outdir DIR` | 出力先ディレクトリ（存在しない場合は自動作成）。デフォルト: 入力ファイルと同じディレクトリ |
+| `-p/--prefix NAME` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可）。デフォルト: 入力ファイルのベースネーム |
+| `--tbl FILE` | 既存の NCBI feature table (.tbl) を直接指定。step 1/3 をスキップ |
+| `--fsa FILE` | 既存の FASTA ファイル (.fa/.fsa) を直接指定。step 2/3 をスキップ |
+| `--common JSON` | 共通メタデータ JSON ファイル (DBLINK, SUBMITTER, REFERENCE 等) |
+| `--sequence_roles TSV` | seq_id → 染色体/organelle マッピング sequence role ファイル (5列 TSV)。旧名 `--chromosomes` も互換のため受け付ける |
+| `--keep-tmp` | 中間ファイル (.tbl, _raw.fa) を削除せずに保持 |
+| `--preconvert-only` | step 1/3・2/3 のみ実行して終了 (.tbl と .fa を生成) |
+| `--bin-dir DIR` | asn2gb/asn2fsa バイナリの置き場所 |
 
-`tagset_id` の値をそのままヘッダ/フッタに使用する:
+**`--tbl` と `--fsa` の組み合わせルール:**
+- 両方同時に指定する必要がある（片方のみは不可）
+- `input` (.asn) との同時指定は不可
+- 両方指定時は asn2gb/asn2fsa のダウンロード・実行をスキップ
+- `-o/--outdir` と `-p/--prefix` を省略した場合は `--tbl` ファイルと同じディレクトリ・ベースネームをデフォルトとする
 
-| tagset_id | ヘッダ/フッタ |
-|---|---|
-| `Genome-Assembly-Data` | `##Genome-Assembly-Data-START##` / `##Genome-Assembly-Data-END##` |
-| `Assembly-Data` | `##Assembly-Data-START##` / `##Assembly-Data-END##` |
+**典型的な使い方:**
+```bash
+# 通常変換 (出力は brapa.ann / brapa.fa)
+egapx2mss brapa.asn
 
-### FASTA/FSA フォーマット
+# 出力ディレクトリとファイル名を指定
+egapx2mss brapa.asn -o results/ -p output
 
-DDBJ FSA フォーマット (エントリ末尾に `//` セパレーター) を正しく処理する。
-`//` 行はシーケンスデータとして読み込まず、スキップする。
+# step 1/2 だけ実行して .tbl と .fa を生成
+egapx2mss brapa.asn --preconvert-only -o tmp/
 
-### CDS 翻訳
-
-- `pseudo` または `pseudogene` qualifier がある CDS は翻訳しない
-- `transl_except` qualifier がある CDS は `translate_with_transl_except.py` で処理し、
-  終止コドン位置をアミノ酸に変換してから `translation` qualifier を生成する
+# 既存の .tbl / .fa から step 3 だけ実行
+egapx2mss --tbl brapa.tbl --fsa brapa.fa -o results/ -p output
+```
 
 ## テスト
 
@@ -280,6 +178,7 @@ pytest
 ## 開発上の留意点
 
 - Python 3.10 以上必須 (`match` 文や `X | Y` 型ヒントを使用)
-- `src/common/` は `egapx2mss` と `wgs_maker` 両方から使う共有ライブラリ
-- 新しいバリデーションルールは `src/egapx2mss/models.py` の pydantic モデルに追加する
+- `src/common/` は各ツールから使う共有ライブラリ
+- 新しいバリデーションルールは `src/common/models.py` の pydantic モデルに追加する
 - `requirements.txt` を更新したら `pyproject.toml` の `dependencies` も合わせて更新する
+- `-o/--outdir` と `-p/--prefix` オプションは `src/common/cli_args.py` の共通ヘルパー (`add_output_args`, `validate_prefix`, `resolve_output`) を使う。新ツールで同パターンを追加する場合はここから import すること

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Optional
 from common.common_builder import create_common
 from common.fasta import parse_fasta_sequences
 from common.gap_annotator import GapAnnotator, annotate_gaps
+from common.submission_category import inject_defaults, validate_and_fill
 from common.source_builder import (
     SequenceRoleEntry,
     ff_definition,
@@ -73,6 +74,7 @@ def write_mss_ann(
     ann_path: str,
     common: Optional["CommonModel"] = None,
     sequence_roles: Optional[dict[str, SequenceRoleEntry]] = None,
+    submission_category: Optional[str] = None,
 ) -> None:
     """
     Parse *fsa_path* (FASTA) and write a DDBJ MSS annotation file to *ann_path*.
@@ -125,8 +127,15 @@ def write_mss_ann(
     if common is not None and common.SOURCE:
         base_source.update(common.SOURCE)
 
+    # Effective category: CLI --submission_category overrides JSON's _submission_category
+    _extra = (common.model_extra or {}) if common is not None else {}
+    effective_category: str = submission_category or _extra.get("_submission_category", "")
+
     organism = base_source.get("organism", "")
     source_id_key = common.SOURCE_IDENTIFIER if common is not None else None
+    if not source_id_key and effective_category:
+        from common.submission_category import get_category_rules
+        source_id_key = get_category_rules(effective_category).source_identifier or None
     infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
     rows: list[Row] = []
@@ -140,8 +149,10 @@ def write_mss_ann(
     else:
         common_dict = common.model_dump(exclude_none=True)
         if is_wgs:
-            # Inject category so _build_common_source picks the right template
-            common_dict["_trad_submission_category"] = "WGS"
+            category = effective_category or "WGS"
+            common_dict["_submission_category"] = category
+            inject_defaults(common_dict, category)
+            validate_and_fill(common_dict, category)
             rows.extend(create_common(common_dict, include_source=True))
         else:
             rows.extend(create_common(common_dict))

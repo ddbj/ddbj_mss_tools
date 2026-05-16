@@ -114,7 +114,7 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
 # ── wgs_maker source feature builder ─────────────────────────────────────────
 
 def create_source_feature(
-    _trad_submission_category: str,
+    _submission_category: str,
     seq_name: Optional[str],
     seq_type: Optional[str],
     seq_topology: Optional[str],
@@ -123,7 +123,7 @@ def create_source_feature(
     use_meta_expression: bool = False,
 ) -> list[Row]:
     """
-    Build source feature rows for DDBJ MSS annotation (wgs_maker).
+    Build source feature rows for DDBJ MSS annotation.
 
     Returns a list of 5-column rows.
 
@@ -136,62 +136,50 @@ def create_source_feature(
     """
     if use_meta_expression:
         return _create_source_with_meta(
-            _trad_submission_category, source_dict, source_modifier_key
+            _submission_category, source_dict, source_modifier_key
         )
 
+    from common.submission_category import get_category_rules
+    rules = get_category_rules(_submission_category)
+    env_sample = "environmental_sample" in rules.auto_source_qualifiers
+    modifier = "isolate" if env_sample else "strain"
+
     submitter_seqid = None
-    environmental_sample = False
     plasmid = False
-    if _trad_submission_category == "GNM":
-        mol_type = "genomic DNA"
+    mol_type = source_dict.get("mol_type", "genomic DNA")
+
+    # WGS-family: source goes in COMMON block, submitter_seqid always set
+    if rules.datatype == "WGS":
+        submitter_seqid = "@@[entry]@@"
+        ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, @@[submitter_seqid]@@"
+    else:
+        # Per-entry source (GNM, MAG, etc.)
         if seq_type in ["c", "complete"]:
-            ff_def = "@@[organism]@@ @@[strain]@@ DNA, complete genome"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, complete genome"
         elif seq_type in ["n", "nearly complete", "nearly-complete"]:
-            ff_def = "@@[organism]@@ @@[strain]@@ DNA, nearly complete genome"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, nearly complete genome"
         elif seq_type in ["p", "plasmid"]:
-            ff_def = "@@[organism]@@ @@[strain]@@ plasmid @@[plasmid]@@ DNA, complete sequence"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ plasmid @@[plasmid]@@ DNA, complete sequence"
             plasmid = True
         else:
             submitter_seqid = "@@[entry]@@"
-            ff_def = "@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@"
-    elif _trad_submission_category == "MAG":
-        mol_type = "genomic DNA"
-        environmental_sample = True
-        if seq_type in ["c", "complete"]:
-            ff_def = "@@[organism]@@ @@[isolate]@@ DNA, complete genome"
-        elif seq_type in ["n", "nearly complete", "nearly-complete"]:
-            ff_def = "@@[organism]@@ @@[isolate]@@ DNA, nearly complete genome"
-        elif seq_type in ["p", "plasmid"]:
-            ff_def = "@@[organism]@@ @@[isolate]@@ plasmid @@[plasmid]@@ DNA, complete sequence"
-            plasmid = True
-        else:
-            submitter_seqid = "@@[entry]@@"
-            ff_def = "@@[organism]@@ @@[isolate]@@ DNA, @@[submitter_seqid]@@"
-    elif _trad_submission_category == "WGS":
-        mol_type = "genomic DNA"
-        submitter_seqid = "@@[entry]@@"
-        ff_def = "@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@"
-    elif _trad_submission_category == "MAG-WGS":
-        mol_type = "genomic DNA"
-        environmental_sample = True
-        submitter_seqid = "@@[entry]@@"
-        ff_def = "@@[organism]@@ @@[isolate]@@ DNA, @@[submitter_seqid]@@"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, @@[submitter_seqid]@@"
 
     ret: list[Row] = []
     ret.append(["", "source", "1..E", "mol_type", mol_type])
     ret.append(["", "", "", "ff_definition", ff_def])
     if submitter_seqid:
         ret.append(["", "", "", "submitter_seqid", submitter_seqid])
-    if environmental_sample:
+    if env_sample:
         ret.append(["", "", "", "environmental_sample", ""])
     if plasmid:
         ret.append(["", "", "", "plasmid", seq_name])
     for key, value in source_dict.items():
         ret.append(["", "", "", key, value])
-    if _trad_submission_category in ["WGS", "MAG-WGS"]:
-        # The source feature will be appended to COMMON. Nothing to do.
+    if rules.datatype == "WGS":
+        # Source feature will be appended to COMMON. Nothing more to do.
         pass
-    elif _trad_submission_category in ["GNM", "MAG"]:
+    else:
         if seq_topology in ["c", "circular"]:
             ret = [["", "TOPOLOGY", "", "circular", ""]] + ret
         ret[0][0] = seq_name
@@ -211,7 +199,9 @@ def _create_source_with_meta(
     ``ff_definition`` references ``@@[organism]@@`` and, when *source_modifier_key*
     is provided, ``@@[<source_modifier_key>]@@``.
     """
-    environmental_sample = category in ("MAG", "MAG-WGS")
+    from common.submission_category import get_category_rules
+    rules = get_category_rules(category)
+    environmental_sample = "environmental_sample" in rules.auto_source_qualifiers
     mol_type = source_dict.get("mol_type", "genomic DNA")
 
     if source_modifier_key:

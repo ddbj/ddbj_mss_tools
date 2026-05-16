@@ -26,11 +26,9 @@ from common.common_builder import create_common
 from common.fasta import read_fasta
 from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.models import AssemblyGapModel
+from common.submission_category import inject_defaults, validate_and_fill
 
 Row = list[str]
-
-_KEYWORDS_WGS = ["WGS", "STANDARD_DRAFT"]
-_KEYWORDS_MAG_WGS = ["ENV", "WGS", "STANDARD_DRAFT", "Metagenome Assembled Genome", "MAG"]
 
 
 def parse_tsv(tsv_path: str) -> pd.DataFrame:
@@ -44,7 +42,7 @@ def _split_values(value: str) -> list[str]:
     return [v.strip() for v in re.split(r"[;,]", value) if v.strip()]
 
 
-def build_sample_json(row: pd.Series, common_base: dict) -> tuple[str, str, dict]:
+def build_sample_json(row: pd.Series, common_base: dict, submission_category: str | None = None) -> tuple[str, str, dict]:
     """
     Build (file_path, category, common_json) from one TSV row merged with common_base.
 
@@ -67,7 +65,7 @@ def build_sample_json(row: pd.Series, common_base: dict) -> tuple[str, str, dict
         if feature == "_":
             if qualifier == "_file_path":
                 file_path = value
-            elif qualifier == "_trad_submission_category":
+            elif qualifier == "_submission_category":
                 category = value
         elif feature == "_sequence":
             pass  # seq_names/types/topologies not used for WGS/MAG-WGS
@@ -88,16 +86,14 @@ def build_sample_json(row: pd.Series, common_base: dict) -> tuple[str, str, dict
     if st_comment and "tagset_id" not in st_comment:
         st_comment["tagset_id"] = "Genome-Assembly-Data"
 
+    # CLI --submission_category overrides TSV and JSON values
+    if submission_category is not None:
+        category = submission_category
+
     # Build ordered common_json dict (order determines ann file output order)
     common_json: dict = {}
 
-    common_json["DATATYPE"] = {"type": "WGS"}
-
-    if category == "MAG-WGS":
-        common_json["DIVISION"] = {"division": "ENV"}
-        common_json["KEYWORD"] = {"keyword": _KEYWORDS_MAG_WGS}
-    else:
-        common_json["KEYWORD"] = {"keyword": _KEYWORDS_WGS}
+    inject_defaults(common_json, category)
 
     if dblink:
         common_json["DBLINK"] = dblink
@@ -120,7 +116,8 @@ def build_sample_json(row: pd.Series, common_base: dict) -> tuple[str, str, dict
     common_json["SOURCE_IDENTIFIER"] = (
         common_base.get("SOURCE_IDENTIFIER") or common_base.get("INFRASPECIFIC_NAME_MODIFIER", "")
     )
-    common_json["_trad_submission_category"] = category
+    common_json["_submission_category"] = category
+    validate_and_fill(common_json, category)
 
     return file_path, category, common_json
 
@@ -217,6 +214,7 @@ def run(
     common_path: str | None,
     out_dir: str,
     hold_date: str | None = None,
+    submission_category: str | None = None,
 ) -> None:
     common_base: dict = {}
     gap_cfg: AssemblyGapModel | None = None
@@ -227,7 +225,7 @@ def run(
     df = parse_tsv(tsv_path)
 
     for i, (_, row) in enumerate(df.iterrows(), 1):
-        file_path, category, common_json = build_sample_json(row, common_base)
+        file_path, category, common_json = build_sample_json(row, common_base, submission_category)
         if not file_path:
             print(f"[sample {i}] skipping: no _file_path", file=sys.stderr)
             continue

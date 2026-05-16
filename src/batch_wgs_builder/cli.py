@@ -33,6 +33,14 @@ def main() -> None:
         "--hold-date", "-H",
         help='Hold date in YYYYMMDD format (written as DATE.hold_date in annotation)',
     )
+    parser.add_argument(
+        "--submission_category",
+        metavar="CATEGORY",
+        help=(
+            "Submission category (e.g. WGS, MAG-WGS, GNM). "
+            "Overrides _submission_category in --common JSON and in each TSV row."
+        ),
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -46,6 +54,7 @@ def main() -> None:
             common_path=args.common,
             out_dir=args.out_dir,
             hold_date=args.hold_date,
+            submission_category=args.submission_category,
         )
     except Exception as exc:
         sys.exit(f"Error: {exc}")

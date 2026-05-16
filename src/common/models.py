@@ -115,7 +115,7 @@ class StCommentModel(BaseModel):
 
 
 class CommonModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     DBLINK: Optional[DblinkModel] = None
     SUBMITTER: Optional[SubmitterModel] = None

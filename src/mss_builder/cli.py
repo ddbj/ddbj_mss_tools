@@ -47,6 +47,14 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--submission_category",
+        metavar="CATEGORY",
+        help=(
+            "Submission category (e.g. WGS, MAG-WGS, GNM). "
+            "Overrides _submission_category in --common JSON."
+        ),
+    )
+    parser.add_argument(
         "--sequence_roles", "--chromosomes",
         dest="sequence_roles",
         metavar="TSV",
@@ -102,7 +110,8 @@ def main() -> None:
 
     # ── Step 2: DDBJ MSS annotation ───────────────────────────────────────────
     print("[step 2/2] Building DDBJ MSS annotation ...", file=sys.stderr)
-    write_mss_ann(out_fsa, out_ann, common=common, sequence_roles=sequence_roles)
+    write_mss_ann(out_fsa, out_ann, common=common, sequence_roles=sequence_roles,
+                  submission_category=args.submission_category)
 
     print("\nDone.", file=sys.stderr)
     print(f"  Annotation : {out_ann}", file=sys.stderr)

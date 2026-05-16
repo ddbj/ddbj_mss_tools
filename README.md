@@ -36,7 +36,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
   - [オプション一覧](#オプション一覧-2)
   - [TSV ファイルの形式](#tsv-ファイルの形式)
   - [common JSON ファイル](#common-json-ファイル-1)
-  - [WGS と MAG-WGS](#wgs-と-mag-wgs)
+  - [登録カテゴリ (_submission_category)](#登録カテゴリ-_submission_category)
 - [mss2ff の使い方](#mss2ff-の使い方)
   - [基本的な使い方](#基本的な使い方-3)
   - [オプション一覧](#オプション一覧-3)
@@ -88,6 +88,7 @@ egapx2mss input.asn \
 | `-o`, `--outdir` | 出力先ディレクトリ（存在しない場合は自動作成。デフォルト: 入力ファイルと同じディレクトリ） |
 | `-p`, `--prefix` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可。デフォルト: 入力ファイルのベースネーム） |
 | `--common` | 共通メタデータ JSON ファイル（DBLINK, SUBMITTER, REFERENCE 等） |
+| `--submission_category` | 登録カテゴリ（`WGS`, `GNM`, `MAG-WGS` 等）。JSON の `_submission_category` を上書き（後述） |
 | `--sequence_roles` | Sequence role ファイル TSV（後述）。旧名 `--chromosomes` も互換のため受け付けます |
 | `--bin-dir` | asn2gb / asn2fsa バイナリの保存ディレクトリ（デフォルト: `~/.local/share/ddbj_mss_tools/bin`） |
 | `--keep-tmp` | 中間ファイル (.tbl, raw FASTA) を削除せず保持する |
@@ -173,6 +174,20 @@ egapx2mss input.asn --preconvert-only --outdir tmp/
 
 - JSON5 スタイルの末尾カンマ (trailing comma) が使えます
 - サンプルファイル: [examples/egapx2mss/common_example.json](examples/egapx2mss/common_example.json)
+
+#### _submission_category
+
+`_submission_category` キーで登録カテゴリを指定すると、そのカテゴリに応じた DATATYPE / DIVISION / KEYWORD が自動注入され、必要な source qualifier が不足している場合には警告が表示されます。
+
+```json
+{
+    "_submission_category": "GNM",
+    ...
+}
+```
+
+コマンドラインオプション `--submission_category` を指定すると、JSON の値を上書きできます。
+対応カテゴリの一覧は [登録カテゴリ一覧](#登録カテゴリ-_submission_category) を参照してください。
 
 #### SOURCE セクション
 
@@ -330,6 +345,7 @@ mss_builder genome.fa \
 | `-o`, `--outdir` | 出力先ディレクトリ（存在しない場合は自動作成。デフォルト: 入力ファイルと同じディレクトリ） |
 | `-p`, `--prefix` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可。デフォルト: 入力ファイルのベースネーム） |
 | `--common` | 共通メタデータ JSON ファイル（egapx2mss と同形式） |
+| `--submission_category` | 登録カテゴリ（`WGS`, `GNM`, `MAG-WGS` 等）。JSON の `_submission_category` を上書き（後述） |
 | `--sequence_roles` | Sequence role ファイル TSV（省略時は WGS モード）。旧名 `--chromosomes` も互換のため受け付けます |
 
 common JSON の形式は [egapx2mss と同じ](#common-json-ファイル)です。
@@ -361,7 +377,7 @@ batch_wgs_builder sample_list_WGS.tsv \
   --common examples/batch_wgs_builder/common_example.json \
   --out-dir output_dir
 
-# MAG-WGS を含む場合（TSV 内の _trad_submission_category 列で指定）
+# MAG-WGS を含む場合（TSV 内の _submission_category 列または --submission_category で指定）
 batch_wgs_builder sample_list_MAG-WGS.tsv \
   --common examples/batch_wgs_builder/common_example.json \
   --out-dir output_dir
@@ -377,6 +393,7 @@ batch_wgs_builder sample_list_MAG-WGS.tsv \
 | `--common` | `-m` | 共通メタデータ JSON ファイル |
 | `--out-dir` | `-o` | 出力ディレクトリ（デフォルト: `.`） |
 | `--hold-date` | `-H` | 公開保留日（YYYYMMDD 形式） |
+| `--submission_category` | — | 登録カテゴリ（`WGS`, `MAG-WGS` 等）。JSON および TSV 各行の `_submission_category` を一括上書き |
 
 ### TSV ファイルの形式
 
@@ -391,7 +408,7 @@ path/to/genome.fa.gz  PRJDB99999  SAMD999997  DRR999997  Skesa v. 1.0      ...  
 | 列ヘッダー (行1 / 行2) | 内容 |
 |---|---|
 | `_` / `_file_path` | FASTA ファイルへのパス（必須） |
-| `_` / `_trad_submission_category` | 登録カテゴリ（`MAG-WGS` を指定、省略時は `WGS`） |
+| `_` / `_submission_category` | 登録カテゴリ（`WGS`, `MAG-WGS` 等。省略時は `WGS`。後述） |
 | `DBLINK` / `project` | BioProject ID |
 | `DBLINK` / `biosample` | BioSample ID |
 | `DBLINK` / `sequence read archive` | DRA アクセッション（`;` 区切りで複数指定可） |
@@ -441,17 +458,53 @@ DBLINK や source フィーチャーの情報は TSV で指定するため **DBL
 
 - サンプルファイル: [examples/batch_wgs_builder/common_example.json](examples/batch_wgs_builder/common_example.json)
 
-### WGS と MAG-WGS
+### 登録カテゴリ (_submission_category)
 
-TSV の `_trad_submission_category` 列で登録カテゴリを指定します。
+登録カテゴリは以下の3か所で指定できます（優先度は上から高い順）:
 
-| カテゴリ | DATATYPE | DIVISION | KEYWORD |
-|---|---|---|---|
-| `WGS`（デフォルト） | WGS | — | WGS, STANDARD_DRAFT |
-| `MAG-WGS` | WGS | ENV | ENV, WGS, STANDARD_DRAFT, Metagenome Assembled Genome, MAG |
+1. **CLI オプション** `--submission_category CATEGORY` — TSV・JSON の値を一括上書き
+2. **TSV** の `_submission_category` 列 — 行ごとに指定（`batch_wgs_builder` のみ）
+3. **common JSON** の `_submission_category` キー — JSON 内のデフォルト値
 
-MAG-WGS の場合、source フィーチャーに `environmental_sample`（値なし）が自動付加されます。
-`metagenome_source` は TSV の `source` 列として記載します。
+カテゴリを指定すると、DATATYPE / DIVISION / KEYWORD が自動注入されます。
+必須フィールドが不足している場合は実行時に警告が表示され、空値で補完されます。
+
+| カテゴリ | DATATYPE | DIVISION | 主な KEYWORD | source_identifier | 主な用途 |
+|---|---|---|---|---|---|
+| （未指定） | — | — | — | — | カテゴリなし |
+| `GNM` | — | — | — | — | コンプリートゲノム |
+| `WGS` | WGS | — | WGS, STANDARD_DRAFT | — | ドラフトゲノム（WGS） |
+| `ENV` | — | ENV | ENV | — | 環境 DNA |
+| `MAG` | — | ENV | ENV, MAG, Metagenome Assembled Genome | `isolate` | MAG（コンプリートゲノム） |
+| `MAG-WGS` | WGS | ENV | ENV, MAG, Metagenome Assembled Genome, WGS, STANDARD_DRAFT | `isolate` | MAG（ドラフトゲノム） |
+| `TSA` | — | TSA | TSA, Transcriptome Shotgun Assembly | — | Transcriptome Shotgun Assembly |
+| `TPA` | TPA | — | TPA, Third Party Data, TPA:assembly | — | Third Party Data |
+| `TPA-WGS` | TPA-WGS | — | TPA, Third Party Data, TPA:assembly, WGS, STANDARD_DRAFT | — | TPA ドラフトゲノム |
+| `TPA-GNM` | — | — | TPA, Third Party Data, TPA:assembly | — | TPA コンプリートゲノム |
+
+**source_identifier** 列が空欄のカテゴリでは、ff_definition（DEFINITION 行）の生物名修飾子は `SOURCE_IDENTIFIER` キーで個別に指定してください。
+`MAG` / `MAG-WGS` は `isolate` が自動的に使用されます（`SOURCE_IDENTIFIER` が指定されている場合はそちらが優先されます）。
+
+**WGS の品質区分 KEYWORD** について: `STANDARD_DRAFT` はデフォルト値です。以下のうち1つを明示的に指定することもできます:
+
+| KEYWORD | 説明 |
+|---|---|
+| `STANDARD_DRAFT` | 標準的なドラフトゲノム |
+| `HIGH_QUALITY_DRAFT` | 高品質ドラフト |
+| `IMPROVED_HIGH_QUALITY_DRAFT` | 改善された高品質ドラフト |
+| `ANNOTATION_GRADE` | アノテーション向け品質 |
+| `NON_CONTIGUOUS_FINISHED` | 未連結フィニッシュ |
+
+**`MAG-WGS` の必須 source qualifier:**
+
+| qualifier | 説明 |
+|---|---|
+| `isolate` | ゲノムの識別子（例: ゲノムビン名） |
+| `metagenome_source` | 由来するメタゲノムの種類（例: `soil metagenome`） |
+| `isolation_source` | サンプリング環境の説明 |
+| `environmental_sample` | 自動付加（値なし） |
+
+また `DBLINK` に `sequence read archive` が必要です。
 
 ---
 
@@ -537,7 +590,7 @@ A set of Python tools for generating DDBJ MSS (Mass Submission System) submissio
   - [Options](#options-2)
   - [TSV File Format](#tsv-file-format)
   - [Common JSON File](#common-json-file-1)
-  - [WGS and MAG-WGS](#wgs-and-mag-wgs)
+  - [Submission Categories (_submission_category)](#submission-categories-_submission_category)
 - [mss2ff Usage](#mss2ff-usage)
   - [Basic Usage](#basic-usage-3)
   - [Options](#options-3)
@@ -589,6 +642,7 @@ The second example above produces `results/output.ann` and `results/output.fa`.
 | `-o`, `--outdir` | Output directory (created if absent; default: same directory as input file) |
 | `-p`, `--prefix` | Output filename prefix, basename only — no directory separators (default: input basename) |
 | `--common` | Common metadata JSON file (DBLINK, SUBMITTER, REFERENCE, etc.) |
+| `--submission_category` | Submission category (`WGS`, `GNM`, `MAG-WGS`, etc.). Overrides `_submission_category` in the JSON (see below). |
 | `--sequence_roles` | Sequence role file (TSV; see below). The legacy name `--chromosomes` is still accepted. |
 | `--bin-dir` | Directory for asn2gb / asn2fsa binaries (default: `~/.local/share/ddbj_mss_tools/bin`) |
 | `--keep-tmp` | Keep intermediate files (.tbl, raw FASTA) |
@@ -670,6 +724,20 @@ The JSON file specified with `--common` describes submitter information, referen
 
 - Trailing commas (JSON5-style) are accepted.
 - Sample file: [examples/egapx2mss/common_example.json](examples/egapx2mss/common_example.json)
+
+#### _submission_category
+
+Setting the `_submission_category` key automatically injects the appropriate DATATYPE, DIVISION, and KEYWORD values, and warns when required source qualifiers or DBLINK fields are missing.
+
+```json
+{
+    "_submission_category": "GNM",
+    ...
+}
+```
+
+The `--submission_category` command-line option overrides the JSON value.
+See [Submission Categories](#submission-categories-_submission_category) for a full list of supported categories.
 
 #### SOURCE Section
 
@@ -827,6 +895,7 @@ mss_builder genome.fa \
 | `-o`, `--outdir` | Output directory (created if absent; default: same directory as input file) |
 | `-p`, `--prefix` | Output filename prefix, basename only — no directory separators (default: input basename) |
 | `--common` | Common metadata JSON file (same format as egapx2mss) |
+| `--submission_category` | Submission category (`WGS`, `GNM`, `MAG-WGS`, etc.). Overrides `_submission_category` in the JSON (see below). |
 | `--sequence_roles` | Sequence role file TSV (if omitted, WGS mode is used). The legacy name `--chromosomes` is still accepted. |
 
 The common JSON format is the [same as egapx2mss](#common-json-file).
@@ -869,6 +938,7 @@ Output files are named `{biosample}_{strain_or_isolate}.ann` / `.fa`.
 | `--common` | `-m` | Common metadata JSON file |
 | `--out-dir` | `-o` | Output directory (default: `.`) |
 | `--hold-date` | `-H` | Public release hold date (YYYYMMDD) |
+| `--submission_category` | — | Submission category (`WGS`, `MAG-WGS`, etc.). Overrides `_submission_category` in the JSON and in every TSV row. |
 
 ### TSV File Format
 
@@ -883,7 +953,7 @@ path/to/genome.fa.gz  PRJDB99999  SAMD999997  DRR999997  Skesa v. 1.0      ...  
 | Header (row 1 / row 2) | Description |
 |---|---|
 | `_` / `_file_path` | Path to the FASTA file (required) |
-| `_` / `_trad_submission_category` | Submission category (`MAG-WGS`; default is `WGS` if omitted) |
+| `_` / `_submission_category` | Submission category (`WGS`, `MAG-WGS`, etc.; default is `WGS` if omitted; see below) |
 | `DBLINK` / `project` | BioProject ID |
 | `DBLINK` / `biosample` | BioSample ID |
 | `DBLINK` / `sequence read archive` | DRA accession(s) (semicolon-separated for multiple) |
@@ -932,17 +1002,53 @@ For details on `ASSEMBLY_GAP`, see the [ASSEMBLY_GAP Section](#assembly_gap-sect
 
 Sample file: [examples/batch_wgs_builder/common_example.json](examples/batch_wgs_builder/common_example.json)
 
-### WGS and MAG-WGS
+### Submission Categories (_submission_category)
 
-The submission category is specified in the `_trad_submission_category` column of the TSV.
+The submission category can be specified in three ways (in decreasing priority):
 
-| Category | DATATYPE | DIVISION | KEYWORD |
-|---|---|---|---|
-| `WGS` (default) | WGS | — | WGS, STANDARD_DRAFT |
-| `MAG-WGS` | WGS | ENV | ENV, WGS, STANDARD_DRAFT, Metagenome Assembled Genome, MAG |
+1. **CLI option** `--submission_category CATEGORY` — overrides the TSV and JSON for all samples
+2. **TSV** `_submission_category` column — set per row (`batch_wgs_builder` only)
+3. **Common JSON** `_submission_category` key — default applied to all samples
 
-For MAG-WGS, `environmental_sample` (no value) is automatically added to the source feature.
-`metagenome_source` should be specified as a `source` column in the TSV.
+When a category is set, DATATYPE / DIVISION / KEYWORD are injected automatically.
+Missing required fields trigger a warning and are filled with empty values.
+
+| Category | DATATYPE | DIVISION | Main KEYWORD | source_identifier | Typical use |
+|---|---|---|---|---|---|
+| (none) | — | — | — | — | No category |
+| `GNM` | — | — | — | — | Complete genome |
+| `WGS` | WGS | — | WGS, STANDARD_DRAFT | — | Draft genome (WGS) |
+| `ENV` | — | ENV | ENV | — | Environmental DNA |
+| `MAG` | — | ENV | ENV, MAG, Metagenome Assembled Genome | `isolate` | MAG (complete genome) |
+| `MAG-WGS` | WGS | ENV | ENV, MAG, Metagenome Assembled Genome, WGS, STANDARD_DRAFT | `isolate` | MAG (draft genome) |
+| `TSA` | — | TSA | TSA, Transcriptome Shotgun Assembly | — | Transcriptome Shotgun Assembly |
+| `TPA` | TPA | — | TPA, Third Party Data, TPA:assembly | — | Third Party Data |
+| `TPA-WGS` | TPA-WGS | — | TPA, Third Party Data, TPA:assembly, WGS, STANDARD_DRAFT | — | TPA draft genome |
+| `TPA-GNM` | — | — | TPA, Third Party Data, TPA:assembly | — | TPA complete genome |
+
+The **source_identifier** column indicates the qualifier automatically used as the intraspecific modifier in the DEFINITION line.
+For `MAG` / `MAG-WGS`, `isolate` is used by default; an explicit `SOURCE_IDENTIFIER` in the JSON takes precedence.
+
+**WGS draft quality keywords:** `STANDARD_DRAFT` is the default. One of the following may be specified explicitly:
+
+| KEYWORD | Description |
+|---|---|
+| `STANDARD_DRAFT` | Standard draft |
+| `HIGH_QUALITY_DRAFT` | High-quality draft |
+| `IMPROVED_HIGH_QUALITY_DRAFT` | Improved high-quality draft |
+| `ANNOTATION_GRADE` | Annotation-grade quality |
+| `NON_CONTIGUOUS_FINISHED` | Non-contiguous finished |
+
+**Required source qualifiers for `MAG-WGS`:**
+
+| Qualifier | Description |
+|---|---|
+| `isolate` | Genome identifier (e.g. bin name) |
+| `metagenome_source` | Type of source metagenome (e.g. `soil metagenome`) |
+| `isolation_source` | Description of the sampling environment |
+| `environmental_sample` | Added automatically (no value) |
+
+`DBLINK` must also include a `sequence read archive` entry.
 
 ---
 

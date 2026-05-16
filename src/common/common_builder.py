@@ -50,14 +50,17 @@ def _build_common_source(common_json: dict) -> list[list[str]]:
 
     Delegates to :func:`source_builder.create_source_feature` with
     ``use_meta_expression=True``.  The source qualifiers, submission category, and
-    ff_definition modifier key are read from the ``SOURCE``, ``_trad_submission_category``,
+    ff_definition modifier key are read from the ``SOURCE``, ``_submission_category``,
     and ``SOURCE_IDENTIFIER`` keys of *common_json*.
     """
     source_data: dict = common_json.get("SOURCE", {})
+    category: str = common_json.get("_submission_category", "")
     infraspecific_name_modifier_key: str = (
         common_json.get("SOURCE_IDENTIFIER") or common_json.get("INFRASPECIFIC_NAME_MODIFIER", "")
     )
-    category: str = common_json.get("_trad_submission_category", "")
+    if not infraspecific_name_modifier_key and category:
+        from common.submission_category import get_category_rules
+        infraspecific_name_modifier_key = get_category_rules(category).source_identifier or ""
     return create_source_feature(
         category,
         None, None, None,
