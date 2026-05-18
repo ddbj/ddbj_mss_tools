@@ -111,7 +111,7 @@ class AssemblyGapModel(BaseModel):
 class StCommentModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    tagset_id: str
+    tagset_id: Optional[str] = None
 
 
 class CommonModel(BaseModel):

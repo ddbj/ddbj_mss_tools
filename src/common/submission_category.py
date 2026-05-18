@@ -157,6 +157,13 @@ def validate_and_fill(common_dict: dict, category: str) -> None:
                 )
                 common_dict.setdefault("DBLINK", {})[key] = ""
 
+    if rules.required_tagset_id:
+        st = common_dict.get("ST_COMMENT")
+        if st is not None:
+            for item in (st if isinstance(st, list) else [st]):
+                if not item.get("tagset_id"):
+                    item["tagset_id"] = rules.required_tagset_id
+
     if rules.required_st_comments:
         st = common_dict.get("ST_COMMENT")
         if st is None:
