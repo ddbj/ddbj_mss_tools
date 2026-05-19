@@ -121,7 +121,7 @@ class CommonModel(BaseModel):
     SUBMITTER: Optional[SubmitterModel] = None
     REFERENCE: Optional[list[ReferenceModel]] = None
     DATE: Optional[dict[str, str]] = None
-    COMMENT: Optional[dict[str, str | list[str]]] = None
+    COMMENT: Optional[dict[str, str | list[str]] | list[dict[str, str | list[str]]]] = None
     ST_COMMENT: Optional[StCommentModel | list[StCommentModel]] = None
     SOURCE: Optional[dict[str, str]] = None
     DATATYPE: Optional[dict[str, str]] = None

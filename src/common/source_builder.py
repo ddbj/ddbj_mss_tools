@@ -174,8 +174,10 @@ def create_source_feature(
         ret.append(["", "", "", "environmental_sample", ""])
     if plasmid:
         ret.append(["", "", "", "plasmid", seq_name])
+    auto_keys = set(rules.auto_source_qualifiers.keys())
     for key, value in source_dict.items():
-        ret.append(["", "", "", key, value])
+        if key != "mol_type" and key not in auto_keys:
+            ret.append(["", "", "", key, value])
     if rules.datatype == "WGS":
         # Source feature will be appended to COMMON. Nothing more to do.
         pass
@@ -215,7 +217,8 @@ def _create_source_with_meta(
     rows.append(["", "", "", "submitter_seqid", "@@[entry]@@"])
     if environmental_sample:
         rows.append(["", "", "", "environmental_sample", ""])
+    auto_keys = set(rules.auto_source_qualifiers.keys())
     for key, value in source_dict.items():
-        if key != "mol_type":
+        if key != "mol_type" and key not in auto_keys:
             rows.append(["", "", "", key, str(value)])
     return rows
