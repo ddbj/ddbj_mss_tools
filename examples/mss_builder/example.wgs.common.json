@@ -1,0 +1,55 @@
+{
+    "_submission_category": "WGS",
+    "DBLINK": {
+        "project": "PRJDB000002",
+        "sample": "SAMD000002",
+        "DRA": ["DRA000001"]
+    },
+    "SUBMITTER": {
+        "ab_name": ["Suzuki,A.", "Watanabe,M."],
+        "contact": "Akiko Suzuki",
+        "email": "suzuki@example.ac.jp",
+        "institute": "National Institute of Genetics",
+        "department": "Microbial Genomics Unit",
+        "country": "Japan",
+        "state": "Shizuoka",
+        "city": "Mishima",
+        "street": "1111 Yata",
+        "zip": "411-8540"
+    },
+    "REFERENCE": [
+        {
+            "title": "Draft genome sequence of Aspergillus oryzae strain DDBJ001",
+            "ab_name": ["Suzuki,A.", "Watanabe,M."],
+            "status": "Unpublished"
+        }
+    ],
+    "ST_COMMENT": {
+        "tagset_id": "Genome-Assembly-Data",
+        "Assembly Method": "MEGAHIT v1.2.9",
+        "Genome Coverage": "200x",
+        "Sequencing Technology": "Illumina NovaSeq 6000"
+    },
+    "SOURCE": {
+        "organism": "Aspergillus oryzae",
+        "mol_type": "genomic DNA",
+        "strain": "DDBJ001",
+        "isolation_source": "fermented rice",
+        "collection_date": "2024-05-23",
+        "geo_loc_name": "Japan: Niigata"
+    },
+    "SOURCE_IDENTIFIER": "strain",
+    "ASSEMBLY_GAP": [
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 100,
+            "max_gap_length": 100
+        },
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 10
+        }
+    ]
+}

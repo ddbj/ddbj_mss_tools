@@ -1,0 +1,54 @@
+{
+    "_submission_category": "GNM",
+    "DBLINK": {
+        "project": "PRJDB000001",
+        "sample": "SAMD000001"
+    },
+    "SUBMITTER": {
+        "ab_name": ["Yamamoto,T.", "Tanaka,K."],
+        "contact": "Taro Yamamoto",
+        "email": "yamamoto@example.ac.jp",
+        "institute": "National Agriculture Research Institute",
+        "department": "Crop Genomics Division",
+        "country": "Japan",
+        "state": "Ibaraki",
+        "city": "Tsukuba",
+        "street": "2-1-2 Kannondai",
+        "zip": "305-8518"
+    },
+    "REFERENCE": [
+        {
+            "title": "The complete genome sequence of Oryza sativa Japonica Group cultivar Koshihikari",
+            "ab_name": ["Yamamoto,T.", "Tanaka,K."],
+            "status": "Unpublished"
+        }
+    ],
+    "ST_COMMENT": {
+        "tagset_id": "Genome-Assembly-Data",
+        "Assembly Name": "OsKoshihikari_v1",
+        "Assembly Method": "SPAdes v3.15.5",
+        "Genome Coverage": "100x",
+        "Sequencing Technology": "Illumina HiSeq 2500"
+    },
+    "SOURCE": {
+        "organism": "Oryza sativa Japonica Group",
+        "mol_type": "genomic DNA",
+        "cultivar": "Koshihikari",
+        "collection_date": "2025-06-26",
+        "geo_loc_name": "Japan: Shizuoka"
+    },
+    "SOURCE_IDENTIFIER": "cultivar",
+    "ASSEMBLY_GAP": [
+        {
+            "enabled": true,
+            "linkage_evidence": "proximity ligation",
+            "min_gap_length": 200,
+            "max_gap_length": 200
+        },
+        {
+            "enabled": true,
+            "linkage_evidence": "paired-ends",
+            "min_gap_length": 10
+        }
+    ]
+}
