@@ -1,0 +1,20 @@
+.git
+.gitignore
+deprecated
+docs
+BATCH
+.devcontainer
+__pycache__
+*.pyc
+*.pyo
+
+# root-level generated artifacts (listed by exact name to avoid matching examples/**)
+GCA_003307255.1.fna.ann
+GCA_003307255.1.fna.fa
+GCF_020809275.1_ASM2080927v1_genomic.fna
+GRU.ann
+GRU.fa
+SAMD888_COl.ann
+SAMD888_COl.fa
+SAMD888_COl.ddbj
+test.json
