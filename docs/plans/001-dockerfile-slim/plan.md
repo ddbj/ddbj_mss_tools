@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 既存 `Dockerfile` を残したまま、最小構成の `Dockerfile.slim`（約325MB、現行719MBから約54%減）を新規追加する。
+**Goal:** 既存 `Dockerfile` を残したまま、最小構成の `Dockerfile.slim`（実測約329MB、現行719MBから約54%減）を新規追加する。
 
 **Architecture:** シングルステージ。`python:3.12-slim` をベースに build-essential を入れず wheel 配布の依存のみ pip install。NCBI バイナリ（asn2gb/asn2fsa）は wget+libidn11 で `/app/bin` に焼き込み後 wget を purge。`src/` のみ COPY し `examples/`・`tests/` は含めない。`.dockerignore` でビルドコンテキストを軽量化するが、既存 `Dockerfile` が COPY する `examples/`・`tests/` は除外しない。
 
