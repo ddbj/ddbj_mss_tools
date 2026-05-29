@@ -2,4 +2,4 @@
 chr1	chromosome	1	complete	linear
 chr2	chromosome	2	partial	linear
 mt	organelle	mitochondrion	complete	circular
-cp	organelle	chloroplast	complete	circular
+cp	organelle	plastid:chloroplast	complete	circular

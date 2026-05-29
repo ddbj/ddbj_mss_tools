@@ -20,7 +20,7 @@ class DblinkModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     project: str = Field(validation_alias=AliasChoices("project", "bioproject"))
-    sample: str = Field(validation_alias=AliasChoices("sample", "biosample"))
+    sample: str | list[str] = Field(validation_alias=AliasChoices("sample", "biosample"))
     sequence_read_archive: Optional[list[str]] = Field(
         default=None,
         validation_alias=AliasChoices("sequence read archive", "DRA", "sra"),

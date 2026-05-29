@@ -1,8 +1,9 @@
 {
     "_submission_category": "GNM",
     "DBLINK": {
-        "project": "PRJDB000001",
-        "sample": "SAMD000001"
+        "project": "PRJDB900001",
+        "sample": "SAMD90000201",
+        "sequence read archive": ["DRR000001"]
     },
     "SUBMITTER": {
         "ab_name": ["Yamamoto,T.", "Tanaka,K."],
@@ -26,7 +27,7 @@
     "ST_COMMENT": {
         "tagset_id": "Genome-Assembly-Data",
         "Assembly Name": "OsKoshihikari_v1",
-        "Assembly Method": "SPAdes v3.15.5",
+        "Assembly Method": "SPAdes v. 3.15.5",
         "Genome Coverage": "100x",
         "Sequencing Technology": "Illumina HiSeq 2500"
     },

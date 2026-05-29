@@ -1,9 +1,9 @@
 {
     "_submission_category": "WGS",
     "DBLINK": {
-        "project": "PRJDB000002",
-        "sample": "SAMD000002",
-        "DRA": ["DRA000001"]
+        "project": "PRJDB90002",
+        "sample": "SAMD90000201",
+        "sequence read archive": ["DRR000001"]
     },
     "SUBMITTER": {
         "ab_name": ["Suzuki,A.", "Watanabe,M."],
@@ -26,7 +26,7 @@
     ],
     "ST_COMMENT": {
         "tagset_id": "Genome-Assembly-Data",
-        "Assembly Method": "MEGAHIT v1.2.9",
+        "Assembly Method": "MEGAHIT v. 1.2.9",
         "Genome Coverage": "200x",
         "Sequencing Technology": "Illumina NovaSeq 6000"
     },

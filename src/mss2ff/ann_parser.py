@@ -11,7 +11,7 @@ from typing import Optional
 @dataclass
 class DbLink:
     project: str = ""
-    biosample: str = ""
+    biosample: list[str] = field(default_factory=list)
     sra: list[str] = field(default_factory=list)   # Sequence Read Archive accessions
     extra: list[tuple[str, str]] = field(default_factory=list)  # other DBLINK entries
 
@@ -169,7 +169,7 @@ def _parse_common(rows: list[list[str]], i: int, common: CommonBlock) -> int:
             if k == "project":
                 common.dblink.project = val
             elif k == "biosample":
-                common.dblink.biosample = val
+                common.dblink.biosample.append(val)
             elif k in ("sequence read archive", "dra", "sra"):
                 common.dblink.sra.append(val)
             else:

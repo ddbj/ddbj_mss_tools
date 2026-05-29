@@ -249,7 +249,8 @@ def _dblink_lines(common: CommonBlock) -> list[str]:
         lines.append(f"{prefix}BioProject:{common.dblink.project}")
         prefix = cont
     if common.dblink.biosample:
-        lines.append(f"{prefix}BioSample:{common.dblink.biosample}")
+        biosample_text = "BioSample:" + ", ".join(common.dblink.biosample)
+        lines.extend(_wrap(biosample_text, cont, prefix))
         prefix = cont
     if common.dblink.sra:
         sra_text = "Sequence Read Archive: " + ", ".join(common.dblink.sra)
