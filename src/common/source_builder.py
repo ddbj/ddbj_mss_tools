@@ -113,6 +113,17 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
 
 # ── wgs_maker source feature builder ─────────────────────────────────────────
 
+def _source_qualifier_rows(key: str, value: "str | list[str]") -> list[Row]:
+    """Emit one source qualifier row per value.
+
+    *value* may be a single string or a list of strings (e.g. multiple
+    ``culture_collection`` entries); a list produces one row per element.
+    """
+    if isinstance(value, list):
+        return [["", "", "", key, str(v)] for v in value]
+    return [["", "", "", key, str(value)]]
+
+
 def create_source_feature(
     _submission_category: str,
     seq_name: Optional[str],
@@ -177,7 +188,7 @@ def create_source_feature(
     auto_keys = set(rules.auto_source_qualifiers.keys())
     for key, value in source_dict.items():
         if key != "mol_type" and key not in auto_keys:
-            ret.append(["", "", "", key, value])
+            ret.extend(_source_qualifier_rows(key, value))
     if rules.datatype == "WGS":
         # Source feature will be appended to COMMON. Nothing more to do.
         pass
@@ -220,5 +231,5 @@ def _create_source_with_meta(
     auto_keys = set(rules.auto_source_qualifiers.keys())
     for key, value in source_dict.items():
         if key != "mol_type" and key not in auto_keys:
-            rows.append(["", "", "", key, str(value)])
+            rows.extend(_source_qualifier_rows(key, value))
     return rows

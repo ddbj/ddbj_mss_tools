@@ -123,7 +123,7 @@ class CommonModel(BaseModel):
     DATE: Optional[dict[str, str]] = None
     COMMENT: Optional[dict[str, str | list[str]] | list[dict[str, str | list[str]]]] = None
     ST_COMMENT: Optional[StCommentModel | list[StCommentModel]] = None
-    SOURCE: Optional[dict[str, str]] = None
+    SOURCE: Optional[dict[str, str | list[str]]] = None
     DATATYPE: Optional[dict[str, str]] = None
     KEYWORD: Optional[dict[str, str | list[str]]] = None
     ASSEMBLY_GAP: Optional[AssemblyGapModel | list[AssemblyGapModel]] = None
