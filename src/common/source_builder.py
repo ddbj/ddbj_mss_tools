@@ -143,12 +143,16 @@ def _flag_is_set(value) -> bool:
     return str(value).strip().lower() not in _FALSE_VALUES
 
 
-def _source_qualifier_rows(key: str, value: "str | list[str]") -> list[Row]:
-    """Emit one source qualifier row per value.
+def _source_qualifier_rows(key: str, value) -> list[Row]:
+    """Emit source qualifier row(s) for one (key, value).
 
-    *value* may be a single string or a list of strings (e.g. multiple
-    ``culture_collection`` entries); a list produces one row per element.
+    Flag qualifiers (in ``_FLAG_QUALIFIERS``) emit a single valueless row
+    when the value is truthy (see :func:`_flag_is_set`) and are omitted
+    entirely when falsy. Other qualifiers emit one row per value — a list
+    yields one row per element (e.g. multiple ``culture_collection``).
     """
+    if key in _FLAG_QUALIFIERS:
+        return [["", "", "", key, ""]] if _flag_is_set(value) else []
     if isinstance(value, list):
         return [["", "", "", key, str(v)] for v in value]
     return [["", "", "", key, str(value)]]
