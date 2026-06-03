@@ -113,6 +113,36 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
 
 # ── wgs_maker source feature builder ─────────────────────────────────────────
 
+# INSDC source qualifiers written without a value (the bare key).
+_FLAG_QUALIFIERS = frozenset({
+    "environmental_sample",
+    "transgenic",
+    "germline",
+    "rearranged",
+    "proviral",
+    "macronuclear",
+    "metagenomic",
+    "focus",
+})
+
+# Values interpreted as "off" for a flag qualifier (case-insensitive).
+_FALSE_VALUES = frozenset({"false", "no"})
+
+
+def _flag_is_set(value) -> bool:
+    """Interpret a flag-qualifier value as on/off.
+
+    Off: boolean False, or the strings "false"/"no" (case-insensitive,
+    surrounding whitespace ignored).
+    On:  everything else — boolean True, "" (empty string, kept on for
+    backward compatibility with ``"environmental_sample": ""``), "true",
+    "yes", "1", and any other non-empty string.
+    """
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in _FALSE_VALUES
+
+
 def _source_qualifier_rows(key: str, value: "str | list[str]") -> list[Row]:
     """Emit one source qualifier row per value.
 
