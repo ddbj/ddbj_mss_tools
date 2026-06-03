@@ -111,6 +111,18 @@ pydantic>=2.0, biopython, pandas, openpyxl, jsonschema
 
 末尾カンマ (JSON5スタイル) は許容される。
 
+### source の flag 型 qualifier（値なし qualifier）
+
+`environmental_sample` など値を持たない qualifier（INSDC flag 型）は、真偽値で付与を制御できる。
+
+- 付与しない: `false` / `no`（大文字小文字問わず）、JSON boolean `false`、または **TSV の空欄**
+- 付与する（値なし行 `/qualifier` として出力）: 上記以外。**推奨は `yes`**。JSON では `true`（boolean）や空文字 `""`（後方互換）も付与扱い。
+
+対象 flag: `environmental_sample`, `transgenic`, `germline`, `rearranged`, `proviral`, `macronuclear`, `metagenomic`, `focus`。
+flag 型でない通常 qualifier（`strain` 等）はこの判定の対象外で、値はそのまま出力される（例: `strain` の値 `No` は文字列 `No` のまま）。
+
+注意: ENV/MAG/MAG-WGS など `environmental_sample` を自動付与するカテゴリでは、`false` を指定しても自動付与が優先される。
+
 ## mss_builder コマンドオプション
 
 ```
