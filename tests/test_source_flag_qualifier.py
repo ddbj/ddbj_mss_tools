@@ -62,3 +62,24 @@ def test_rows_nonflag_list_multiple():
         ["", "", "", "culture_collection", "ATCC:1"],
         ["", "", "", "culture_collection", "NBRC:2"],
     ]
+
+
+from common.models import CommonModel
+
+
+def test_source_accepts_bool_value():
+    data = {
+        "DBLINK": {"project": "P", "sample": "S"},
+        "SOURCE": {"organism": "E. coli", "environmental_sample": False},
+    }
+    m = CommonModel.model_validate(data)
+    assert m.SOURCE["environmental_sample"] is False
+
+
+def test_source_accepts_list_value_still():
+    data = {
+        "DBLINK": {"project": "P", "sample": "S"},
+        "SOURCE": {"organism": "E. coli", "culture_collection": ["ATCC:1", "NBRC:2"]},
+    }
+    m = CommonModel.model_validate(data)
+    assert m.SOURCE["culture_collection"] == ["ATCC:1", "NBRC:2"]
