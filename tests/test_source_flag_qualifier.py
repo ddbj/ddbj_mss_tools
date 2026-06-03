@@ -83,3 +83,52 @@ def test_source_accepts_list_value_still():
     }
     m = CommonModel.model_validate(data)
     assert m.SOURCE["culture_collection"] == ["ATCC:1", "NBRC:2"]
+
+
+from common.source_builder import create_source_feature
+
+
+def _quals(rows):
+    """(key, value) pairs from 5-column source rows, skipping the feature line."""
+    return [(r[3], r[4]) for r in rows if r[3]]
+
+
+def test_create_source_flag_off_omitted_per_entry():
+    src = {"organism": "E. coli", "environmental_sample": "no"}
+    rows = create_source_feature("GNM", "chr1", "complete", "linear", src,
+                                 source_modifier_key="strain")
+    keys = [k for k, _ in _quals(rows)]
+    assert "environmental_sample" not in keys
+    assert "organism" in keys
+
+
+def test_create_source_flag_on_valueless_per_entry():
+    src = {"organism": "E. coli", "environmental_sample": "yes"}
+    rows = create_source_feature("GNM", "chr1", "complete", "linear", src,
+                                 source_modifier_key="strain")
+    assert ("environmental_sample", "") in _quals(rows)
+
+
+def test_create_source_nonflag_no_value_kept():
+    # strain="No" must remain a normal valued qualifier, not be dropped
+    src = {"organism": "E. coli", "strain": "No"}
+    rows = create_source_feature("GNM", "chr1", "complete", "linear", src,
+                                 source_modifier_key="strain")
+    assert ("strain", "No") in _quals(rows)
+
+
+def test_create_source_flag_on_meta_path():
+    src = {"organism": "E. coli", "transgenic": True}
+    rows = create_source_feature("WGS", None, None, None, src,
+                                 source_modifier_key="strain",
+                                 use_meta_expression=True)
+    assert ("transgenic", "") in _quals(rows)
+
+
+def test_create_source_flag_off_meta_path():
+    src = {"organism": "E. coli", "transgenic": False}
+    rows = create_source_feature("WGS", None, None, None, src,
+                                 source_modifier_key="strain",
+                                 use_meta_expression=True)
+    keys = [k for k, _ in _quals(rows)]
+    assert "transgenic" not in keys
