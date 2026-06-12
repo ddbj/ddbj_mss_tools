@@ -216,23 +216,24 @@ def create_source_feature(
     submitter_seqid = None
     plasmid = False
     mol_type = source_dict.get("mol_type", "genomic DNA")
+    mol = _molecule_token(mol_type)
 
     # WGS-family: source goes in COMMON block, submitter_seqid always set
     if rules.datatype == "WGS":
         submitter_seqid = "@@[entry]@@"
-        ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, @@[submitter_seqid]@@"
+        ff_def = f"@@[organism]@@ @@[{modifier}]@@ {mol}, @@[submitter_seqid]@@"
     else:
         # Per-entry source (GNM, MAG, etc.)
         if seq_type in ["c", "complete"]:
-            ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, complete genome"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ {mol}, complete genome"
         elif seq_type in ["n", "nearly complete", "nearly-complete"]:
-            ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, nearly complete genome"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ {mol}, nearly complete genome"
         elif seq_type in ["p", "plasmid"]:
-            ff_def = f"@@[organism]@@ @@[{modifier}]@@ plasmid @@[plasmid]@@ DNA, complete sequence"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ plasmid @@[plasmid]@@ {mol}, complete sequence"
             plasmid = True
         else:
             submitter_seqid = "@@[entry]@@"
-            ff_def = f"@@[organism]@@ @@[{modifier}]@@ DNA, @@[submitter_seqid]@@"
+            ff_def = f"@@[organism]@@ @@[{modifier}]@@ {mol}, @@[submitter_seqid]@@"
 
     ret: list[Row] = []
     ret.append(["", "source", "1..E", "mol_type", mol_type])
@@ -274,11 +275,12 @@ def _create_source_with_meta(
     rules = get_category_rules(category)
     environmental_sample = "environmental_sample" in rules.auto_source_qualifiers
     mol_type = source_dict.get("mol_type", "genomic DNA")
+    mol = _molecule_token(mol_type)
 
     if source_modifier_key:
-        ff_def = f"@@[organism]@@ @@[{source_modifier_key}]@@ DNA, @@[submitter_seqid]@@"
+        ff_def = f"@@[organism]@@ @@[{source_modifier_key}]@@ {mol}, @@[submitter_seqid]@@"
     else:
-        ff_def = "@@[organism]@@ DNA, @@[submitter_seqid]@@"
+        ff_def = f"@@[organism]@@ {mol}, @@[submitter_seqid]@@"
 
     rows: list[Row] = []
     rows.append(["", "source", "1..E", "mol_type", mol_type])

@@ -47,3 +47,43 @@ def test_ff_definition_chromosome_complete_rna():
 def test_ff_definition_empty_mol_type_defaults_dna():
     out = ff_definition(None, "seq1", "Homo sapiens", "", "", is_wgs=True)
     assert out == "Homo sapiens DNA, seq1"
+
+
+from common.source_builder import create_source_feature
+
+
+def _ff_def_value(rows):
+    for r in rows:
+        if r[3] == "ff_definition":
+            return r[4]
+    return None
+
+
+def test_create_source_meta_b2_rna():
+    src = {"organism": "X", "mol_type": "genomic RNA"}
+    rows = create_source_feature("WGS", None, None, None, src,
+                                 source_modifier_key="strain",
+                                 use_meta_expression=True)
+    assert _ff_def_value(rows) == "@@[organism]@@ @@[strain]@@ RNA, @@[submitter_seqid]@@"
+
+
+def test_create_source_meta_b2_default_dna():
+    src = {"organism": "X"}
+    rows = create_source_feature("WGS", None, None, None, src,
+                                 source_modifier_key="strain",
+                                 use_meta_expression=True)
+    assert _ff_def_value(rows) == "@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@"
+
+
+def test_create_source_b1_complete_rna():
+    src = {"organism": "X", "mol_type": "genomic RNA"}
+    rows = create_source_feature("GNM", "chr1", "complete", "linear", src,
+                                 source_modifier_key="strain")
+    assert _ff_def_value(rows) == "@@[organism]@@ @@[strain]@@ RNA, complete genome"
+
+
+def test_create_source_b1_default_dna():
+    src = {"organism": "X"}
+    rows = create_source_feature("GNM", "chr1", "complete", "linear", src,
+                                 source_modifier_key="strain")
+    assert _ff_def_value(rows) == "@@[organism]@@ @@[strain]@@ DNA, complete genome"
