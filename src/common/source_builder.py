@@ -65,6 +65,7 @@ def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
     - unplaced + non-WGS: no extra qualifier
     - chromosome: chromosome = seq_name (omitted when seq_name is empty)
     - organelle:  organelle  = seq_name
+    - plasmid:    plasmid    = seq_name (omitted when empty)
     """
     if entry is None or entry.type == "unplaced":
         return {"submitter_seqid": seq_id} if is_wgs else {}
@@ -72,6 +73,8 @@ def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
         return {"chromosome": entry.seq_name} if entry.seq_name else {}
     if entry.type == "organelle":
         return {"organelle": entry.seq_name}
+    if entry.type == "plasmid":
+        return {"plasmid": entry.seq_name} if entry.seq_name else {}
     return {}
 
 
@@ -98,8 +101,33 @@ def _molecule_token(mol_type: str | None) -> str:
     return "DNA"
 
 
+# Organelle /organelle value -> adjectival form used in ff_definition (DDBJ doc).
+# The /organelle qualifier keeps the RAW value; only ff_definition uses this form.
+_ORGANELLE_CODE = {
+    "mitochondrion": "mitochondrial",
+    "mitochondrion:kinetoplast": "kinetoplast",
+    "hydrogenosome": "hydrogenosomal",
+    "nucleomorph": "nucleomorph",
+    "plastid": "plastid",
+    "plastid:chloroplast": "chloroplast",
+    "plastid:apicoplast": "apicoplast",
+    "plastid:chromoplast": "chromoplast",
+    "plastid:cyanelle": "cyanelle",
+    "plastid:leucoplast": "leucoplast",
+    "plastid:proplastid": "proplastid",
+    "macronuclear": "macronuclear",
+}
+
+
+def _organelle_code(seq_name: str) -> str:
+    """Map an /organelle value to its ff_definition adjectival form.
+    Unknown values pass through unchanged (e.g. the user wrote "mitochondrial")."""
+    return _ORGANELLE_CODE.get(seq_name, seq_name)
+
+
 def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str,
-                  infraspecific_name_modifier: str, mol_type: str, is_wgs: bool = False) -> str:
+                  infraspecific_name_modifier: str, mol_type: str, is_wgs: bool = False,
+                  chromosome_count: int = 0) -> str:
     """
     Build the ff_definition qualifier value following mss_format.md.
 
@@ -107,6 +135,9 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
     (e.g. the value of 'strain' or 'isolate') from common.SOURCE.
 
     *is_wgs* is True when all entries in the submission are unplaced (WGS mode).
+
+    *chromosome_count* is the number of chromosome-type entries in the whole submission;
+    a single complete chromosome uses 'complete genome', otherwise 'complete sequence'.
     """
     prefix = f"{organism} {infraspecific_name_modifier}".strip() if infraspecific_name_modifier else organism
     mol = _molecule_token(mol_type)
@@ -120,16 +151,21 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
     if entry.type == "chromosome":
         chr_part = f"chromosome {entry.seq_name}".strip() if entry.seq_name else "chromosome"
         if entry.status == "complete":
+            if chromosome_count == 1:
+                return f"{prefix} {mol}, {chr_part}, complete genome"
             return f"{prefix} {mol}, {chr_part}, complete sequence"
-        else:
-            return f"{prefix} {mol}, {chr_part}, unlocalized sequence {seq_id}"
+        return f"{prefix} {mol}, {chr_part}, unlocalized sequence {seq_id}"
 
     if entry.type == "organelle":
-        organelle_name = entry.seq_name
+        converted = _organelle_code(entry.seq_name)
         if entry.status == "complete":
-            return f"{prefix} {mol}, {organelle_name}, complete sequence"
-        else:
-            return f"{prefix} {mol}, {organelle_name}, partial sequence"
+            return f"{prefix} {converted} {mol}, complete genome"
+        return f"{prefix} {converted} {mol}, partial genome"
+
+    if entry.type == "plasmid":
+        if entry.status == "complete":
+            return f"{prefix} plasmid {entry.seq_name} {mol}, complete sequence"
+        return f"{prefix} plasmid {entry.seq_name} {mol}, partial sequence"
 
     # fallback
     return f"{prefix} {mol}, {seq_id}"
