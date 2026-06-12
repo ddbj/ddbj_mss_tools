@@ -122,6 +122,12 @@ def write_mss_ann(
 
     is_wgs = all(_is_unplaced(eid) for eid in all_ids)
 
+    chromosome_count = 0
+    if sequence_roles:
+        chromosome_count = sum(
+            1 for e in sequence_roles.values() if e.type == "chromosome"
+        )
+
     # Base source qualifiers from common.SOURCE
     base_source: dict[str, str] = {}
     if common is not None and common.SOURCE:
@@ -176,7 +182,8 @@ def write_mss_ann(
             source_quals.update(source_qualifier(role_entry, entry_id, is_wgs=False))
             source_quals["ff_definition"] = ff_definition(
                 role_entry, entry_id, organism, infraspecific_name_modifier,
-                base_source.get("mol_type", ""), is_wgs=False
+                base_source.get("mol_type", ""), is_wgs=False,
+                chromosome_count=chromosome_count,
             )
 
             source_entry_col = "" if is_circular else entry_id

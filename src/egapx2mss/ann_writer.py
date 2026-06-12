@@ -152,6 +152,12 @@ def write_ddbj_ann(
 
     is_wgs = all(_is_unplaced(eid) for eid in all_ids)
 
+    chromosome_count = 0
+    if sequence_roles:
+        chromosome_count = sum(
+            1 for e in sequence_roles.values() if e.type == "chromosome"
+        )
+
     rows: list[Row] = []
     if common is None:
         rows.extend(_common_placeholder())
@@ -180,7 +186,8 @@ def write_ddbj_ann(
         source_quals.update(source_qualifier(role_entry, entry_id, is_wgs))
         source_quals["ff_definition"] = ff_definition(
             role_entry, entry_id, organism, infraspecific_name_modifier,
-            base_source.get("mol_type", ""), is_wgs
+            base_source.get("mol_type", ""), is_wgs,
+            chromosome_count=chromosome_count,
         )
 
         # source feature: entry_id on the TOPOLOGY row if circular, else on source row
