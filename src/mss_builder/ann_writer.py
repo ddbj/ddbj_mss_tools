@@ -175,7 +175,8 @@ def write_mss_ann(
             source_quals: dict[str, str] = dict(base_source)
             source_quals.update(source_qualifier(role_entry, entry_id, is_wgs=False))
             source_quals["ff_definition"] = ff_definition(
-                role_entry, entry_id, organism, infraspecific_name_modifier, is_wgs=False
+                role_entry, entry_id, organism, infraspecific_name_modifier,
+                base_source.get("mol_type", ""), is_wgs=False
             )
 
             source_entry_col = "" if is_circular else entry_id
