@@ -99,7 +99,7 @@ def _molecule_token(mol_type: str | None) -> str:
 
 
 def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str,
-                  infraspecific_name_modifier: str, is_wgs: bool = False) -> str:
+                  infraspecific_name_modifier: str, mol_type: str, is_wgs: bool = False) -> str:
     """
     Build the ff_definition qualifier value following mss_format.md.
 
@@ -109,29 +109,30 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
     *is_wgs* is True when all entries in the submission are unplaced (WGS mode).
     """
     prefix = f"{organism} {infraspecific_name_modifier}".strip() if infraspecific_name_modifier else organism
+    mol = _molecule_token(mol_type)
 
     if entry is None or entry.type == "unplaced":
         if is_wgs:
-            return f"{prefix} DNA, {seq_id}"
+            return f"{prefix} {mol}, {seq_id}"
         else:
-            return f"{prefix} DNA, unplaced sequence {seq_id}"
+            return f"{prefix} {mol}, unplaced sequence {seq_id}"
 
     if entry.type == "chromosome":
         chr_part = f"chromosome {entry.seq_name}".strip() if entry.seq_name else "chromosome"
         if entry.status == "complete":
-            return f"{prefix} DNA, {chr_part}, complete sequence"
+            return f"{prefix} {mol}, {chr_part}, complete sequence"
         else:
-            return f"{prefix} DNA, {chr_part}, unlocalized sequence {seq_id}"
+            return f"{prefix} {mol}, {chr_part}, unlocalized sequence {seq_id}"
 
     if entry.type == "organelle":
         organelle_name = entry.seq_name
         if entry.status == "complete":
-            return f"{prefix} DNA, {organelle_name}, complete sequence"
+            return f"{prefix} {mol}, {organelle_name}, complete sequence"
         else:
-            return f"{prefix} DNA, {organelle_name}, partial sequence"
+            return f"{prefix} {mol}, {organelle_name}, partial sequence"
 
     # fallback
-    return f"{prefix} DNA, {seq_id}"
+    return f"{prefix} {mol}, {seq_id}"
 
 
 # ── wgs_maker source feature builder ─────────────────────────────────────────
