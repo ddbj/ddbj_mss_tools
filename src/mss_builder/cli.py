@@ -61,7 +61,7 @@ def main() -> None:
         help=(
             "Sequence role file (5-column TSV): "
             "seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology. "
-            "type is one of: chromosome, organelle, unplaced. "
+            "type is one of: chromosome, organelle, plasmid, unplaced. "
             "If omitted, all sequences are treated as WGS (unplaced) contigs. "
             "(--chromosomes is accepted as a legacy alias.)"
         ),

@@ -123,6 +123,28 @@ flag 型でない通常 qualifier（`strain` 等）はこの判定の対象外�
 
 注意: ENV/MAG/MAG-WGS など `environmental_sample` を自動付与するカテゴリでは、`false` を指定しても自動付与が優先される。
 
+### sequence role (`--sequence_roles` TSV) と ff_definition
+
+5列 TSV: `seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology`。`type` は
+`chromosome` / `organelle` / `plasmid` / `unplaced` のいずれか。`status` は `complete` / `partial`。
+type に応じて source の ff_definition（DDBJ Flat File の DEFINITION 行）が下記のように構築される
+（`{prefix}` = `{organism} {identifier}`、`{mol}` = mol_type 由来の DNA/RNA/tRNA/rRNA/mRNA）:
+
+| type | status | ff_definition |
+|------|--------|---------------|
+| chromosome（submission 全体で1件のみ） | complete | `{prefix} {mol}, chromosome {seq_name}, complete genome` |
+| chromosome（複数） | complete | `{prefix} {mol}, chromosome {seq_name}, complete sequence` |
+| chromosome | partial 等 | `{prefix} {mol}, chromosome {seq_name}, unlocalized sequence {seq_id}` |
+| organelle | complete | `{prefix} {organelle_code} {mol}, complete genome` |
+| organelle | partial 等 | `{prefix} {organelle_code} {mol}, partial genome` |
+| plasmid | complete | `{prefix} plasmid {seq_name} {mol}, complete sequence` |
+| plasmid | partial 等 | `{prefix} plasmid {seq_name} {mol}, partial sequence` |
+| unplaced（WGS） | — | `{prefix} {mol}, {seq_id}` |
+
+organelle の `seq_name` は INSDC `/organelle` 値（`mitochondrion`, `plastid:chloroplast` 等）を
+DEFINITION 用の形容詞形（`mitochondrial`, `chloroplast` 等）に変換する。変換表に無い値はそのまま使う。
+source の `/organelle` qualifier には変換前の生の値が出力される。
+
 ## mss_builder コマンドオプション
 
 ```
