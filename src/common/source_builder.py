@@ -75,6 +75,29 @@ def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
     return {}
 
 
+def _molecule_token(mol_type: str | None) -> str:
+    """Decide the molecule token used in ff_definition ("<prefix> <token>, ...").
+
+    Rules (in order):
+      1. empty / None              -> "DNA"
+      2. contains tRNA/rRNA/mRNA   -> that token (case-SENSITIVE; INSDC fixed spelling)
+      3. lowercased contains "dna" -> "DNA"
+      4. lowercased contains "rna" -> "RNA"
+      5. otherwise (e.g. "protein")-> "DNA" (default)
+    """
+    if not mol_type:
+        return "DNA"
+    for token in ("tRNA", "rRNA", "mRNA"):
+        if token in mol_type:
+            return token
+    low = mol_type.lower()
+    if "dna" in low:
+        return "DNA"
+    if "rna" in low:
+        return "RNA"
+    return "DNA"
+
+
 def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str,
                   infraspecific_name_modifier: str, is_wgs: bool = False) -> str:
     """
