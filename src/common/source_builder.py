@@ -17,7 +17,7 @@ class SequenceRoleEntry:
 
     def __init__(self, seq_id: str, type_: str, seq_name: str, status: str, is_circular: bool):
         self.seq_id = seq_id
-        self.type = type_            # "chromosome" | "organelle" | "unplaced"
+        self.type = type_            # "chromosome" | "organelle" | "plasmid" | "unplaced"
         self.seq_name = seq_name    # e.g. "1", "2", "mitochondrion", ""
         self.status = status        # "complete" | "partial"
         self.is_circular = is_circular
