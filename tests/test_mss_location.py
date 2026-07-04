@@ -82,3 +82,21 @@ def test_multi_exon_wrap_warns():
     diags = []
     build_cds_feature(mrna, gene, "T_0001", Seq("ATGAAATAACC"[:10] + "A"), cfg, diags)
     assert any(d.code == "multi-exon-origin-spanning" for d in diags)
+
+
+def test_transl_except_origin_spanning_warns():
+    # 9 bp circular genome; CDS 7..12 wraps (head=7..9 "ATG", tail=1..3 "TAA") and
+    # carries a raw transl_except. build_cds_feature's transl_except translation
+    # path (SeqFeature built from cds_feat.to_biopython_location()) is NOT
+    # wrap-aware, so this combination must raise a diagnostic warning the
+    # submitter that the resulting protein may be wrong.
+    genome = Seq("TAACCCATG")
+    cds = Feature("cds", "S", "CDS", [Span("c", 7, 12, "+", 0)],
+                  {"transl_except": ["(pos:7,aa:Term)"]}, [])
+    mrna = Feature("m", "S", "mRNA", [Span("c", 7, 12, "+")], {}, [])
+    mrna.children = [cds]
+    gene = Feature("g", "S", "gene", [Span("c", 7, 12, "+")], {}, [])
+    cfg = MssConfig(source={}, transl_table=1, product_default="hypothetical protein")
+    diags = []
+    build_cds_feature(mrna, gene, "T_0001", genome, cfg, diags)
+    assert any(d.code == "transl-except-origin-spanning" for d in diags)

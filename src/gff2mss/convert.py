@@ -208,6 +208,11 @@ def build_cds_feature(mrna, gene, locus_tag: str, genome_seq, cfg: MssConfig,
                                       f"CDS {mrna.id!r} coding length not a multiple of 3"))
     cds_feat = next((c for c in mrna.children if c.type == "CDS"), None)
     excepts = _collect_transl_excepts(cds_feat) if cds_feat is not None else []
+    if excepts and any(s.end > len(genome_seq) for s in spans):
+        diagnostics.append(Diagnostic(Severity.WARNING, None, "transl-except-origin-spanning",
+                                      f"CDS {mrna.id!r} combines transl_except with an origin-spanning "
+                                      f"span; the transl_except translation path is not wrap-aware and "
+                                      f"the protein may be incorrect"))
     if excepts:
         sf = SeqFeature(cds_feat.to_biopython_location(), type="CDS",
                         qualifiers={"transl_table": [str(table_id)],
