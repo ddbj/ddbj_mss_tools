@@ -1,6 +1,7 @@
 from Bio.Seq import Seq
 from ddbj_gff.model import Feature, Span
-from gff2mss.convert import collect_spans, build_insdc_location, extract_seq
+from gff2mss.config import MssConfig
+from gff2mss.convert import collect_spans, build_insdc_location, extract_seq, build_cds_feature
 
 
 def test_collect_spans_unions_children_of_type():
@@ -35,3 +36,49 @@ def test_extract_plus_and_minus():
     assert str(extract_seq([Span("c", 1, 9, "+")], genome)) == "ATGAAATAA"
     rc = Seq("TTATTTCAT")                # revcomp of ATGAAATAA
     assert str(extract_seq([Span("c", 1, 9, "-")], rc)) == "ATGAAATAA"
+
+
+def test_minus_strand_origin_spanning():
+    assert build_insdc_location([Span("c", 4447, 5268, "-")], 5125) == "complement(join(4447..5125,1..143))"
+
+
+def test_plus_strand_origin_spanning():
+    assert build_insdc_location([Span("c", 4447, 5268, "+")], 5125) == "join(4447..5125,1..143)"
+
+
+def test_origin_spanning_partials_minus():
+    assert build_insdc_location([Span("c", 4447, 5268, "-")], 5125,
+                                five_prime_partial=True) == "complement(join(4447..5125,1..>143))"
+    assert build_insdc_location([Span("c", 4447, 5268, "-")], 5125,
+                                three_prime_partial=True) == "complement(join(<4447..5125,1..143))"
+
+
+def test_extract_origin_spanning_plus_translates():
+    # 9 bp circular; plus CDS 7..12 wraps: head=7..9 "ATG", tail=1..3 "TAA" -> "ATGTAA" -> M*
+    genome = Seq("TAACCCATG")
+    ex = extract_seq([Span("c", 7, 12, "+")], genome)
+    assert str(ex) == "ATGTAA"
+    assert str(ex.translate(table=11)) == "M*"
+
+
+def test_extract_origin_spanning_minus_translates():
+    # minus CDS 7..12 on revcomp genome yields the same coding sequence
+    genome = Seq("TAACCCATG").reverse_complement()  # so minus strand of 7..12 -> ATGTAA
+    ex = extract_seq([Span("c", 7, 12, "-")], genome)
+    assert str(ex.translate(table=11)) == "M*"
+
+
+def test_multi_exon_wrap_warns():
+    # NOTE: the task brief's sketch called this with an undefined `_MinimalCfg()`; no such
+    # helper exists in this repo. Following the brief's own contingency ("confirm the exact
+    # build_cds_feature signature ... do not invent parameters"), this uses the same
+    # MssConfig(...) construction already established by tests/test_mss_cds.py::cfg().
+    cds = Feature("cds", "S", "CDS",
+                  [Span("c", 1, 6, "+"), Span("c", 7, 14, "+")], {"transl_table": ["11"]}, [])  # 14 > 10
+    mrna = Feature("m", "S", "mRNA", [Span("c", 1, 14, "+")], {}, [])
+    mrna.children = [cds]
+    gene = Feature("g", "S", "gene", [Span("c", 1, 14, "+")], {}, [])
+    cfg = MssConfig(source={}, transl_table=1, product_default="hypothetical protein")
+    diags = []
+    build_cds_feature(mrna, gene, "T_0001", Seq("ATGAAATAACC"[:10] + "A"), cfg, diags)
+    assert any(d.code == "multi-exon-origin-spanning" for d in diags)

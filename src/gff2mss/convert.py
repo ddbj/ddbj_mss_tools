@@ -12,6 +12,7 @@ from Bio.SeqFeature import SeqFeature
 
 from ddbj_gff.errors import Diagnostic, GffParseError, Severity
 from ddbj_gff import aa_names
+from ddbj_gff.model import Span
 from .config import MssConfig
 from .gaps import assembly_gap_features
 from .locus_tag import LocusTagAssigner
@@ -52,11 +53,29 @@ def _ordered(spans: list):
     return sorted(spans, key=lambda s: s.start, reverse=(strand == "-"))
 
 
+def _wrap_spans(spans, seqlen):
+    """Split an origin-spanning span (end>seqlen) into its two in-bounds pieces in
+    biological 5'->3' order: plus [head, tail], minus [tail, head], where head=start..L
+    and tail=1..(end-L). Non-wrapping spans are returned unchanged.
+    Returns (spans, wrapped: bool)."""
+    out, wrapped = [], False
+    for s in spans:
+        if s.end > seqlen:
+            wrapped = True
+            head = Span(s.seqid, s.start, seqlen, s.strand)
+            tail = Span(s.seqid, 1, s.end - seqlen, s.strand)
+            out += [tail, head] if s.strand == "-" else [head, tail]
+        else:
+            out.append(s)
+    return out, wrapped
+
+
 def build_insdc_location(spans: list, seqlen: int,
                          five_prime_partial: bool = False,
                          three_prime_partial: bool = False) -> str:
     bio = _STRAND.get(spans[0].strand, 0)
-    ordered = _ordered(spans)
+    wrapped_spans, wrapped = _wrap_spans(spans, seqlen)
+    ordered = wrapped_spans if wrapped else _ordered(spans)
     locs = [FeatureLocation(s.start - 1, s.end, strand=bio) for s in ordered]
     if five_prime_partial:
         f = locs[0]
@@ -76,7 +95,8 @@ def build_insdc_location(spans: list, seqlen: int,
 
 def extract_seq(spans: list, genome_seq):
     bio = _STRAND.get(spans[0].strand, 0)
-    ordered = _ordered(spans)
+    wrapped_spans, wrapped = _wrap_spans(spans, len(genome_seq))
+    ordered = wrapped_spans if wrapped else _ordered(spans)
     locs = [FeatureLocation(s.start - 1, s.end, strand=bio) for s in ordered]
     compound = locs[0] if len(locs) == 1 else CompoundLocation(locs)
     return compound.extract(genome_seq)
@@ -156,6 +176,10 @@ def build_cds_feature(mrna, gene, locus_tag: str, genome_seq, cfg: MssConfig,
         diagnostics.append(Diagnostic(Severity.WARNING, None, "no-cds",
                                       f"mRNA {mrna.id!r} has no CDS; skipped"))
         return None
+    if len(spans) > 1 and any(s.end > len(genome_seq) for s in spans):
+        diagnostics.append(Diagnostic(Severity.WARNING, None, "multi-exon-origin-spanning",
+                                      f"CDS {mrna.id!r} is multi-exon and origin-spanning; "
+                                      f"join order is best-effort (unsupported combination)"))
     ordered = _ordered(spans)
     phase = ordered[0].phase
     codon_start = 1 if phase is None else phase + 1
