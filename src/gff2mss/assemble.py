@@ -7,7 +7,7 @@ from ddbj_gff import parse
 from ddbj_gff.io import open_text
 from gff2mss.config import load_config
 from gff2mss.convert import build_entry_features
-from gff2mss.emit import feature_rows, emit_fasta
+from gff2mss.emit import feature_rows
 from gff2mss.product_map import load_product_map
 
 from common.models import load_common_json

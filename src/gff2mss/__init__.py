@@ -1,4 +1,4 @@
-"""ddbj_gff.mss: GFF3 -> DDBJ MSS conversion (phase 2)."""
+"""gff2mss: canonical INSDC GFF3 -> DDBJ MSS conversion."""
 
 from .config import load_common, load_config
 from .convert import convert
