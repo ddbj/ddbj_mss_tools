@@ -21,6 +21,12 @@ COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir hatchling \
  && pip install --no-cache-dir -r requirements.txt
 
+# Install the ddbj-gff sibling package from its prebuilt wheel. The uv path-source
+# in pyproject ([tool.uv.sources]) is dev-only; the container installs the wheel so
+# `pip install -e .` below can satisfy the ddbj-gff dependency (it is not on PyPI).
+COPY ddbj_gff-0.1.0-py3-none-any.whl ./
+RUN pip install --no-cache-dir ./ddbj_gff-0.1.0-py3-none-any.whl
+
 # Copy source only (no examples/, no tests/) and install the package.
 COPY src/ src/
 RUN pip install --no-cache-dir -e .
