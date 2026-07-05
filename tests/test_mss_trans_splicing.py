@@ -47,3 +47,15 @@ def test_intron_features_emitted():
     assert any(q.key == "gene" and q.value == "rps12" for q in trans_intron.qualifiers)
     cis_intron = next(f for f in introns if f.location == "325..828")
     assert not any(q.key == "trans_splicing" for q in cis_intron.qualifiers)
+
+
+def test_ann_text_end_to_end():
+    from gff2mss.convert import convert
+    from gff2mss.emit import emit_ann
+    doc, seqs, cfg = _load()                     # parse + normalize (location= built)
+    mss_doc, _ = convert(doc, seqs, cfg, common_rows=[])
+    text = emit_ann(mss_doc)
+    assert "join(complement(1641..1754),93..324,829..854)" in text   # trans CDS
+    assert "join(complement(855..1640),1..92)" in text               # trans intron 1
+    assert "\ttrans_splicing\t" in text          # valueless qualifier row (empty value col)
+    assert "\tintron\t" in text                  # intron feature key column
