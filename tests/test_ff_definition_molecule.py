@@ -191,3 +191,39 @@ def test_source_qualifier_plasmid():
 def test_source_qualifier_organelle_raw():
     e = SequenceRoleEntry("cp", "organelle", "plastid:chloroplast", "complete", True)
     assert source_qualifier(e, "cp") == {"organelle": "plastid:chloroplast"}
+
+
+# ── segment: count + status 依存 ─────────────────────────────────────────
+def test_ff_segment_single_complete_genome():
+    e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
+    out = ff_definition(e, "seg1", "Influenza A virus", "", "viral cRNA",
+                        is_wgs=False, segment_count=1)
+    assert out == "Influenza A virus RNA, complete genome"
+
+
+def test_ff_segment_single_partial_genome():
+    e = SequenceRoleEntry("seg1", "segment", "", "partial", False)
+    out = ff_definition(e, "seg1", "Influenza A virus", "", "viral cRNA",
+                        is_wgs=False, segment_count=1)
+    assert out == "Influenza A virus RNA, partial genome"
+
+
+def test_ff_segment_multi_complete_sequence():
+    e = SequenceRoleEntry("seg4", "segment", "4", "complete", False)
+    out = ff_definition(e, "seg4", "Influenza A virus", "isolate X", "viral cRNA",
+                        is_wgs=False, segment_count=8)
+    assert out == "Influenza A virus isolate X RNA, segment 4, complete sequence"
+
+
+def test_ff_segment_multi_partial_sequence():
+    e = SequenceRoleEntry("seg4", "segment", "4", "partial", False)
+    out = ff_definition(e, "seg4", "Influenza A virus", "", "viral cRNA",
+                        is_wgs=False, segment_count=8)
+    assert out == "Influenza A virus RNA, segment 4, partial sequence"
+
+
+def test_ff_segment_multi_empty_name_fallback():
+    e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
+    out = ff_definition(e, "seg1", "Influenza A virus", "", "viral cRNA",
+                        is_wgs=False, segment_count=2)
+    assert out == "Influenza A virus RNA, segment, complete sequence"
