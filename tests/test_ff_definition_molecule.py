@@ -214,6 +214,11 @@ def test_source_qualifier_segment_multi_empty_name_omitted():
     assert source_qualifier(e, "seg4", segment_count=8) == {}
 
 
+def test_source_qualifier_segment_default_count_omitted():
+    e = SequenceRoleEntry("seg1", "segment", "4", "complete", False)
+    assert source_qualifier(e, "seg1") == {}
+
+
 # ── segment: count + status 依存 ─────────────────────────────────────────
 def test_ff_segment_single_complete_genome():
     e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
