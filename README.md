@@ -267,7 +267,7 @@ egapx2mss input.asn --preconvert-only --outdir tmp/
 
 ### Sequence role ファイル (--sequence_roles)
 
-ゲノムアセンブリの配列を染色体・オルガネラ・unplaced に分類するための5列タブ区切りファイル（通称 `sequence_roles.tsv`）です。
+ゲノムアセンブリの配列を染色体・オルガネラ・プラスミド・セグメント・unplaced に分類するための5列タブ区切りファイル（通称 `sequence_roles.tsv`）です。
 以前は「染色体テーブル」と呼ばれており、オプションも `--chromosomes` でした。旧名は互換のため引き続き受け付けます。
 
 ```
@@ -818,7 +818,7 @@ N-runs shorter than 10 bases match no rule and are not annotated.
 
 ### Sequence Role File (--sequence_roles)
 
-A 5-column tab-separated file (conventionally `sequence_roles.tsv`) that classifies sequences into chromosomes, organelles, or unplaced scaffolds.
+A 5-column tab-separated file (conventionally `sequence_roles.tsv`) that classifies sequences into chromosomes, organelles, plasmids, segments, or unplaced scaffolds.
 Formerly called the *chromosome table* and passed via `--chromosomes`; the legacy option name is still accepted for backward compatibility.
 
 ```
