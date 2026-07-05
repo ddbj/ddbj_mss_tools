@@ -17,8 +17,8 @@ class SequenceRoleEntry:
 
     def __init__(self, seq_id: str, type_: str, seq_name: str, status: str, is_circular: bool):
         self.seq_id = seq_id
-        self.type = type_            # "chromosome" | "organelle" | "plasmid" | "unplaced"
-        self.seq_name = seq_name    # e.g. "1", "2", "mitochondrion", ""
+        self.type = type_            # "chromosome" | "organelle" | "plasmid" | "segment" | "unplaced"
+        self.seq_name = seq_name    # e.g. "1", "2", "mitochondrion", "", "4"
         self.status = status        # "complete" | "partial"
         self.is_circular = is_circular
 
@@ -56,7 +56,7 @@ def load_sequence_roles(path: str) -> dict[str, SequenceRoleEntry]:
 # ── egapx2mss source qualifier helpers ───────────────────────────────────────
 
 def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
-                     is_wgs: bool = False) -> dict[str, str]:
+                     is_wgs: bool = False, segment_count: int = 0) -> dict[str, str]:
     """
     Return extra source qualifiers (beyond common.SOURCE) for one sequence entry.
 
@@ -66,6 +66,7 @@ def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
     - chromosome: chromosome = seq_name (omitted when seq_name is empty)
     - organelle:  organelle  = seq_name
     - plasmid:    plasmid    = seq_name (omitted when empty)
+    - segment: single -> no qualifier; multiple -> segment = seq_name (omitted when empty)
     """
     if entry is None or entry.type == "unplaced":
         return {"submitter_seqid": seq_id} if is_wgs else {}
@@ -75,6 +76,10 @@ def source_qualifier(entry: Optional[SequenceRoleEntry], seq_id: str,
         return {"organelle": entry.seq_name}
     if entry.type == "plasmid":
         return {"plasmid": entry.seq_name} if entry.seq_name else {}
+    if entry.type == "segment":
+        if segment_count >= 2 and entry.seq_name:
+            return {"segment": entry.seq_name}
+        return {}
     return {}
 
 

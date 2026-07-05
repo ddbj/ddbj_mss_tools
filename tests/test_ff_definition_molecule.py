@@ -193,6 +193,27 @@ def test_source_qualifier_organelle_raw():
     assert source_qualifier(e, "cp") == {"organelle": "plastid:chloroplast"}
 
 
+# ── source_qualifier: segment emitted only when multi-segment ──────────────
+def test_source_qualifier_segment_single_omitted():
+    e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
+    assert source_qualifier(e, "seg1", segment_count=1) == {}
+
+
+def test_source_qualifier_segment_single_name_ignored():
+    e = SequenceRoleEntry("seg1", "segment", "4", "complete", False)
+    assert source_qualifier(e, "seg1", segment_count=1) == {}
+
+
+def test_source_qualifier_segment_multi():
+    e = SequenceRoleEntry("seg4", "segment", "4", "complete", False)
+    assert source_qualifier(e, "seg4", segment_count=8) == {"segment": "4"}
+
+
+def test_source_qualifier_segment_multi_empty_name_omitted():
+    e = SequenceRoleEntry("seg4", "segment", "", "complete", False)
+    assert source_qualifier(e, "seg4", segment_count=8) == {}
+
+
 # ── segment: count + status 依存 ─────────────────────────────────────────
 def test_ff_segment_single_complete_genome():
     e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
