@@ -128,6 +128,12 @@ def write_mss_ann(
             1 for e in sequence_roles.values() if e.type == "chromosome"
         )
 
+    segment_count = 0
+    if sequence_roles:
+        segment_count = sum(
+            1 for e in sequence_roles.values() if e.type == "segment"
+        )
+
     # Base source qualifiers from common.SOURCE
     base_source: dict[str, str] = {}
     if common is not None and common.SOURCE:
@@ -179,11 +185,11 @@ def write_mss_ann(
         if not is_wgs:
             # Source feature per entry
             source_quals: dict[str, str] = dict(base_source)
-            source_quals.update(source_qualifier(role_entry, entry_id, is_wgs=False))
+            source_quals.update(source_qualifier(role_entry, entry_id, is_wgs=False, segment_count=segment_count))
             source_quals["ff_definition"] = ff_definition(
                 role_entry, entry_id, organism, infraspecific_name_modifier,
                 base_source.get("mol_type", ""), is_wgs=False,
-                chromosome_count=chromosome_count,
+                chromosome_count=chromosome_count, segment_count=segment_count,
             )
 
             source_entry_col = "" if is_circular else entry_id

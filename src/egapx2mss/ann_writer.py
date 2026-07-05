@@ -158,6 +158,12 @@ def write_ddbj_ann(
             1 for e in sequence_roles.values() if e.type == "chromosome"
         )
 
+    segment_count = 0
+    if sequence_roles:
+        segment_count = sum(
+            1 for e in sequence_roles.values() if e.type == "segment"
+        )
+
     rows: list[Row] = []
     if common is None:
         rows.extend(_common_placeholder())
@@ -183,11 +189,11 @@ def write_ddbj_ann(
 
         # Build per-entry source qualifiers: base + entry-specific + ff_definition
         source_quals: dict[str, str] = dict(base_source)
-        source_quals.update(source_qualifier(role_entry, entry_id, is_wgs))
+        source_quals.update(source_qualifier(role_entry, entry_id, is_wgs, segment_count=segment_count))
         source_quals["ff_definition"] = ff_definition(
             role_entry, entry_id, organism, infraspecific_name_modifier,
             base_source.get("mol_type", ""), is_wgs,
-            chromosome_count=chromosome_count,
+            chromosome_count=chromosome_count, segment_count=segment_count,
         )
 
         # source feature: entry_id on the TOPOLOGY row if circular, else on source row
