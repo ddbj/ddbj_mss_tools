@@ -34,6 +34,16 @@ def test_trans_spliced_cds_location_and_translation():
     assert any(q.key == "codon_start" and q.value == "1" for q in cds[0].qualifiers)
 
 
+def test_trans_spliced_mrna_location_and_qualifier():
+    doc, seqs, cfg = _load()
+    cfg.emit_mrna = True
+    feats = build_entry_features(doc, seqs, cfg, [])["AP025455.1"]
+    mrnas = [f for f in feats if f.key == "mRNA"]
+    assert len(mrnas) == 1
+    assert mrnas[0].location == "join(complement(1641..1754),93..324,829..854)"
+    assert any(q.key == "trans_splicing" for q in mrnas[0].qualifiers)
+
+
 def test_intron_features_emitted():
     doc, seqs, cfg = _load()
     feats = build_entry_features(doc, seqs, cfg, [])["AP025455.1"]

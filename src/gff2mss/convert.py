@@ -154,6 +154,16 @@ def mrna_partial_flags(mrna) -> tuple[bool, bool]:
 
 
 def build_mrna_feature(mrna, gene, locus_tag: str, seqlen: int) -> MssFeature:
+    ts_cds = next((c for c in mrna.children if c.type == "CDS" and c.is_trans_spliced), None)
+    if ts_cds is not None:
+        loc = _location_attr(ts_cds)
+        if loc:
+            quals = [MssQualifier("locus_tag", locus_tag)]
+            if gene.gene:
+                quals.append(MssQualifier("gene", gene.gene))
+            quals.append(_submitter_note(gene, mrna))
+            quals.append(MssQualifier("trans_splicing", ""))
+            return MssFeature("mRNA", loc, quals)
     spans = collect_spans(mrna, "exon") or collect_spans(mrna, "CDS")
     fp, tp = mrna_partial_flags(mrna)
     location = build_insdc_location(spans, seqlen, fp, tp)
