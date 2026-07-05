@@ -53,6 +53,18 @@ def _ordered(spans: list):
     return sorted(spans, key=lambda s: s.start, reverse=(strand == "-"))
 
 
+def _location_attr(feature):
+    """Return the verbatim INSDC location string from a location= attribute, or None."""
+    v = feature.attributes.get("location")
+    return v[0] if v else None
+
+
+def _trans_compound(parts):
+    """CompoundLocation from part-ordered spans, per-part strand ('-' -> complement)."""
+    return CompoundLocation([FeatureLocation(s.start - 1, s.end,
+                             strand=(-1 if s.strand == "-" else 1)) for s in parts])
+
+
 def _wrap_spans(spans, seqlen):
     """Split an origin-spanning span (end>seqlen) into its two in-bounds pieces in
     biological 5'->3' order: plus [head, tail], minus [tail, head], where head=start..L
@@ -169,6 +181,45 @@ def _product(mrna, gene, cfg: MssConfig) -> str:
     return cfg.product_default
 
 
+def _build_trans_spliced_cds(mrna, gene, locus_tag, genome_seq, cfg, diagnostics, cds_feat):
+    parts = cds_feat.ordered_spans()
+    location = _location_attr(cds_feat)
+    if location is None:                       # normalize should have set it; be defensive
+        location = _insdc_location_string(_trans_compound(parts), len(genome_seq))
+    table_id = cds_feat.transl_table or cfg.transl_table
+    codon_start = 1 if parts[0].phase is None else parts[0].phase + 1
+    quals = [
+        MssQualifier("locus_tag", locus_tag),
+        MssQualifier("transl_table", str(table_id)),
+        MssQualifier("codon_start", str(codon_start)),
+        MssQualifier("product", _product(mrna, gene, cfg)),
+    ]
+    if gene.gene or mrna.gene:
+        quals.append(MssQualifier("gene", gene.gene or mrna.gene))
+    quals.append(_submitter_note(gene, mrna))
+    quals.append(MssQualifier("trans_splicing", ""))
+
+    entry_seqid = parts[0].seqid
+    if any(s.seqid != entry_seqid for s in parts) or ":" in location:
+        diagnostics.append(Diagnostic(Severity.WARNING, None, "trans-splicing-remote",
+                                      f"CDS {mrna.id!r} trans-splicing references a remote seqid; "
+                                      f"emitted without translation validation"))
+        return MssFeature("CDS", location, quals)
+
+    coding = str(_trans_compound(parts).extract(genome_seq))[codon_start - 1:].upper()
+    coding_full = coding[: len(coding) - len(coding) % 3]
+    protein = str(Seq(coding_full).translate(table=table_id))
+    body = protein[:-1] if protein.endswith("*") else protein
+    if "*" in body:
+        diagnostics.append(Diagnostic(Severity.WARNING, None, "translation-internal-stop",
+                                      f"trans-spliced CDS {mrna.id!r} has an internal stop codon"))
+        note = f"internal stop codon(s) detected in CDS {mrna.id}; not translated"
+        return MssFeature("misc_feature", location,
+                          [MssQualifier("locus_tag", locus_tag), MssQualifier("note", note),
+                           MssQualifier("trans_splicing", "")])
+    return MssFeature("CDS", location, quals)
+
+
 def build_cds_feature(mrna, gene, locus_tag: str, genome_seq, cfg: MssConfig,
                       diagnostics: list) -> "MssFeature | None":
     spans = collect_spans(mrna, "CDS")
@@ -176,6 +227,9 @@ def build_cds_feature(mrna, gene, locus_tag: str, genome_seq, cfg: MssConfig,
         diagnostics.append(Diagnostic(Severity.WARNING, None, "no-cds",
                                       f"mRNA {mrna.id!r} has no CDS; skipped"))
         return None
+    ts_feat = next((c for c in mrna.children if c.type == "CDS" and c.is_trans_spliced), None)
+    if ts_feat is not None:
+        return _build_trans_spliced_cds(mrna, gene, locus_tag, genome_seq, cfg, diagnostics, ts_feat)
     if len(spans) > 1 and any(s.end > len(genome_seq) for s in spans):
         diagnostics.append(Diagnostic(Severity.WARNING, None, "multi-exon-origin-spanning",
                                       f"CDS {mrna.id!r} is multi-exon and origin-spanning; "
