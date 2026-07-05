@@ -389,6 +389,24 @@ def build_rna_feature(rna, locus_tag: str, seqlen: int, gene_id: str, tx_id: str
     return MssFeature(feat_key, location, quals)
 
 
+def build_intron_feature(intron, seqlen) -> MssFeature:
+    location = _location_attr(intron) or build_insdc_location(intron.spans, seqlen)
+    quals = []
+    if intron.gene:
+        quals.append(MssQualifier("gene", intron.gene))
+    lt = intron._first("locus_tag")
+    if lt:
+        quals.append(MssQualifier("locus_tag", lt))
+    for n in intron.note:
+        quals.append(MssQualifier("note", n))
+    num = intron._first("number")
+    if num:
+        quals.append(MssQualifier("number", num))
+    if intron.is_trans_spliced:
+        quals.append(MssQualifier("trans_splicing", ""))
+    return MssFeature("intron", location, quals)
+
+
 def build_noncoding_features(gene, locus_tag: str, seqlen: int, cfg) -> list:
     features = []
     for rna in gene.children:
@@ -499,13 +517,20 @@ def build_entry_features(doc, seqs, cfg, diagnostics: list) -> dict:
         if skipped:
             diagnostics.append(Diagnostic(Severity.WARNING, None, "pseudogene-skipped",
                                           f"{seqid}: skipped {skipped} pseudogene feature(s)"))
-        items = [(_span_start(g), g) for g in genes] + [(_span_start(r), r) for r in parentless]
+        introns = [f for f in doc.features if f.type == "intron"
+                   and any(s.seqid == seqid for s in f.spans)]
+
+        items = ([(_span_start(g), g) for g in genes]
+                 + [(_span_start(r), r) for r in parentless]
+                 + [(_span_start(i), i) for i in introns])
         items.sort(key=lambda t: t[0])
         feats: list = []
         for _, feat in items:
             if feat.type == "gene":
                 feats.extend(build_gene_features(feat, cfg.transcript_mode, assigner,
                                                  genome_seq, cfg, diagnostics))
+            elif feat.type == "intron":
+                feats.append(build_intron_feature(feat, len(genome_seq)))
             else:
                 feats.append(build_rna_feature(feat, assigner.assign(feat),
                                                 len(genome_seq), feat.id, feat.id, feat.gene))

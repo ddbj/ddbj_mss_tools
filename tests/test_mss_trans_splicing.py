@@ -32,3 +32,18 @@ def test_trans_spliced_cds_location_and_translation():
     # correct product + codon_start
     assert any(q.key == "product" and q.value == "ribosomal protein S12" for q in cds[0].qualifiers)
     assert any(q.key == "codon_start" and q.value == "1" for q in cds[0].qualifiers)
+
+
+def test_intron_features_emitted():
+    doc, seqs, cfg = _load()
+    feats = build_entry_features(doc, seqs, cfg, [])["AP025455.1"]
+    introns = [f for f in feats if f.key == "intron"]
+    locs = {f.location for f in introns}
+    assert "join(complement(855..1640),1..92)" in locs   # trans intron 1
+    assert "325..828" in locs                             # cis intron 2
+    trans_intron = next(f for f in introns if f.location == "join(complement(855..1640),1..92)")
+    assert any(q.key == "trans_splicing" for q in trans_intron.qualifiers)
+    assert any(q.key == "number" and q.value == "1" for q in trans_intron.qualifiers)
+    assert any(q.key == "gene" and q.value == "rps12" for q in trans_intron.qualifiers)
+    cis_intron = next(f for f in introns if f.location == "325..828")
+    assert not any(q.key == "trans_splicing" for q in cis_intron.qualifiers)
