@@ -126,7 +126,7 @@ flag 型でない通常 qualifier（`strain` 等）はこの判定の対象外�
 ### sequence role (`--sequence_roles` TSV) と ff_definition
 
 5列 TSV: `seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology`。`type` は
-`chromosome` / `organelle` / `plasmid` / `unplaced` のいずれか。`status` は `complete` / `partial`。
+`chromosome` / `organelle` / `plasmid` / `segment` / `unplaced` のいずれか。`status` は `complete` / `partial`。
 type に応じて source の ff_definition（DDBJ Flat File の DEFINITION 行）が下記のように構築される
 （`{prefix}` = `{organism} {identifier}`、`{mol}` = mol_type 由来の DNA/RNA/tRNA/rRNA/mRNA）:
 
@@ -139,6 +139,8 @@ type に応じて source の ff_definition（DDBJ Flat File の DEFINITION 行�
 | organelle | partial 等 | `{prefix} {organelle_code} {mol}, partial genome` |
 | plasmid | complete | `{prefix} plasmid {seq_name} {mol}, complete sequence` |
 | plasmid | partial 等 | `{prefix} plasmid {seq_name} {mol}, partial sequence` |
+| segment（submission 全体で1件のみ） | complete/partial | `{prefix} {mol}, complete genome` / `{prefix} {mol}, partial genome`（`/segment` は付与しない） |
+| segment（複数） | complete/partial | `{prefix} {mol}, segment {seq_name}, complete sequence` / `... partial sequence`（source に `/segment` を付与） |
 | unplaced（WGS） | — | `{prefix} {mol}, {seq_id}` |
 
 organelle の `seq_name` は INSDC `/organelle` 値（`mitochondrion`, `plastid:chloroplast` 等）を
