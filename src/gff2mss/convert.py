@@ -196,8 +196,8 @@ def _build_trans_spliced_cds(mrna, gene, locus_tag, genome_seq, cfg, diagnostics
     if _collect_transl_excepts(cds_feat):
         diagnostics.append(Diagnostic(Severity.WARNING, None, "transl-except-trans-splicing",
                                       f"CDS {mrna.id!r} combines transl_except with trans-splicing; "
-                                      f"the trans-spliced translation path does not apply transl_except "
-                                      f"(qualifier round-trip only, translation may be incorrect)"))
+                                      f"this combination is unsupported -- the transl_except is neither "
+                                      f"applied in translation nor emitted as a qualifier for this CDS"))
     location = _location_attr(cds_feat)
     if location is None:                       # normalize should have set it; be defensive
         location = _insdc_location_string(_trans_compound(parts), len(genome_seq))
