@@ -27,9 +27,9 @@
     "ST_COMMENT": {
         "tagset_id": "Genome-Assembly-Data",
         "Assembly Name": "OsKoshihikari_v1",
-        "Assembly Method": "SPAdes v. 3.15.5",
+        "Assembly Method": ["hifiasm v. 0.25.0", "YaHS v. 1.2.2"],
         "Genome Coverage": "100x",
-        "Sequencing Technology": "Illumina HiSeq 2500"
+        "Sequencing Technology": ["PacBio Sequel", "Illumina NovaSeq"]
     },
     "SOURCE": {
         "organism": "Oryza sativa Japonica Group",

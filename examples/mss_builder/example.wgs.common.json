@@ -26,9 +26,9 @@
     ],
     "ST_COMMENT": {
         "tagset_id": "Genome-Assembly-Data",
-        "Assembly Method": "MEGAHIT v. 1.2.9",
+        "Assembly Method": ["MEGAHIT v. 1.2.9"],
         "Genome Coverage": "200x",
-        "Sequencing Technology": "Illumina NovaSeq 6000"
+        "Sequencing Technology": ["Illumina NovaSeq 6000"]
     },
     "SOURCE": {
         "organism": "Aspergillus oryzae",
