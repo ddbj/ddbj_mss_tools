@@ -17,6 +17,7 @@ from common.source_builder import (
     SequenceRoleEntry,
     ff_definition,
     source_qualifier,
+    source_feature_rows,
 )
 
 if TYPE_CHECKING:
@@ -182,7 +183,7 @@ def write_mss_ann(
 
         if not is_wgs:
             # Source feature per entry
-            source_quals: dict[str, str] = dict(base_source)
+            source_quals: dict[str, object] = dict(base_source)
             source_quals.update(source_qualifier(role_entry, entry_id, is_wgs=False, segment_count=segment_count))
             source_quals["ff_definition"] = ff_definition(
                 role_entry, source_id_key, base_source.get("mol_type", ""),
@@ -190,11 +191,7 @@ def write_mss_ann(
             )
 
             source_entry_col = "" if is_circular else entry_id
-            qual_items = list(source_quals.items())
-            first_key, first_val = qual_items[0]
-            rows.append([source_entry_col, "source", location, first_key, first_val])
-            for q_key, q_val in qual_items[1:]:
-                rows.append(["", "", "", q_key, q_val])
+            rows.extend(source_feature_rows(source_entry_col, location, source_quals))
 
         # Assembly gap features
         if gap_annotators and entry_id in sequences:

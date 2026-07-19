@@ -12,7 +12,7 @@ from gff2mss.product_map import load_product_map
 
 from common.models import load_common_json
 from common.common_builder import create_common
-from common.source_builder import load_sequence_roles, source_qualifier, ff_definition
+from common.source_builder import load_sequence_roles, source_qualifier, ff_definition, source_feature_rows
 from common.gap_annotator import GapAnnotator, annotate_gaps
 from common.submission_category import inject_defaults, validate_and_fill
 
@@ -77,11 +77,8 @@ def build_ann_text(gff_path, fasta_path, mss_config_path, common_path,
         src.update(source_qualifier(role, entry_id, is_wgs, segment_count=segment_count))
         src["ff_definition"] = ff_definition(role, src_id_key, mol_type, is_wgs,
                                              chromosome_count=chromosome_count, segment_count=segment_count)
-        items = list(src.items())
         first_col = "" if is_circular else entry_id
-        rows.append([first_col, "source", f"1..{length}", items[0][0], str(items[0][1])])
-        for k, v in items[1:]:
-            rows.append(["", "", "", k, str(v)])
+        rows.extend(source_feature_rows(first_col, f"1..{length}", src))
         for feat in per_entry.get(entry_id, []):   # features if annotated, else source only
             rows.extend(feature_rows(feat))
         if gap_annotators:

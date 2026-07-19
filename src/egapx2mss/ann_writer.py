@@ -15,6 +15,7 @@ from common.source_builder import (
     load_sequence_roles,
     source_qualifier,
     ff_definition,
+    source_feature_rows,
 )
 from .tbl_parser import collect_qualifiers, format_location, parse_tbl
 
@@ -185,7 +186,7 @@ def write_ddbj_ann(
             rows.append([entry_id, "TOPOLOGY", "", "circular", ""])
 
         # Build per-entry source qualifiers: base + entry-specific + ff_definition
-        source_quals: dict[str, str] = dict(base_source)
+        source_quals: dict[str, object] = dict(base_source)
         source_quals.update(source_qualifier(role_entry, entry_id, is_wgs, segment_count=segment_count))
         source_quals["ff_definition"] = ff_definition(
             role_entry, source_id_key, base_source.get("mol_type", ""),
@@ -194,11 +195,7 @@ def write_ddbj_ann(
 
         # source feature: entry_id on the TOPOLOGY row if circular, else on source row
         source_entry_col = "" if is_circular else entry_id
-        qual_items = list(source_quals.items())
-        first_key, first_val = qual_items[0]
-        rows.append([source_entry_col, "source", location, first_key, first_val])
-        for q_key, q_val in qual_items[1:]:
-            rows.append(["", "", "", q_key, q_val])
+        rows.extend(source_feature_rows(source_entry_col, location, source_quals))
 
         for feat in entries.get(entry_id, []):
             rows.extend(_feature_rows("", feat))

@@ -247,6 +247,28 @@ def _source_qualifier_rows(key: str, value) -> list[Row]:
     return [["", "", "", key, str(value)]]
 
 
+def source_feature_rows(entry_col: str, location: str, qualifiers: dict) -> list[Row]:
+    """Build per-entry ``source`` feature rows from an ordered qualifier dict.
+
+    Each (key, value) is expanded via :func:`_source_qualifier_rows`, so flag
+    qualifiers become valueless rows when on and are omitted when off, values
+    are coerced to ``str`` (a boolean ``True``/``False`` no longer leaks into the
+    output), and list values yield one row per element. The first emitted row
+    carries the ``source`` feature header (*entry_col* + *location*); the
+    remaining rows are continuation rows. Returns ``[]`` if every qualifier is
+    omitted.
+    """
+    body: list[Row] = []
+    for key, value in qualifiers.items():
+        body.extend(_source_qualifier_rows(key, value))
+    if not body:
+        return []
+    rows: list[Row] = [[entry_col, "source", location, body[0][3], body[0][4]]]
+    for r in body[1:]:
+        rows.append(["", "", "", r[3], r[4]])
+    return rows
+
+
 def create_source_feature(
     _submission_category: str,
     seq_name: Optional[str],
