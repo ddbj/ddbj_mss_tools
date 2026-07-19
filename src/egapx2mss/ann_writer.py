@@ -136,12 +136,9 @@ def write_ddbj_ann(
     _extra = (common.model_extra or {}) if common is not None else {}
     effective_category: str = submission_category or _extra.get("_submission_category", "")
 
-    # infraspecific_name_modifier: value of the qualifier named by SOURCE_IDENTIFIER
-    organism = base_source.get("organism", "")
     source_id_key = common.SOURCE_IDENTIFIER if common is not None else None
     if not source_id_key and effective_category:
         source_id_key = get_category_rules(effective_category).source_identifier or None
-    infraspecific_name_modifier = base_source.get(source_id_key, "") if source_id_key else ""
 
     # WGS mode: all entries are unplaced (not listed in sequence_roles, or all type==unplaced)
     def _is_unplaced(eid: str) -> bool:
@@ -191,9 +188,8 @@ def write_ddbj_ann(
         source_quals: dict[str, str] = dict(base_source)
         source_quals.update(source_qualifier(role_entry, entry_id, is_wgs, segment_count=segment_count))
         source_quals["ff_definition"] = ff_definition(
-            role_entry, entry_id, organism, infraspecific_name_modifier,
-            base_source.get("mol_type", ""), is_wgs,
-            chromosome_count=chromosome_count, segment_count=segment_count,
+            role_entry, source_id_key, base_source.get("mol_type", ""),
+            is_wgs, chromosome_count=chromosome_count, segment_count=segment_count,
         )
 
         # source feature: entry_id on the TOPOLOGY row if circular, else on source row

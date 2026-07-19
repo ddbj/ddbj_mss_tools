@@ -23,7 +23,7 @@ def test_multi_segment_emits_segment_qualifier(tmp_path):
     write_mss_ann(str(fasta), str(ann), common=_common(), sequence_roles=roles)
     text = ann.read_text()
     assert "\t\t\tsegment\t4\n" in text
-    assert "Influenza A virus RNA, segment 4, complete sequence" in text
+    assert "@@[organism]@@ RNA, segment @@[segment]@@, complete sequence" in text
 
 
 def test_single_segment_omits_qualifier_and_uses_genome(tmp_path):
@@ -33,5 +33,5 @@ def test_single_segment_omits_qualifier_and_uses_genome(tmp_path):
     roles = {"seg1": SequenceRoleEntry("seg1", "segment", "", "complete", False)}
     write_mss_ann(str(fasta), str(ann), common=_common(), sequence_roles=roles)
     text = ann.read_text()
-    assert "Influenza A virus RNA, complete genome" in text
+    assert "@@[organism]@@ RNA, complete genome" in text
     assert "\t\t\tsegment\t" not in text

@@ -130,40 +130,46 @@ def _organelle_code(seq_name: str) -> str:
     return _ORGANELLE_CODE.get(seq_name, seq_name)
 
 
-def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str,
-                  infraspecific_name_modifier: str, mol_type: str, is_wgs: bool = False,
+def ff_definition(entry: Optional[SequenceRoleEntry], source_identifier: Optional[str],
+                  mol_type: str, is_wgs: bool = False,
                   chromosome_count: int = 0, segment_count: int = 0) -> str:
     """
-    Build the ff_definition qualifier value following mss_format.md.
+    Build the ff_definition qualifier value as a DDBJ MSS @@[...]@@ meta-notation
+    template. Values are substituted by MSS at submission time from the source
+    feature's own qualifiers (/organism, the SOURCE_IDENTIFIER qualifier,
+    /chromosome, /plasmid, /segment, /submitter_seqid) or MSS-provided @@[entry]@@.
 
-    *infraspecific_name_modifier* is the value of the qualifier named by SOURCE_IDENTIFIER
-    (e.g. the value of 'strain' or 'isolate') from common.SOURCE.
-
+    *source_identifier* is the NAME of the SOURCE_IDENTIFIER qualifier
+    (e.g. "cultivar", "strain", "isolate"); None/empty omits the modifier ref.
     *is_wgs* is True when all entries in the submission are unplaced (WGS mode).
+    *chromosome_count* / *segment_count* are the counts of chromosome- / segment-type
+    entries in the whole submission (single vs multiple changes the wording).
 
-    *chromosome_count* is the number of chromosome-type entries in the whole submission;
-    a single complete chromosome uses 'complete genome', otherwise 'complete sequence'.
-
-    *segment_count* is the number of segment-type entries in the whole submission;
-    a single segment uses 'complete/partial genome' (no 'segment' word), otherwise
-    'segment {seq_name}, complete sequence' (complete) or 'segment {seq_name}' (partial).
+    Raises ValueError when a required seq_name is empty: plasmid (always), and
+    chromosome / segment when their count >= 2.
     """
-    prefix = f"{organism} {infraspecific_name_modifier}".strip() if infraspecific_name_modifier else organism
+    if source_identifier:
+        prefix = f"@@[organism]@@ @@[{source_identifier}]@@"
+    else:
+        prefix = "@@[organism]@@"
     mol = _molecule_token(mol_type)
 
     if entry is None or entry.type == "unplaced":
         if is_wgs:
-            return f"{prefix} {mol}, {seq_id}"
-        else:
-            return f"{prefix} {mol}, unplaced sequence {seq_id}"
+            return f"{prefix} {mol}, @@[submitter_seqid]@@"
+        return f"{prefix} {mol}, unplaced sequence @@[entry]@@"
 
     if entry.type == "chromosome":
-        chr_part = f"chromosome {entry.seq_name}".strip() if entry.seq_name else "chromosome"
+        if chromosome_count >= 2:
+            if not entry.seq_name:
+                raise ValueError("chromosome entry requires a non-empty seq_name when count >= 2")
+            if entry.status == "complete":
+                return f"{prefix} {mol}, chromosome @@[chromosome]@@, complete sequence"
+            return f"{prefix} {mol}, chromosome @@[chromosome]@@"
+        # single chromosome (count <= 1): no number
         if entry.status == "complete":
-            if chromosome_count == 1:
-                return f"{prefix} {mol}, {chr_part}, complete genome"
-            return f"{prefix} {mol}, {chr_part}, complete sequence"
-        return f"{prefix} {mol}, {chr_part}"
+            return f"{prefix} {mol}, chromosome, complete genome"
+        return f"{prefix} {mol}, chromosome"
 
     if entry.type == "organelle":
         converted = _organelle_code(entry.seq_name)
@@ -172,22 +178,26 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
         return f"{prefix} {converted} {mol}, partial genome"
 
     if entry.type == "plasmid":
+        if not entry.seq_name:
+            raise ValueError("plasmid entry requires a non-empty seq_name")
         if entry.status == "complete":
-            return f"{prefix} plasmid {entry.seq_name} {mol}, complete sequence"
-        return f"{prefix} plasmid {entry.seq_name} {mol}, partial sequence"
+            return f"{prefix} plasmid @@[plasmid]@@ {mol}, complete sequence"
+        return f"{prefix} plasmid @@[plasmid]@@ {mol}, partial sequence"
 
     if entry.type == "segment":
-        if segment_count <= 1:
+        if segment_count >= 2:
+            if not entry.seq_name:
+                raise ValueError("segment entry requires a non-empty seq_name when count >= 2")
             if entry.status == "complete":
-                return f"{prefix} {mol}, complete genome"
-            return f"{prefix} {mol}, partial genome"
-        seg_part = f"segment {entry.seq_name}".strip() if entry.seq_name else "segment"
+                return f"{prefix} {mol}, segment @@[segment]@@, complete sequence"
+            return f"{prefix} {mol}, segment @@[segment]@@"
+        # single segment (count <= 1): no 'segment' word
         if entry.status == "complete":
-            return f"{prefix} {mol}, {seg_part}, complete sequence"
-        return f"{prefix} {mol}, {seg_part}"
+            return f"{prefix} {mol}, complete genome"
+        return f"{prefix} {mol}, partial genome"
 
-    # fallback
-    return f"{prefix} {mol}, {seq_id}"
+    # fallback (unknown type)
+    return f"{prefix} {mol}, @@[entry]@@"
 
 
 # ── wgs_maker source feature builder ─────────────────────────────────────────

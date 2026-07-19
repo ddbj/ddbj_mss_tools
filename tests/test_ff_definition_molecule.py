@@ -23,32 +23,6 @@ def test_molecule_token(mol_type, expected):
     assert _molecule_token(mol_type) == expected
 
 
-def test_ff_definition_unplaced_wgs_dna():
-    out = ff_definition(None, "seq1", "Homo sapiens", "", "genomic DNA", is_wgs=True)
-    assert out == "Homo sapiens DNA, seq1"
-
-
-def test_ff_definition_unplaced_wgs_rna():
-    out = ff_definition(None, "seq1", "Homo sapiens", "", "genomic RNA", is_wgs=True)
-    assert out == "Homo sapiens RNA, seq1"
-
-
-def test_ff_definition_unplaced_wgs_mrna():
-    out = ff_definition(None, "seq1", "Homo sapiens", "", "mRNA", is_wgs=True)
-    assert out == "Homo sapiens mRNA, seq1"
-
-
-def test_ff_definition_chromosome_complete_rna():
-    e = SequenceRoleEntry("seq1", "chromosome", "1", "complete", False)
-    out = ff_definition(e, "seq1", "Homo sapiens", "strainX", "genomic RNA", is_wgs=False)
-    assert out == "Homo sapiens strainX RNA, chromosome 1, complete sequence"
-
-
-def test_ff_definition_empty_mol_type_defaults_dna():
-    out = ff_definition(None, "seq1", "Homo sapiens", "", "", is_wgs=True)
-    assert out == "Homo sapiens DNA, seq1"
-
-
 from common.source_builder import create_source_feature, source_qualifier, _organelle_code
 
 
@@ -110,78 +84,6 @@ def test_organelle_code(seq_name, expected):
     assert _organelle_code(seq_name) == expected
 
 
-# ── chromosome: count-dependent completeness ───────────────────────────
-def test_ff_chromosome_single_complete_genome():
-    e = SequenceRoleEntry("seq1", "chromosome", "Y", "complete", False)
-    out = ff_definition(e, "seq1", "Pan troglodytes", "", "genomic DNA",
-                        is_wgs=False, chromosome_count=1)
-    assert out == "Pan troglodytes DNA, chromosome Y, complete genome"
-
-
-def test_ff_chromosome_multi_complete_sequence():
-    e = SequenceRoleEntry("seq1", "chromosome", "1", "complete", False)
-    out = ff_definition(e, "seq1", "Homo sapiens", "", "genomic DNA",
-                        is_wgs=False, chromosome_count=2)
-    assert out == "Homo sapiens DNA, chromosome 1, complete sequence"
-
-
-def test_ff_chromosome_default_count_complete_sequence():
-    e = SequenceRoleEntry("seq1", "chromosome", "1", "complete", False)
-    out = ff_definition(e, "seq1", "Homo sapiens", "", "genomic DNA", is_wgs=False)
-    assert out == "Homo sapiens DNA, chromosome 1, complete sequence"
-
-
-def test_ff_chromosome_partial_no_localization_suffix():
-    e = SequenceRoleEntry("seq1", "chromosome", "1", "partial", False)
-    out = ff_definition(e, "seq1", "Homo sapiens", "", "genomic DNA",
-                        is_wgs=False, chromosome_count=1)
-    assert out == "Homo sapiens DNA, chromosome 1"
-
-
-# ── organelle: doc-compliant form ──────────────────────────────────────
-def test_ff_organelle_mitochondrion_complete():
-    e = SequenceRoleEntry("mt", "organelle", "mitochondrion", "complete", True)
-    out = ff_definition(e, "mt", "Homo sapiens", "isolate TSX", "genomic DNA")
-    assert out == "Homo sapiens isolate TSX mitochondrial DNA, complete genome"
-
-
-def test_ff_organelle_partial_genome():
-    e = SequenceRoleEntry("mt", "organelle", "mitochondrion", "partial", True)
-    out = ff_definition(e, "mt", "Homo sapiens", "", "genomic DNA")
-    assert out == "Homo sapiens mitochondrial DNA, partial genome"
-
-
-def test_ff_organelle_plastid_chloroplast():
-    e = SequenceRoleEntry("cp", "organelle", "plastid:chloroplast", "complete", True)
-    out = ff_definition(e, "cp", "Zea mays", "", "genomic DNA")
-    assert out == "Zea mays chloroplast DNA, complete genome"
-
-
-def test_ff_organelle_passthrough_name():
-    e = SequenceRoleEntry("mt", "organelle", "mitochondrial", "complete", True)
-    out = ff_definition(e, "mt", "Homo sapiens", "", "genomic DNA")
-    assert out == "Homo sapiens mitochondrial DNA, complete genome"
-
-
-def test_ff_organelle_rna_token_position():
-    e = SequenceRoleEntry("mt", "organelle", "mitochondrion", "complete", True)
-    out = ff_definition(e, "mt", "Homo sapiens", "", "genomic RNA")
-    assert out == "Homo sapiens mitochondrial RNA, complete genome"
-
-
-# ── plasmid: new type ──────────────────────────────────────────────────
-def test_ff_plasmid_complete():
-    e = SequenceRoleEntry("p1", "plasmid", "pLG1", "complete", True)
-    out = ff_definition(e, "p1", "Lactobacillus gasseri", "SG162", "genomic DNA")
-    assert out == "Lactobacillus gasseri SG162 plasmid pLG1 DNA, complete sequence"
-
-
-def test_ff_plasmid_partial():
-    e = SequenceRoleEntry("p1", "plasmid", "pLG1", "partial", True)
-    out = ff_definition(e, "p1", "Lactobacillus gasseri", "SG162", "genomic DNA")
-    assert out == "Lactobacillus gasseri SG162 plasmid pLG1 DNA, partial sequence"
-
-
 # ── source_qualifier: plasmid emitted, organelle stays RAW ─────────────
 def test_source_qualifier_plasmid():
     e = SequenceRoleEntry("p1", "plasmid", "pLG1", "complete", True)
@@ -219,37 +121,89 @@ def test_source_qualifier_segment_default_count_omitted():
     assert source_qualifier(e, "seg1") == {}
 
 
-# ── segment: count + status 依存 ─────────────────────────────────────────
-def test_ff_segment_single_complete_genome():
-    e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
-    out = ff_definition(e, "seg1", "Influenza A virus", "", "viral cRNA",
-                        is_wgs=False, segment_count=1)
-    assert out == "Influenza A virus RNA, complete genome"
+# ── ff_definition: meta-notation (new signature) ───────────────────────
+def _entry(type_, seq_name="", status="complete"):
+    return SequenceRoleEntry("sid", type_, seq_name, status, False)
 
 
-def test_ff_segment_single_partial_genome():
-    e = SequenceRoleEntry("seg1", "segment", "", "partial", False)
-    out = ff_definition(e, "seg1", "Influenza A virus", "", "viral cRNA",
-                        is_wgs=False, segment_count=1)
-    assert out == "Influenza A virus RNA, partial genome"
+@pytest.mark.parametrize("entry,source_identifier,mol_type,is_wgs,chrom,seg,expected", [
+    # unplaced / None
+    (None, None, "genomic DNA", True, 0, 0,
+     "@@[organism]@@ DNA, @@[submitter_seqid]@@"),
+    (None, None, "genomic DNA", False, 0, 0,
+     "@@[organism]@@ DNA, unplaced sequence @@[entry]@@"),
+    (None, "cultivar", "genomic RNA", False, 0, 0,
+     "@@[organism]@@ @@[cultivar]@@ RNA, unplaced sequence @@[entry]@@"),
+    (_entry("unplaced"), "strain", "genomic DNA", True, 0, 0,
+     "@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@"),
+    # chromosome — single (count<=1): no number
+    (_entry("chromosome", "1", "complete"), "strain", "genomic DNA", False, 1, 0,
+     "@@[organism]@@ @@[strain]@@ DNA, chromosome, complete genome"),
+    (_entry("chromosome", "1", "partial"), "strain", "genomic DNA", False, 1, 0,
+     "@@[organism]@@ @@[strain]@@ DNA, chromosome"),
+    (_entry("chromosome", "", "complete"), None, "genomic DNA", False, 1, 0,
+     "@@[organism]@@ DNA, chromosome, complete genome"),
+    # chromosome — multiple (count>=2): @@[chromosome]@@
+    (_entry("chromosome", "1", "complete"), "strain", "genomic DNA", False, 2, 0,
+     "@@[organism]@@ @@[strain]@@ DNA, chromosome @@[chromosome]@@, complete sequence"),
+    (_entry("chromosome", "1", "partial"), "strain", "genomic DNA", False, 2, 0,
+     "@@[organism]@@ @@[strain]@@ DNA, chromosome @@[chromosome]@@"),
+    # organelle — prefix meta, adjective concrete
+    (_entry("organelle", "mitochondrion", "complete"), "", "genomic DNA", False, 0, 0,
+     "@@[organism]@@ mitochondrial DNA, complete genome"),
+    (_entry("organelle", "mitochondrion", "partial"), None, "genomic DNA", False, 0, 0,
+     "@@[organism]@@ mitochondrial DNA, partial genome"),
+    (_entry("organelle", "plastid:chloroplast", "complete"), "isolate", "genomic DNA", False, 0, 0,
+     "@@[organism]@@ @@[isolate]@@ chloroplast DNA, complete genome"),
+    (_entry("organelle", "mitochondrion", "complete"), None, "genomic RNA", False, 0, 0,
+     "@@[organism]@@ mitochondrial RNA, complete genome"),
+    # plasmid
+    (_entry("plasmid", "pLG1", "complete"), "strain", "genomic DNA", False, 0, 0,
+     "@@[organism]@@ @@[strain]@@ plasmid @@[plasmid]@@ DNA, complete sequence"),
+    (_entry("plasmid", "pLG1", "partial"), "strain", "genomic DNA", False, 0, 0,
+     "@@[organism]@@ @@[strain]@@ plasmid @@[plasmid]@@ DNA, partial sequence"),
+    # segment — single (count<=1): no 'segment' word
+    (_entry("segment", "", "complete"), "strain", "viral cRNA", False, 0, 1,
+     "@@[organism]@@ @@[strain]@@ RNA, complete genome"),
+    (_entry("segment", "", "partial"), "strain", "viral cRNA", False, 0, 1,
+     "@@[organism]@@ @@[strain]@@ RNA, partial genome"),
+    # segment — multiple (count>=2): @@[segment]@@
+    (_entry("segment", "4", "complete"), "strain", "viral cRNA", False, 0, 8,
+     "@@[organism]@@ @@[strain]@@ RNA, segment @@[segment]@@, complete sequence"),
+    (_entry("segment", "4", "partial"), "strain", "viral cRNA", False, 0, 8,
+     "@@[organism]@@ @@[strain]@@ RNA, segment @@[segment]@@"),
+    # fallback (unknown type)
+    (_entry("weird", "", "complete"), None, "genomic DNA", False, 0, 0,
+     "@@[organism]@@ DNA, @@[entry]@@"),
+    # mol token via mRNA
+    (None, None, "mRNA", True, 0, 0,
+     "@@[organism]@@ mRNA, @@[submitter_seqid]@@"),
+    (None, None, "", True, 0, 0,
+     "@@[organism]@@ DNA, @@[submitter_seqid]@@"),
+])
+def test_ff_definition_meta(entry, source_identifier, mol_type, is_wgs, chrom, seg, expected):
+    out = ff_definition(entry, source_identifier, mol_type, is_wgs=is_wgs,
+                        chromosome_count=chrom, segment_count=seg)
+    assert out == expected
 
 
-def test_ff_segment_multi_complete_sequence():
-    e = SequenceRoleEntry("seg4", "segment", "4", "complete", False)
-    out = ff_definition(e, "seg4", "Influenza A virus", "isolate X", "viral cRNA",
-                        is_wgs=False, segment_count=8)
-    assert out == "Influenza A virus isolate X RNA, segment 4, complete sequence"
+@pytest.mark.parametrize("entry,chrom,seg", [
+    (_entry("plasmid", "", "complete"), 0, 0),
+    (_entry("plasmid", "", "partial"), 0, 0),
+    (_entry("chromosome", "", "complete"), 2, 0),
+    (_entry("chromosome", "", "partial"), 2, 0),
+    (_entry("segment", "", "complete"), 0, 2),
+    (_entry("segment", "", "partial"), 0, 2),
+])
+def test_ff_definition_empty_seqname_raises(entry, chrom, seg):
+    with pytest.raises(ValueError):
+        ff_definition(entry, "strain", "genomic DNA", is_wgs=False,
+                      chromosome_count=chrom, segment_count=seg)
 
 
-def test_ff_segment_multi_partial():
-    e = SequenceRoleEntry("seg4", "segment", "4", "partial", False)
-    out = ff_definition(e, "seg4", "Influenza A virus", "", "viral cRNA",
-                        is_wgs=False, segment_count=8)
-    assert out == "Influenza A virus RNA, segment 4"
-
-
-def test_ff_segment_multi_empty_name_fallback():
-    e = SequenceRoleEntry("seg1", "segment", "", "complete", False)
-    out = ff_definition(e, "seg1", "Influenza A virus", "", "viral cRNA",
-                        is_wgs=False, segment_count=2)
-    assert out == "Influenza A virus RNA, segment, complete sequence"
+def test_ff_definition_single_empty_seqname_allowed():
+    # single chromosome / single segment with empty seq_name must NOT raise
+    assert ff_definition(_entry("chromosome", "", "complete"), None, "genomic DNA",
+                         chromosome_count=1) == "@@[organism]@@ DNA, chromosome, complete genome"
+    assert ff_definition(_entry("segment", "", "complete"), None, "genomic DNA",
+                         segment_count=1) == "@@[organism]@@ DNA, complete genome"

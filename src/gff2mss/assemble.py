@@ -44,9 +44,7 @@ def build_ann_text(gff_path, fasta_path, mss_config_path, common_path,
     roles = load_sequence_roles(sequence_roles_path) if sequence_roles_path else {}
 
     base_source = dict(common.SOURCE or {})
-    organism = base_source.get("organism", "")
     src_id_key = common.SOURCE_IDENTIFIER
-    infra = base_source.get(src_id_key, "") if src_id_key else ""
     mol_type = base_source.get("mol_type", "")
 
     # every sequence in the input FASTA gets an entry (FASTA order), whether or not it
@@ -76,7 +74,7 @@ def build_ann_text(gff_path, fasta_path, mss_config_path, common_path,
             rows.append([entry_id, "TOPOLOGY", "", "circular", ""])
         src = dict(base_source)
         src.update(source_qualifier(role, entry_id, is_wgs, segment_count=segment_count))
-        src["ff_definition"] = ff_definition(role, entry_id, organism, infra, mol_type, is_wgs, segment_count=segment_count)
+        src["ff_definition"] = ff_definition(role, src_id_key, mol_type, is_wgs, segment_count=segment_count)
         items = list(src.items())
         first_col = "" if is_circular else entry_id
         rows.append([first_col, "source", f"1..{length}", items[0][0], str(items[0][1])])
