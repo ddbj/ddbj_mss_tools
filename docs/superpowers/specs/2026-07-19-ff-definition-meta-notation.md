@@ -47,17 +47,17 @@ def ff_definition(entry, source_identifier, mol_type,
 | 1 | unplaced / entry=None | is_wgs=true | `{P} {mol}, @@[submitter_seqid]@@` |
 | 2 | unplaced / entry=None | is_wgs=false | `{P} {mol}, unplaced sequence @@[entry]@@` |
 | 3 | chromosome | count==1・complete | `{P} {mol}, chromosome, complete genome` |
-| 4 | chromosome | count≥2・complete | `{P} {mol}, chromosome @@[chromosome]@@, complete sequence`（seq_name空→`chromosome`）|
+| 4 | chromosome | count≥2・complete | `{P} {mol}, chromosome @@[chromosome]@@, complete sequence`（seq_name空→ValueError）|
 | 5a | chromosome | count==1・partial | `{P} {mol}, chromosome` |
-| 5b | chromosome | count≥2・partial | `{P} {mol}, chromosome @@[chromosome]@@`（seq_name空→`chromosome`）|
+| 5b | chromosome | count≥2・partial | `{P} {mol}, chromosome @@[chromosome]@@`（seq_name空→ValueError）|
 | 6 | organelle | complete | `{P} {organelle_code} {mol}, complete genome` |
 | 7 | organelle | partial | `{P} {organelle_code} {mol}, partial genome` |
 | 8 | plasmid | complete | `{P} plasmid @@[plasmid]@@ {mol}, complete sequence`（seq_name空→ValueError）|
 | 9 | plasmid | partial | `{P} plasmid @@[plasmid]@@ {mol}, partial sequence`（seq_name空→ValueError）|
 | 10 | segment | count==1・complete | `{P} {mol}, complete genome` |
 | 11 | segment | count==1・partial | `{P} {mol}, partial genome` |
-| 12 | segment | count≥2・complete | `{P} {mol}, segment @@[segment]@@, complete sequence`（seq_name空→`segment, complete sequence`）|
-| 13 | segment | count≥2・partial | `{P} {mol}, segment @@[segment]@@`（seq_name空→`segment`）|
+| 12 | segment | count≥2・complete | `{P} {mol}, segment @@[segment]@@, complete sequence`（seq_name空→ValueError）|
+| 13 | segment | count≥2・partial | `{P} {mol}, segment @@[segment]@@`（seq_name空→ValueError）|
 | 14 | その他（未知 type） | — | `{P} {mol}, @@[entry]@@` |
 
 ### ルールの要点
@@ -68,10 +68,12 @@ def ff_definition(entry, source_identifier, mol_type,
 - **organelle** は prefix のみメタ化。`{organelle_code}`（`mitochondrial` 等の形容詞形）は
   従来どおり `_organelle_code(entry.seq_name)` の変換値のまま（`@@[organelle]@@` だと生値
   `mitochondrion` になり不整合のため）。
-- **plasmid の seq_name 空は `ValueError`**（`ff_definition()` 内で送出）。メッセージ例:
-  `"plasmid entry requires a non-empty seq_name"`。
-- **seq_name 空時のベア語フォールバック**（chromosome #4/#5b, segment #12/#13）は、
-  展開先 qualifier が無いのに `@@[...]@@` を残さないための措置。
+- **`@@[<type>]@@` を出す分岐では seq_name 必須。空なら `ValueError`**（`ff_definition()` 内で送出）。
+  対象と判定順・メッセージ例:
+  - plasmid（#8/#9、count 問わず）: `"plasmid entry requires a non-empty seq_name"`
+  - chromosome 複数（#4/#5b、count≥2）: `"chromosome entry requires a non-empty seq_name when count >= 2"`
+  - segment 複数（#12/#13、count≥2）: `"segment entry requires a non-empty seq_name when count >= 2"`
+- **単一（chromosome count==1 / segment count==1）は seq_name を参照しないため空を許容**する。
 
 ## メタ参照と source qualifier の対応（整合性）
 
@@ -105,7 +107,9 @@ qualifier だが害はない）。`source_qualifier` の変更は本タスクで
 ## テスト
 
 - `tests/test_ff_definition_molecule.py`: `ff_definition` の全アサーションを新シグネチャ・メタ記法へ
-  書き換え。テーブルの各行（#1〜#14、空 seq_name のフォールバック、plasmid 空名の `ValueError`）を網羅。
+  書き換え。テーブルの各行（#1〜#14）と、seq_name を参照しない単一ケースの空 seq_name 許容、
+  および `@@[<type>]@@` を出す分岐での空 seq_name `ValueError`（plasmid / chromosome count≥2 /
+  segment count≥2）を網羅。
   `_molecule_token` / `_organelle_code` の単体テストは無変更。`create_source_feature`（メタ経路）の
   テストも無変更。
 - `tests/test_mss_segment.py`: 統合アサーションをメタ記法へ更新
