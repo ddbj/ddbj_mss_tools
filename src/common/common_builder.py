@@ -36,7 +36,10 @@ def create_feature(feature_name: str, feature_values: dict | list) -> list[list[
     elif feature_name == "ST_COMMENT":  # qualifiers must be sorted alphabetically
         qualifier_keys = sort_st_comment(feature_values.keys())
         for qualifier_key in qualifier_keys:
-            ret.extend(create_qualifier(qualifier_key, feature_values[qualifier_key]))
+            value = feature_values[qualifier_key]
+            if isinstance(value, list):  # ST_COMMENT list -> single row joined with "; "
+                value = "; ".join(str(v) for v in value)
+            ret.extend(create_qualifier(qualifier_key, value))
     else:
         for qualifier_key, value in feature_values.items():
             ret.extend(create_qualifier(qualifier_key, value))
