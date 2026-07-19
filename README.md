@@ -842,7 +842,7 @@ scaffold001 unplaced                     partial   linear
 - Lines beginning with `#` are treated as comments.
 - The source feature's ff_definition (the DEFINITION line) is emitted as a DDBJ MSS meta-notation template (`@@[qualifier_name]@@`), which is expanded to the actual qualifier value on the same source feature at registration time.
 - `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@` (with `/segment` on source) when there are multiple.
-- See the "sequence role (`--sequence_roles` TSV) と ff_definition" section in CLAUDE.md for the full decision table mapping type/count/status to ff_definition.
+- See the sequence-role / ff_definition section in CLAUDE.md for the full decision table mapping type/count/status to ff_definition.
 
 ### Important Notes
 
