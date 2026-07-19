@@ -52,6 +52,7 @@ def build_ann_text(gff_path, fasta_path, mss_config_path, common_path,
     all_ids = list(seqs.keys())
     is_wgs = all((roles.get(e) is None or roles.get(e).type == "unplaced") for e in all_ids)
     segment_count = sum(1 for e in roles.values() if e.type == "segment")
+    chromosome_count = sum(1 for e in roles.values() if e.type == "chromosome")
 
     gap_annotators: list = []
     gap_cfg = common.ASSEMBLY_GAP
@@ -74,7 +75,8 @@ def build_ann_text(gff_path, fasta_path, mss_config_path, common_path,
             rows.append([entry_id, "TOPOLOGY", "", "circular", ""])
         src = dict(base_source)
         src.update(source_qualifier(role, entry_id, is_wgs, segment_count=segment_count))
-        src["ff_definition"] = ff_definition(role, src_id_key, mol_type, is_wgs, segment_count=segment_count)
+        src["ff_definition"] = ff_definition(role, src_id_key, mol_type, is_wgs,
+                                             chromosome_count=chromosome_count, segment_count=segment_count)
         items = list(src.items())
         first_col = "" if is_circular else entry_id
         rows.append([first_col, "source", f"1..{length}", items[0][0], str(items[0][1])])
