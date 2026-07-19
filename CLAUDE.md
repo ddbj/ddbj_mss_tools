@@ -134,13 +134,13 @@ type に応じて source の ff_definition（DDBJ Flat File の DEFINITION 行�
 |------|--------|---------------|
 | chromosome（submission 全体で1件のみ） | complete | `{prefix} {mol}, chromosome {seq_name}, complete genome` |
 | chromosome（複数） | complete | `{prefix} {mol}, chromosome {seq_name}, complete sequence` |
-| chromosome | partial 等 | `{prefix} {mol}, chromosome {seq_name}, unlocalized sequence {seq_id}` |
+| chromosome | partial 等 | `{prefix} {mol}, chromosome {seq_name}` |
 | organelle | complete | `{prefix} {organelle_code} {mol}, complete genome` |
 | organelle | partial 等 | `{prefix} {organelle_code} {mol}, partial genome` |
 | plasmid | complete | `{prefix} plasmid {seq_name} {mol}, complete sequence` |
 | plasmid | partial 等 | `{prefix} plasmid {seq_name} {mol}, partial sequence` |
 | segment（submission 全体で1件のみ） | complete/partial | `{prefix} {mol}, complete genome` / `{prefix} {mol}, partial genome`（`/segment` は付与しない） |
-| segment（複数） | complete/partial | `{prefix} {mol}, segment {seq_name}, complete sequence` / `... partial sequence`（source に `/segment` を付与） |
+| segment（複数） | complete/partial | `{prefix} {mol}, segment {seq_name}, complete sequence` / `{prefix} {mol}, segment {seq_name}`（source に `/segment` を付与） |
 | unplaced（WGS） | — | `{prefix} {mol}, {seq_id}` |
 
 organelle の `seq_name` は INSDC `/organelle` 値（`mitochondrion`, `plastid:chloroplast` 等）を

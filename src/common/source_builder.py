@@ -146,7 +146,7 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
 
     *segment_count* is the number of segment-type entries in the whole submission;
     a single segment uses 'complete/partial genome' (no 'segment' word), otherwise
-    'segment {seq_name}, complete/partial sequence'.
+    'segment {seq_name}, complete sequence' (complete) or 'segment {seq_name}' (partial).
     """
     prefix = f"{organism} {infraspecific_name_modifier}".strip() if infraspecific_name_modifier else organism
     mol = _molecule_token(mol_type)
@@ -163,7 +163,7 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
             if chromosome_count == 1:
                 return f"{prefix} {mol}, {chr_part}, complete genome"
             return f"{prefix} {mol}, {chr_part}, complete sequence"
-        return f"{prefix} {mol}, {chr_part}, unlocalized sequence {seq_id}"
+        return f"{prefix} {mol}, {chr_part}"
 
     if entry.type == "organelle":
         converted = _organelle_code(entry.seq_name)
@@ -184,7 +184,7 @@ def ff_definition(entry: Optional[SequenceRoleEntry], seq_id: str, organism: str
         seg_part = f"segment {entry.seq_name}".strip() if entry.seq_name else "segment"
         if entry.status == "complete":
             return f"{prefix} {mol}, {seg_part}, complete sequence"
-        return f"{prefix} {mol}, {seg_part}, partial sequence"
+        return f"{prefix} {mol}, {seg_part}"
 
     # fallback
     return f"{prefix} {mol}, {seq_id}"

@@ -287,7 +287,7 @@ scaffold001 unplaced                     partial   linear
 
 - 省略した場合、全配列が unplaced として扱われ WGS モードで出力されます
 - `#` で始まる行はコメントとして無視されます
-- `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment {seq_name}, complete sequence` / `... partial sequence`（source に `/segment` を付与）として出力されます
+- `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment {seq_name}, complete sequence` / `segment {seq_name}`（source に `/segment` を付与）として出力されます
 
 ### 注意点
 
@@ -838,7 +838,7 @@ scaffold001 unplaced                     partial   linear
 
 - If omitted, all sequences are treated as unplaced and output in WGS mode.
 - Lines beginning with `#` are treated as comments.
-- `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment {seq_name}, complete sequence` / `... partial sequence` (with `/segment` on source) when there are multiple.
+- `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment {seq_name}, complete sequence` / `segment {seq_name}` (with `/segment` on source) when there are multiple.
 
 ### Important Notes
 

@@ -131,11 +131,11 @@ def test_ff_chromosome_default_count_complete_sequence():
     assert out == "Homo sapiens DNA, chromosome 1, complete sequence"
 
 
-def test_ff_chromosome_partial_unlocalized_unchanged():
+def test_ff_chromosome_partial_no_localization_suffix():
     e = SequenceRoleEntry("seq1", "chromosome", "1", "partial", False)
     out = ff_definition(e, "seq1", "Homo sapiens", "", "genomic DNA",
                         is_wgs=False, chromosome_count=1)
-    assert out == "Homo sapiens DNA, chromosome 1, unlocalized sequence seq1"
+    assert out == "Homo sapiens DNA, chromosome 1"
 
 
 # ── organelle: doc-compliant form ──────────────────────────────────────
@@ -241,11 +241,11 @@ def test_ff_segment_multi_complete_sequence():
     assert out == "Influenza A virus isolate X RNA, segment 4, complete sequence"
 
 
-def test_ff_segment_multi_partial_sequence():
+def test_ff_segment_multi_partial():
     e = SequenceRoleEntry("seg4", "segment", "4", "partial", False)
     out = ff_definition(e, "seg4", "Influenza A virus", "", "viral cRNA",
                         is_wgs=False, segment_count=8)
-    assert out == "Influenza A virus RNA, segment 4, partial sequence"
+    assert out == "Influenza A virus RNA, segment 4"
 
 
 def test_ff_segment_multi_empty_name_fallback():
