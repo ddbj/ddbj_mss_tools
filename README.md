@@ -281,13 +281,15 @@ scaffold001 unplaced                     partial   linear
 |---|---|
 | seq_id | FASTA ヘッダーの配列 ID |
 | type | `chromosome` / `organelle` / `plasmid` / `segment` / `unplaced` |
-| seq_name | 染色体番号やオルガネラ名（unplaced の場合は空でも可） |
+| seq_name | 染色体番号やオルガネラ名。`plasmid`、および submission 全体で2件以上ある `chromosome` / `segment` では必須（空欄はエラーになります）。単一 chromosome・単一 segment・unplaced では空でも可 |
 | status | `complete` / `partial` |
 | topology | `linear` / `circular` |
 
 - 省略した場合、全配列が unplaced として扱われ WGS モードで出力されます
 - `#` で始まる行はコメントとして無視されます
-- `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment {seq_name}, complete sequence` / `segment {seq_name}`（source に `/segment` を付与）として出力されます
+- source の ff_definition（DEFINITION 行）は DDBJ MSS のメタ記法（`@@[qualifier_name]@@`）を使ったテンプレートとして出力され、登録時に同じ source フィーチャーの qualifier 実値に展開されます
+- `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@`（source に `/segment` を付与）として出力されます
+- type/count/status ごとの ff_definition の完全な決定テーブルは、CLAUDE.md の「sequence role (`--sequence_roles` TSV) と ff_definition」節を参照してください
 
 ### 注意点
 
@@ -832,13 +834,15 @@ scaffold001 unplaced                     partial   linear
 |---|---|
 | seq_id | Sequence ID from the FASTA header |
 | type | `chromosome` / `organelle` / `plasmid` / `segment` / `unplaced` |
-| seq_name | Chromosome number or organelle name (may be empty for unplaced) |
+| seq_name | Chromosome number or organelle name. Required for `plasmid`, and for `chromosome` / `segment` when there are 2 or more entries of that type across the submission (an empty value raises an error). May be empty for a single chromosome, a single segment, or unplaced |
 | status | `complete` / `partial` |
 | topology | `linear` / `circular` |
 
 - If omitted, all sequences are treated as unplaced and output in WGS mode.
 - Lines beginning with `#` are treated as comments.
-- `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment {seq_name}, complete sequence` / `segment {seq_name}` (with `/segment` on source) when there are multiple.
+- The source feature's ff_definition (the DEFINITION line) is emitted as a DDBJ MSS meta-notation template (`@@[qualifier_name]@@`), which is expanded to the actual qualifier value on the same source feature at registration time.
+- `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@` (with `/segment` on source) when there are multiple.
+- See the "sequence role (`--sequence_roles` TSV) と ff_definition" section in CLAUDE.md for the full decision table mapping type/count/status to ff_definition.
 
 ### Important Notes
 

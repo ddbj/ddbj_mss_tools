@@ -127,25 +127,43 @@ flag 型でない通常 qualifier（`strain` 等）はこの判定の対象外�
 
 5列 TSV: `seq_id <TAB> type <TAB> seq_name <TAB> status <TAB> topology`。`type` は
 `chromosome` / `organelle` / `plasmid` / `segment` / `unplaced` のいずれか。`status` は `complete` / `partial`。
-type に応じて source の ff_definition（DDBJ Flat File の DEFINITION 行）が下記のように構築される
-（`{prefix}` = `{organism} {identifier}`、`{mol}` = mol_type 由来の DNA/RNA/tRNA/rRNA/mRNA）:
+type に応じて source の ff_definition（DDBJ Flat File の DEFINITION 行）が下記のように構築される。
 
-| type | status | ff_definition |
-|------|--------|---------------|
-| chromosome（submission 全体で1件のみ） | complete | `{prefix} {mol}, chromosome {seq_name}, complete genome` |
-| chromosome（複数） | complete | `{prefix} {mol}, chromosome {seq_name}, complete sequence` |
-| chromosome | partial 等 | `{prefix} {mol}, chromosome {seq_name}` |
-| organelle | complete | `{prefix} {organelle_code} {mol}, complete genome` |
-| organelle | partial 等 | `{prefix} {organelle_code} {mol}, partial genome` |
-| plasmid | complete | `{prefix} plasmid {seq_name} {mol}, complete sequence` |
-| plasmid | partial 等 | `{prefix} plasmid {seq_name} {mol}, partial sequence` |
-| segment（submission 全体で1件のみ） | complete/partial | `{prefix} {mol}, complete genome` / `{prefix} {mol}, partial genome`（`/segment` は付与しない） |
-| segment（複数） | complete/partial | `{prefix} {mol}, segment {seq_name}, complete sequence` / `{prefix} {mol}, segment {seq_name}`（source に `/segment` を付与） |
-| unplaced（WGS） | — | `{prefix} {mol}, {seq_id}` |
+ff_definition は DDBJ MSS のメタ記法（`@@[qualifier_name]@@`）を使ったテンプレート文字列として出力され、
+MSS 側の登録処理で同じ source フィーチャーが持つ qualifier の実値に展開される。
 
-organelle の `seq_name` は INSDC `/organelle` 値（`mitochondrion`, `plastid:chloroplast` 等）を
-DEFINITION 用の形容詞形（`mitochondrial`, `chloroplast` 等）に変換する。変換表に無い値はそのまま使う。
-source の `/organelle` qualifier には変換前の生の値が出力される。
+- **`{P}`（prefix）**: `source_identifier`（`SOURCE_IDENTIFIER` の qualifier 名。例 `cultivar`）が
+  非空なら `@@[organism]@@ @@[{source_identifier}]@@`、空/None なら `@@[organism]@@` のみ。
+- **`{mol}`**: 従来どおり mol_type 由来の具体値（DNA/RNA/tRNA/rRNA/mRNA）。メタ化しない。
+
+| type | count | status | ff_definition |
+|------|-------|--------|---------------|
+| unplaced（entry=None） | — | is_wgs=true | `{P} {mol}, @@[submitter_seqid]@@` |
+| unplaced（entry=None） | — | is_wgs=false | `{P} {mol}, unplaced sequence @@[entry]@@` |
+| chromosome | count==1 | complete | `{P} {mol}, chromosome, complete genome` |
+| chromosome | count==1 | partial | `{P} {mol}, chromosome` |
+| chromosome | count≥2 | complete | `{P} {mol}, chromosome @@[chromosome]@@, complete sequence` |
+| chromosome | count≥2 | partial | `{P} {mol}, chromosome @@[chromosome]@@` |
+| organelle | — | complete | `{P} {organelle_code} {mol}, complete genome` |
+| organelle | — | partial | `{P} {organelle_code} {mol}, partial genome` |
+| plasmid | — | complete | `{P} plasmid @@[plasmid]@@ {mol}, complete sequence` |
+| plasmid | — | partial | `{P} plasmid @@[plasmid]@@ {mol}, partial sequence` |
+| segment | count==1 | complete | `{P} {mol}, complete genome` |
+| segment | count==1 | partial | `{P} {mol}, partial genome` |
+| segment | count≥2 | complete | `{P} {mol}, segment @@[segment]@@, complete sequence` |
+| segment | count≥2 | partial | `{P} {mol}, segment @@[segment]@@` |
+| その他（未知 type） | — | — | `{P} {mol}, @@[entry]@@` |
+
+`@@[chromosome]@@` / `@@[plasmid]@@` / `@@[segment]@@` を出力する分岐（chromosome count≥2、
+plasmid、segment count≥2）では entry の `seq_name` が必須で、空文字の場合は `ff_definition()` が
+`ValueError` を送出する。単一 chromosome（count==1）・単一 segment（count==1）は `seq_name` を
+参照しないため空文字でも許容される。
+
+organelle の `{organelle_code}` は INSDC `/organelle` 値（`mitochondrion`, `plastid:chloroplast` 等）を
+DEFINITION 用の形容詞形（`mitochondrial`, `chloroplast` 等）に変換した値で、こちらはメタ記法化せず
+従来どおり変換済みの具体値を出力する（`@@[organelle]@@` にすると生値 `mitochondrion` が展開され
+不整合になるため）。変換表に無い値はそのまま使う。source の `/organelle` qualifier には変換前の
+生の値が出力される。
 
 ## mss_builder コマンドオプション
 
