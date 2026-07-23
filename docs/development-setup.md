@@ -25,7 +25,7 @@
 ```
 
 - `ddbj_mss_tools`: `git clone git@github.com:ddbj/ddbj_mss_tools.git`
-- `gff_submission`: **現状 git remote が無い**。旧マシンからディレクトリごとコピーするか、リモートを設定して転送する（`gff_submission/docs/development-setup.md` 参照）。`gff2mss` を使わないなら不要。
+- `gff_submission`: `git clone git@github.com:ddbj/gff_submission.git`（`gff2mss` を触る場合のみ必要。詳細は `gff_submission/docs/development-setup.md`）
 
 ## セットアップ
 
