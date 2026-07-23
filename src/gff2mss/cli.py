@@ -1,7 +1,6 @@
 from __future__ import annotations
 import argparse
-from gff2mss.assemble import build_ann_text
-from gff2mss.emit import emit_fasta
+import sys
 
 
 def main(argv=None) -> int:
@@ -17,6 +16,22 @@ def main(argv=None) -> int:
                     help="override [locus_tag].start (e.g. continue organelle numbering after nuclear)")
     ap.add_argument("--out", required=True)
     args = ap.parse_args(argv)
+
+    # gff2mss depends on the optional 'ddbj-gff' package. Import it lazily (after
+    # argument parsing, so --help works without it) and fail with a clear message
+    # when it is not installed — the other tools in this suite do not need it.
+    try:
+        from gff2mss.assemble import build_ann_text
+        from gff2mss.emit import emit_fasta
+    except ImportError as exc:
+        print(
+            "gff2mss requires the optional 'ddbj-gff' dependency, which is not installed.\n"
+            "Install it with:  pip install 'ddbj-mss-tools[gff2mss]'\n"
+            f"(import error: {exc})",
+            file=sys.stderr,
+        )
+        return 1
+
     ann_text, seqs = build_ann_text(args.gff, args.fasta, args.mss_config, args.common,
                                     args.sequence_roles, args.submission_category,
                                     locus_tag_start=args.locus_tag_start)

@@ -71,11 +71,13 @@ docker run --rm -it -v $(pwd):/data -w /data ddbj-mss-tools:slim
 
 ## 依存パッケージ
 
-`requirements.txt` で管理。`pyproject.toml` の `dependencies` と内容を一致させること。
+`requirements.txt` で管理。`pyproject.toml` の `dependencies`（コア）と内容を一致させること。
 
 ```
 pydantic>=2.0, biopython, pandas, openpyxl, jsonschema
 ```
+
+`gff2mss` サブツールだけが必要とする `ddbj-gff` は**コア依存ではなく optional extra**（`pyproject.toml` の `[project.optional-dependencies]` の `gff2mss`）。他ツール（egapx2mss / mss_builder / mss2ff / batch_wgs_builder）は `ddbj-gff` 無しで install・実行できる。gff2mss を使う場合のみ `pip install ".[gff2mss]"`（または別途 `ddbj-gff` を導入）。`ddbj-gff` は PyPI 非公開のため、コンテナ/CI では wheel を導入する。`gff2mss` 実行時に未導入なら親切なエラーで終了する（`src/gff2mss/cli.py`。パッケージ import 時に `ddbj-gff` を要求しないよう `src/gff2mss/__init__.py` は遅延 re-export）。
 
 
 ## DDBJ MSSファイル形式

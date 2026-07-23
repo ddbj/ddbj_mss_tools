@@ -51,6 +51,12 @@ cd ddbj_mss_tools
 pip install -e .
 ```
 
+`gff2mss` サブツールは追加の `ddbj-gff` パッケージを必要とします（他ツールは不要）。gff2mss を使う場合のみ、extra を指定してインストールしてください:
+
+```bash
+pip install -e ".[gff2mss]"
+```
+
 Docker を使う場合:
 
 ```bash
@@ -606,6 +612,12 @@ A set of Python tools for generating DDBJ MSS (Mass Submission System) submissio
 git clone https://github.com/ddbj/ddbj_mss_tools.git
 cd ddbj_mss_tools
 pip install -e .
+```
+
+The `gff2mss` subtool needs the extra `ddbj-gff` package (the other tools do not). Install with the extra only if you use gff2mss:
+
+```bash
+pip install -e ".[gff2mss]"
 ```
 
 Using Docker:

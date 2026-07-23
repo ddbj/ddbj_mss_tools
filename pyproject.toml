@@ -13,8 +13,13 @@ dependencies = [
     "pandas",
     "openpyxl",
     "jsonschema",
-    "ddbj-gff",
 ]
+
+# ddbj-gff is only required by the gff2mss subtool. It is an optional extra so
+# the other tools (egapx2mss, mss_builder, mss2ff, batch_wgs_builder) install
+# and run without it. Install gff2mss support with: pip install "ddbj-mss-tools[gff2mss]"
+[project.optional-dependencies]
+gff2mss = ["ddbj-gff"]
 
 [project.scripts]
 egapx2mss         = "egapx2mss.cli:main"
