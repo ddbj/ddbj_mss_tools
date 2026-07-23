@@ -21,11 +21,13 @@ COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir hatchling \
  && pip install --no-cache-dir -r requirements.txt
 
-# Install the ddbj-gff sibling package from its prebuilt wheel. The uv path-source
-# in pyproject ([tool.uv.sources]) is dev-only; the container installs the wheel so
-# `pip install -e .` below can satisfy the ddbj-gff dependency (it is not on PyPI).
-COPY ddbj_gff-0.1.0-py3-none-any.whl ./
-RUN pip install --no-cache-dir ./ddbj_gff-0.1.0-py3-none-any.whl
+# Install the ddbj-gff sibling package (optional extra used only by gff2mss) so
+# gff2mss works inside the image. The wheel is built from ../gff_submission by
+# scripts/build-ddbj-gff-wheel.sh BEFORE `docker build` (that sibling dir is
+# outside the build context) and is NOT committed — rebuild it whenever ddbj-gff
+# changes. If the wheel is absent this COPY fails: run the script first.
+COPY ddbj_gff-*.whl ./
+RUN pip install --no-cache-dir ./ddbj_gff-*.whl
 
 # Copy source only (no examples/, no tests/) and install the package.
 COPY src/ src/

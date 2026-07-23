@@ -63,6 +63,8 @@ docker run --rm -it -v $(pwd):/app ddbj-mss-tools
 
 # 軽量イメージ (Dockerfile.slim, 約329MB / 通常版は約719MB)
 # build-essential と examples/ を含めず、NCBI バイナリ (asn2gb/asn2fsa) は /app/bin に焼き込み済み
+# gff2mss 用の ddbj-gff wheel を ../gff_submission から先に生成する（コミットされない。ddbj-gff 更新時は再実行）
+scripts/build-ddbj-gff-wheel.sh
 docker build -t ddbj-mss-tools:slim -f Dockerfile.slim .
 # 注意: egapx2mss を使う場合、焼き込み済みバイナリ (/app/bin) を隠さないよう
 #       作業ディレクトリは /app 以外にマウントする
