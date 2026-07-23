@@ -140,14 +140,14 @@ def _entry(type_, seq_name="", status="complete"):
     (_entry("chromosome", "1", "complete"), "strain", "genomic DNA", False, 1, 0,
      "@@[organism]@@ @@[strain]@@ DNA, chromosome, complete genome"),
     (_entry("chromosome", "1", "partial"), "strain", "genomic DNA", False, 1, 0,
-     "@@[organism]@@ @@[strain]@@ DNA, chromosome"),
+     "@@[organism]@@ @@[strain]@@ DNA, chromosome, partial genome"),
     (_entry("chromosome", "", "complete"), None, "genomic DNA", False, 1, 0,
      "@@[organism]@@ DNA, chromosome, complete genome"),
     # chromosome — multiple (count>=2): @@[chromosome]@@
     (_entry("chromosome", "1", "complete"), "strain", "genomic DNA", False, 2, 0,
      "@@[organism]@@ @@[strain]@@ DNA, chromosome @@[chromosome]@@, complete sequence"),
     (_entry("chromosome", "1", "partial"), "strain", "genomic DNA", False, 2, 0,
-     "@@[organism]@@ @@[strain]@@ DNA, chromosome @@[chromosome]@@"),
+     "@@[organism]@@ @@[strain]@@ DNA, chromosome @@[chromosome]@@, unlocalized sequence @@[entry]@@"),
     # organelle — prefix meta, adjective concrete
     (_entry("organelle", "mitochondrion", "complete"), "", "genomic DNA", False, 0, 0,
      "@@[organism]@@ mitochondrial DNA, complete genome"),
@@ -171,7 +171,7 @@ def _entry(type_, seq_name="", status="complete"):
     (_entry("segment", "4", "complete"), "strain", "viral cRNA", False, 0, 8,
      "@@[organism]@@ @@[strain]@@ RNA, segment @@[segment]@@, complete sequence"),
     (_entry("segment", "4", "partial"), "strain", "viral cRNA", False, 0, 8,
-     "@@[organism]@@ @@[strain]@@ RNA, segment @@[segment]@@"),
+     "@@[organism]@@ @@[strain]@@ RNA, segment @@[segment]@@, unlocalized sequence @@[entry]@@"),
     # fallback (unknown type)
     (_entry("weird", "", "complete"), None, "genomic DNA", False, 0, 0,
      "@@[organism]@@ DNA, @@[entry]@@"),

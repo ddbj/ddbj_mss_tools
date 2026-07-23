@@ -294,7 +294,7 @@ scaffold001 unplaced                     partial   linear
 - 省略した場合、全配列が unplaced として扱われ WGS モードで出力されます
 - `#` で始まる行はコメントとして無視されます
 - source の ff_definition（DEFINITION 行）は DDBJ MSS のメタ記法（`@@[qualifier_name]@@`）を使ったテンプレートとして出力され、登録時に同じ source フィーチャーの qualifier 実値に展開されます
-- `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@`（source に `/segment` を付与）として出力されます
+- `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@, unlocalized sequence @@[entry]@@`（source に `/segment` を付与）として出力されます
 - type/count/status ごとの ff_definition の完全な決定テーブルは、CLAUDE.md の「sequence role (`--sequence_roles` TSV) と ff_definition」節を参照してください
 
 ### 注意点
@@ -853,7 +853,7 @@ scaffold001 unplaced                     partial   linear
 - If omitted, all sequences are treated as unplaced and output in WGS mode.
 - Lines beginning with `#` are treated as comments.
 - The source feature's ff_definition (the DEFINITION line) is emitted as a DDBJ MSS meta-notation template (`@@[qualifier_name]@@`), which is expanded to the actual qualifier value on the same source feature at registration time.
-- `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@` (with `/segment` on source) when there are multiple.
+- `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@, unlocalized sequence @@[entry]@@` (with `/segment` on source) when there are multiple.
 - See the sequence-role / ff_definition section in CLAUDE.md for the full decision table mapping type/count/status to ff_definition.
 
 ### Important Notes

@@ -145,9 +145,9 @@ MSS 側の登録処理で同じ source フィーチャーが持つ qualifier の
 | unplaced（entry=None） | — | is_wgs=true | `{P} {mol}, @@[submitter_seqid]@@` |
 | unplaced（entry=None） | — | is_wgs=false | `{P} {mol}, unplaced sequence @@[entry]@@` |
 | chromosome | count==1 | complete | `{P} {mol}, chromosome, complete genome` |
-| chromosome | count==1 | partial | `{P} {mol}, chromosome` |
+| chromosome | count==1 | partial | `{P} {mol}, chromosome, partial genome` |
 | chromosome | count≥2 | complete | `{P} {mol}, chromosome @@[chromosome]@@, complete sequence` |
-| chromosome | count≥2 | partial | `{P} {mol}, chromosome @@[chromosome]@@` |
+| chromosome | count≥2 | partial | `{P} {mol}, chromosome @@[chromosome]@@, unlocalized sequence @@[entry]@@` |
 | organelle | — | complete | `{P} {organelle_code} {mol}, complete genome` |
 | organelle | — | partial | `{P} {organelle_code} {mol}, partial genome` |
 | plasmid | — | complete | `{P} plasmid @@[plasmid]@@ {mol}, complete sequence` |
@@ -155,7 +155,7 @@ MSS 側の登録処理で同じ source フィーチャーが持つ qualifier の
 | segment | count==1 | complete | `{P} {mol}, complete genome` |
 | segment | count==1 | partial | `{P} {mol}, partial genome` |
 | segment | count≥2 | complete | `{P} {mol}, segment @@[segment]@@, complete sequence` |
-| segment | count≥2 | partial | `{P} {mol}, segment @@[segment]@@` |
+| segment | count≥2 | partial | `{P} {mol}, segment @@[segment]@@, unlocalized sequence @@[entry]@@` |
 | その他（未知 type） | — | — | `{P} {mol}, @@[entry]@@` |
 
 `@@[chromosome]@@` / `@@[plasmid]@@` / `@@[segment]@@` を出力する分岐（chromosome count≥2、

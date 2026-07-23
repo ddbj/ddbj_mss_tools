@@ -165,11 +165,11 @@ def ff_definition(entry: Optional[SequenceRoleEntry], source_identifier: Optiona
                 raise ValueError("chromosome entry requires a non-empty seq_name when count >= 2")
             if entry.status == "complete":
                 return f"{prefix} {mol}, chromosome @@[chromosome]@@, complete sequence"
-            return f"{prefix} {mol}, chromosome @@[chromosome]@@"
+            return f"{prefix} {mol}, chromosome @@[chromosome]@@, unlocalized sequence @@[entry]@@"
         # single chromosome (count <= 1): no number
         if entry.status == "complete":
             return f"{prefix} {mol}, chromosome, complete genome"
-        return f"{prefix} {mol}, chromosome"
+        return f"{prefix} {mol}, chromosome, partial genome"
 
     if entry.type == "organelle":
         converted = _organelle_code(entry.seq_name)
@@ -190,7 +190,7 @@ def ff_definition(entry: Optional[SequenceRoleEntry], source_identifier: Optiona
                 raise ValueError("segment entry requires a non-empty seq_name when count >= 2")
             if entry.status == "complete":
                 return f"{prefix} {mol}, segment @@[segment]@@, complete sequence"
-            return f"{prefix} {mol}, segment @@[segment]@@"
+            return f"{prefix} {mol}, segment @@[segment]@@, unlocalized sequence @@[entry]@@"
         # single segment (count <= 1): no 'segment' word
         if entry.status == "complete":
             return f"{prefix} {mol}, complete genome"
