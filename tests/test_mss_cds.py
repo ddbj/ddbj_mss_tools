@@ -121,3 +121,19 @@ def test_recoded_codon_child_avoids_internal_stop_warning():
     feat = build_cds_feature(mrna, gene, "LT_1", genome, cfg, diags)
     assert feat is not None
     assert not any(d.code == "translation-internal-stop" for d in diags)
+
+
+def test_cds_emits_artificial_location_from_a_cds_child():
+    genome = Seq("ATGAAATAA")
+    gene, mrna = mrna_with_cds([(1, 9)], strand="+", phase0=0)
+    mrna.children[0].attributes["artificial_location"] = ["low-quality sequence region"]
+    f = build_cds_feature(mrna, gene, "PFX_000010", genome, cfg(), [])
+    assert ("artificial_location", "low-quality sequence region") in [
+        (q.key, q.value) for q in f.qualifiers]
+
+
+def test_cds_without_the_attribute_has_no_artificial_location():
+    genome = Seq("ATGAAATAA")
+    gene, mrna = mrna_with_cds([(1, 9)], strand="+", phase0=0)
+    f = build_cds_feature(mrna, gene, "PFX_000010", genome, cfg(), [])
+    assert not any(q.key == "artificial_location" for q in f.qualifiers)

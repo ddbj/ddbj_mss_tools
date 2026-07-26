@@ -48,3 +48,17 @@ def test_mrna_partial_minus_strand_swap():
     assert mrna_partial_flags(mrna) == (False, True)
     f = build_mrna_feature(mrna, gene, "PFX_000010", 10000)
     assert f.location == "complement(join(<1..30,40..70))"
+
+
+def test_mrna_emits_artificial_location_when_attribute_present():
+    gene, mrna = build_gene_mrna([(1, 30), (40, 70)], [(11, 30), (40, 60)], strand="+")
+    mrna.attributes["artificial_location"] = ["low-quality sequence region"]
+    f = build_mrna_feature(mrna, gene, "PFX_000010", 10000)
+    assert ("artificial_location", "low-quality sequence region") in [
+        (q.key, q.value) for q in f.qualifiers]
+
+
+def test_mrna_without_the_attribute_has_no_artificial_location():
+    gene, mrna = build_gene_mrna([(1, 30), (40, 70)], [(11, 30), (40, 60)], strand="+")
+    f = build_mrna_feature(mrna, gene, "PFX_000010", 10000)
+    assert not any(q.key == "artificial_location" for q in f.qualifiers)

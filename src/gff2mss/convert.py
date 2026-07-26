@@ -170,6 +170,9 @@ def build_mrna_feature(mrna, gene, locus_tag: str, seqlen: int) -> MssFeature:
     quals = [MssQualifier("locus_tag", locus_tag)]
     if gene.gene:
         quals.append(MssQualifier("gene", gene.gene))
+    al = mrna.attributes.get("artificial_location")
+    if al:
+        quals.append(MssQualifier("artificial_location", al[0]))
     quals.append(_submitter_note(gene, mrna))
     return MssFeature("mRNA", location, quals)
 
@@ -317,6 +320,10 @@ def build_cds_feature(mrna, gene, locus_tag: str, genome_seq, cfg: MssConfig,
         quals.append(MssQualifier("inference", inference[0]))
     for spec in excepts:
         quals.append(MssQualifier("transl_except", spec))
+    al = next((c.attributes["artificial_location"][0] for c in mrna.children
+               if c.type == "CDS" and c.attributes.get("artificial_location")), None)
+    if al:
+        quals.append(MssQualifier("artificial_location", al))
     quals.append(_submitter_note(gene, mrna))
     return MssFeature("CDS", location, quals)
 
