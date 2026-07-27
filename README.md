@@ -295,7 +295,28 @@ scaffold001 unplaced                     partial   linear
 - `#` で始まる行はコメントとして無視されます
 - source の ff_definition（DEFINITION 行）は DDBJ MSS のメタ記法（`@@[qualifier_name]@@`）を使ったテンプレートとして出力され、登録時に同じ source フィーチャーの qualifier 実値に展開されます
 - `segment`（分節ゲノムのセグメント）は、submission 全体で `segment` が1件のみの場合は `complete genome` / `partial genome`（source に `/segment` は付与されない）、複数件ある場合は `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@, unlocalized sequence @@[entry]@@`（source に `/segment` を付与）として出力されます
-- type/count/status ごとの ff_definition の完全な決定テーブルは、CLAUDE.md の「sequence role (`--sequence_roles` TSV) と ff_definition」節を参照してください
+- type / count / status ごとの ff_definition の完全な決定テーブルは以下のとおりです。`{P}` = `@@[organism]@@ @@[{source_identifier}]@@`（`source_identifier`＝`SOURCE_IDENTIFIER` の qualifier 名。空/None なら `@@[organism]@@` のみ）、`{mol}` は mol_type 由来の具体値（DNA / RNA / tRNA / rRNA / mRNA）:
+
+| type | count | status | ff_definition |
+|------|-------|--------|---------------|
+| unplaced（entry=None） | — | is_wgs=true | `{P} {mol}, @@[submitter_seqid]@@` |
+| unplaced（entry=None） | — | is_wgs=false | `{P} {mol}, unplaced sequence @@[entry]@@` |
+| chromosome | count==1 | complete | `{P} {mol}, chromosome, complete genome` |
+| chromosome | count≥2 | complete | `{P} {mol}, chromosome @@[chromosome]@@, complete sequence` |
+| chromosome | count==1 | partial | `{P} {mol}, chromosome, partial genome` |
+| chromosome | count≥2 | partial | `{P} {mol}, chromosome @@[chromosome]@@, unlocalized sequence @@[entry]@@` |
+| organelle | — | complete | `{P} {organelle_code} {mol}, complete genome` |
+| organelle | — | partial | `{P} {organelle_code} {mol}, partial genome` |
+| plasmid | — | complete | `{P} plasmid @@[plasmid]@@ {mol}, complete sequence` |
+| plasmid | — | partial | `{P} plasmid @@[plasmid]@@ {mol}, partial sequence` |
+| segment | count==1 | complete | `{P} {mol}, complete genome` |
+| segment | count==1 | partial | `{P} {mol}, partial genome` |
+| segment | count≥2 | complete | `{P} {mol}, segment @@[segment]@@, complete sequence` |
+| segment | count≥2 | partial | `{P} {mol}, segment @@[segment]@@, unlocalized sequence @@[entry]@@` |
+| その他（未知 type） | — | — | `{P} {mol}, @@[entry]@@` |
+
+  - `@@[chromosome]@@` / `@@[plasmid]@@` / `@@[segment]@@` を出力する分岐（chromosome count≥2 / plasmid / segment count≥2）では `seq_name` が必須で、空だと `ValueError` になります。
+  - `{organelle_code}` は `/organelle` 値を DEFINITION 用の形容詞形に変換した値（`mitochondrion`→`mitochondrial`、`plastid:chloroplast`→`chloroplast` 等）で、これはメタ記法化しません。
 
 ### 注意点
 
@@ -854,7 +875,28 @@ scaffold001 unplaced                     partial   linear
 - Lines beginning with `#` are treated as comments.
 - The source feature's ff_definition (the DEFINITION line) is emitted as a DDBJ MSS meta-notation template (`@@[qualifier_name]@@`), which is expanded to the actual qualifier value on the same source feature at registration time.
 - `segment` (a segment of a segmented/multipartite genome) is output as `complete genome` / `partial genome` (no `/segment` qualifier on source) when there is only one `segment` entry across the whole submission, or as `segment @@[segment]@@, complete sequence` / `segment @@[segment]@@, unlocalized sequence @@[entry]@@` (with `/segment` on source) when there are multiple.
-- See the sequence-role / ff_definition section in CLAUDE.md for the full decision table mapping type/count/status to ff_definition.
+- The full ff_definition decision table by type / count / status is below. `{P}` = `@@[organism]@@ @@[{source_identifier}]@@` (`source_identifier` = the name of the `SOURCE_IDENTIFIER` qualifier; `@@[organism]@@` alone when empty/None); `{mol}` is the mol_type-derived token (DNA / RNA / tRNA / rRNA / mRNA):
+
+| type | count | status | ff_definition |
+|------|-------|--------|---------------|
+| unplaced (entry=None) | — | is_wgs=true | `{P} {mol}, @@[submitter_seqid]@@` |
+| unplaced (entry=None) | — | is_wgs=false | `{P} {mol}, unplaced sequence @@[entry]@@` |
+| chromosome | count==1 | complete | `{P} {mol}, chromosome, complete genome` |
+| chromosome | count≥2 | complete | `{P} {mol}, chromosome @@[chromosome]@@, complete sequence` |
+| chromosome | count==1 | partial | `{P} {mol}, chromosome, partial genome` |
+| chromosome | count≥2 | partial | `{P} {mol}, chromosome @@[chromosome]@@, unlocalized sequence @@[entry]@@` |
+| organelle | — | complete | `{P} {organelle_code} {mol}, complete genome` |
+| organelle | — | partial | `{P} {organelle_code} {mol}, partial genome` |
+| plasmid | — | complete | `{P} plasmid @@[plasmid]@@ {mol}, complete sequence` |
+| plasmid | — | partial | `{P} plasmid @@[plasmid]@@ {mol}, partial sequence` |
+| segment | count==1 | complete | `{P} {mol}, complete genome` |
+| segment | count==1 | partial | `{P} {mol}, partial genome` |
+| segment | count≥2 | complete | `{P} {mol}, segment @@[segment]@@, complete sequence` |
+| segment | count≥2 | partial | `{P} {mol}, segment @@[segment]@@, unlocalized sequence @@[entry]@@` |
+| other (unknown type) | — | — | `{P} {mol}, @@[entry]@@` |
+
+  - The branches that emit `@@[chromosome]@@` / `@@[plasmid]@@` / `@@[segment]@@` (chromosome count≥2 / plasmid / segment count≥2) require a non-empty `seq_name`; an empty one raises `ValueError`.
+  - `{organelle_code}` is the `/organelle` value converted to its DEFINITION adjectival form (`mitochondrion`→`mitochondrial`, `plastid:chloroplast`→`chloroplast`, etc.); it is not meta-notation.
 
 ### Important Notes
 
