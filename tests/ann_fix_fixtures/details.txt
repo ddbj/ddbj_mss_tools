@@ -1,0 +1,16 @@
+
+=== Validation Details (1 file set) ===
+Validation Date: 2026-10-18 09:55:14 JST
+Process Time: 0:00:04 seconds
+Version: 1.0.70
+
+ANN5320:ERR:NC_001142.9:tRNA:Line[22138]:The tRNA feature must not be completely contained within CDS exons. (Found: tRNA 541508..541579 in CDS join(540466..540479,540751..540906,541159..541178,541481..541611))
+ANN5320:ERR:NC_001146.8:tRNA:Line[32378]:The tRNA feature must not be completely contained within CDS exons. (Found: tRNA complement(96241..96312) in CDS complement(join(96122..96360,96748..96769)))
+ANN4300:WAR:NC_001133.9:CDS:Line[502]:Complete CDS must be at least 90 bases (30 aa) long unless supported by experiment or inference. (Length: 60 bases)
+ANN4300:WAR:NC_001135.5:CDS:Line[3722]:Complete CDS must be at least 90 bases (30 aa) long unless supported by experiment or inference. (Length: 60 bases)
+AXS6810:WAR:NC_001133.9:CDS:Line[215]:Non-canonical splice sites: GT-AG/GC-AG rule violation. (Found: GT-AT in CDS at join(73756..73872,73978..74823))
+AXS6810:WAR:NC_001136.10:intron:Line[4200]:Non-canonical splice sites: GT-AG/GC-AG rule violation. (Found: GT-GT at complement(1..219))
+ANN2520:WAR:NC_001134.8:CDS:locus_tag:Line[1405]:Duplicate locus tag. ('SCEX_001870' in CDS)
+ANN2542:WAR:ALL:ALL:locus_tag:[FILE]:Duplicate locus_tag across features without common gene qualifiers. (locus_tag: 'SCEX_000010', genes: none)
+ANN0470:WAR:ALL:DBLINK:[FILE]:Missing SRA Run accession.
+ANN2670:INFO:NC_001133.9:source:ff_definition:Line[30]:The 'ff_definition' qualifier exists.
