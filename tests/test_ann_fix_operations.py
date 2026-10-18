@@ -115,3 +115,18 @@ def test_apply_reports_missing_code():
     ann = _ann()
     log = apply(ann, [], {"ANN4300": ("misc", {})})
     assert log == ["no findings for ANN4300"] and _keys(ann) == ["source", "mRNA", "CDS", "mRNA", "CDS", "tRNA"]
+
+
+def test_paired_mrna_with_spaces_in_ids(tmp_path):
+    rows = ["NC_1\tsource\t1..100\torganism\tX"]
+    for i in (1, 2):
+        rows += [f"\tmRNA\t{i*10}..{i*10+5}\tlocus_tag\tL_{i}",
+                 f"\t\t\tnote\tsubmitter_gene_id: Saccharomyces cerevisiae_NC_1_{i}, submitter_transcript_id: Saccharomyces cerevisiae_NC_1_{i}.1",
+                 f"\tCDS\t{i*10}..{i*10+5}\tlocus_tag\tL_{i}",
+                 f"\t\t\tnote\tsubmitter_gene_id: Saccharomyces cerevisiae_NC_1_{i}, submitter_transcript_id: Saccharomyces cerevisiae_NC_1_{i}.1"]
+    p = tmp_path / "s.ann"
+    p.write_text("\n".join(rows) + "\n")
+    ann = AnnFile.read(p)
+    cds2 = [f for f in ann.features() if f.key == "CDS"][1]
+    m = paired_mrna(ann, cds2)
+    assert m is not None and m.location == "20..25"

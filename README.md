@@ -538,6 +538,39 @@ DBLINK や source フィーチャーの情報は TSV で指定するため **DBL
 
 ---
 
+## ann_fix の使い方
+
+gff2mss が出力した `.ann` に対して ddbj-validator が出した指摘（`validation_report_details.txt`）を、
+`.ann` 上で直接解消します。標準 GFF ができた後の修正は GFF に戻らず `.ann` を書き換える方針です。
+操作は detect → apply の 2 段階で、apply は選んだコードにだけ適用されます。無変更の行は byte 単位でそのまま残ります。
+
+```bash
+# 1. validator を実行（非対話では -f 必須）
+ddbj-validator ddbj sub -o sub_out -f -j 1
+
+# 2. 指摘をコード別に一覧（既定操作つき）
+ann_fix --ann sub/NAME.ann --report sub_out/reports/validation_report_details.txt --detect [--json]
+
+# 3. 既定操作をまとめて適用、または CODE=OP[:ARG] で個別指定
+ann_fix --ann sub/NAME.ann --report sub_out/reports/validation_report_details.txt --apply defaults --out sub/NAME.ann
+ann_fix --ann sub/NAME.ann --report ... --apply 'ANN4300=misc,ANN5320=overlap-drop:other,AXS6810=artificial-location:low-quality sequence region' --out fixed.ann
+
+# 4. 再検証（ann_fix は validator を呼びません）
+```
+
+| 操作 | 内容 |
+|---|---|
+| `misc` | CDS（と対になる mRNA）を `misc_feature` 1 本に格下げ。`locus_tag` は維持、`product`/`transl_table`/`codon_start` は除去し `note "nonfunctional CDS (...)"` を付ける |
+| `artificial-location[:VALUE]` | CDS とその mRNA に `/artificial_location` を付ける（既定 `low-quality sequence region`） |
+| `drop` | feature（と対になる mRNA/CDS）を削除 |
+| `overlap-drop[:cds\|other]` / `overlap-misc[:cds\|other]` | 重なり系の指摘で片側を削除 / misc 化。`cds` は指摘された側（tRNA など）を落とし CDS を残す（既定）、`other` はメッセージ中の CDS 側を落とす |
+
+既定の対応: `ANN5320` → `overlap-drop:cds`、`ANN4300` → `misc`、`AXS6810` → `artificial-location`。
+注意: validator の AXS6810（非標準スプライス部位）は qualifier によらず必ず報告されます（抑止条件が無い）。`artificial-location` は
+登録者の判断を `.ann` に記録するためのもので、再検証しても AXS6810 の件数は減りません。
+`ANN2520`（アイソフォームの locus_tag 共有）と `ANN2542`（`/gene` 無しの locus_tag 共有）は無視可として表示するだけです。
+同じレポートを 2 回 apply しても壊れません（既に無い行は skip として表示）。
+
 ## mss2ff の使い方
 
 MSS アノテーションファイル（`.ann` または `.annt.tsv`）と FASTA ファイルから DDBJ Flat File を生成します。
@@ -1155,3 +1188,17 @@ mss2ff annotation.ann genome.fa \
 | 6-letter prefix + 2-digit version + ≥6 digits | `AAXJEM010000001` |
 
 Entries are assigned serial numbers sequentially in the order they appear in the annotation file.
+
+## ann_fix Usage
+
+Resolves ddbj-validator findings (`validation_report_details.txt`) directly on a gff2mss `.ann`:
+`--detect` lists findings per code with the default operation, `--apply` applies the chosen operations
+(`defaults`, or `CODE=OP[:ARG],...` with OP in `misc`, `artificial-location`, `drop`, `overlap-drop`, `overlap-misc`)
+and writes `--out`. Untouched rows are preserved byte-for-byte; applying the same report twice is safe.
+Defaults: `ANN5320` → `overlap-drop:cds`, `ANN4300` → `misc`, `AXS6810` → `artificial-location` (`low-quality sequence region`);
+`ANN2520` / `ANN2542` are shown as ignorable. ann_fix never runs the validator: re-validate afterwards.
+
+```bash
+ann_fix --ann sub/NAME.ann --report sub_out/reports/validation_report_details.txt --detect --json
+ann_fix --ann sub/NAME.ann --report sub_out/reports/validation_report_details.txt --apply defaults --out sub/NAME.ann
+```

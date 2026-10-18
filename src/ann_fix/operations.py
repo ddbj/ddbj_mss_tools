@@ -21,7 +21,7 @@ OPERATIONS = {"misc", "artificial-location", "drop", "overlap-drop", "overlap-mi
 
 _DROP_ON_MISC = {"transl_table", "codon_start", "product", "gene", "inference", "transl_except",
                  "artificial_location"}
-_TID = re.compile(r"submitter_transcript_id:\s*(\S+)")
+_TID = re.compile(r"submitter_transcript_id:\s*(.+?)\s*$")
 _IN_CDS = re.compile(r"\bin CDS (\S+)")
 
 
