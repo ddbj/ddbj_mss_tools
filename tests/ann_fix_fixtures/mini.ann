@@ -1,0 +1,47 @@
+COMMON	DBLINK		project	PRJxxxxxxxxx
+			biosample	SAMDxxxxxxxx
+	SUBMITTER		ab_name	YourLastName,YourFirstName
+			contact	Your Name
+			email	your.email@example.com
+			institute	Your Institute
+			country	Japan
+			state	Prefecture
+			city	City
+			street	1-2-3 Address
+			zip	000-0000
+	REFERENCE		title	Genome annotation test
+			ab_name	YourLastName,YourFirstName
+			status	Unpublished
+	DATE		hold_date	20270101
+	ST_COMMENT		tagset_id	Genome-Assembly-Data
+			Assembly Method	hifiasm v.x.x.x; YaHS v.x.x.x
+			Assembly Name	R64_test
+			Genome Coverage	73x
+			Sequencing Technology	PacBio HiFi; Illumina
+	DATATYPE		type	WGS
+	KEYWORD		keyword	WGS
+			keyword	STANDARD_DRAFT
+NC_001133.9	source	1..230218	organism	Saccharomyces cerevisiae
+			mol_type	genomic DNA
+			geo_loc_name	Japan
+			strain	S288C
+			collection_date	2020
+			submitter_seqid	NC_001133.9
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+	mRNA	complement(join(<466..561,667..>687))	locus_tag	SCEX_000010
+			note	submitter_gene_id: SCF2_005989, submitter_transcript_id: SCF2_005989-T1
+	CDS	complement(join(<466..561,667..687))	locus_tag	SCEX_000010
+			transl_table	1
+			codon_start	1
+			product	hypothetical protein
+			note	submitter_gene_id: SCF2_005989, submitter_transcript_id: SCF2_005989-T1
+	mRNA	<538..>792	locus_tag	SCEX_000020
+			note	submitter_gene_id: SCF2_005990, submitter_transcript_id: SCF2_005990-T1
+	CDS	538..792	locus_tag	SCEX_000020
+			transl_table	1
+			codon_start	1
+			product	hypothetical protein
+			note	submitter_gene_id: SCF2_005990, submitter_transcript_id: SCF2_005990-T1
+	tRNA	600..671	locus_tag	SCEX_000030
+			product	tRNA-Pro
+			note	submitter_gene_id: tRNA_1, submitter_transcript_id: tRNA_1-T1
