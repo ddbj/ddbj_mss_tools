@@ -130,3 +130,113 @@ def test_paired_mrna_with_spaces_in_ids(tmp_path):
     cds2 = [f for f in ann.features() if f.key == "CDS"][1]
     m = paired_mrna(ann, cds2)
     assert m is not None and m.location == "20..25"
+
+
+# ---- review fix pass: identity by row object, feature-key guards, multi-id partners ----
+
+def _write(tmp_path, rows):
+    p = tmp_path / "t.ann"
+    p.write_text("\n".join(rows) + "\n")
+    return p
+
+
+def _pair_rows(i, loc, tid, gene="G"):
+    return [f"\tmRNA\t{loc}\tlocus_tag\tL_{i}",
+            f"\t\t\tnote\tsubmitter_gene_id: {gene}, submitter_transcript_id: {tid}",
+            f"\tCDS\t{loc}\tlocus_tag\tL_{i}",
+            f"\t\t\tproduct\thypothetical protein",
+            f"\t\t\tnote\tsubmitter_gene_id: {gene}, submitter_transcript_id: {tid}"]
+
+
+def test_same_line_duplicate_findings_do_not_hit_next_feature(tmp_path):
+    rows = ["NC_1\tsource\t1..1000\torganism\tX",
+            "\ttRNA\t600..671\tlocus_tag\tL_1", "\t\t\tproduct\ttRNA-Pro",
+            "\ttRNA\t700..771\tlocus_tag\tL_2", "\t\t\tproduct\ttRNA-Gly"]
+    ann = AnnFile.read(_write(tmp_path, rows))
+    msg = "... (Found: tRNA 600..671 in CDS 500..800)"
+    findings = [Finding("ANN5320", "ERR", "NC_1", "tRNA", 2, msg), Finding("ANN5320", "ERR", "NC_1", "tRNA", 2, msg)]
+    log = apply(ann, findings, {"ANN5320": ("overlap-drop", {"keep": "cds"})})
+    assert _keys(ann) == ["source", "tRNA"] and next(f for f in ann.features() if f.key == "tRNA").location == "700..771"
+    assert sum(1 for l in log if l.startswith("skip")) == 1
+
+
+def test_nonredundant_layout_two_cds_findings_in_one_gene(tmp_path):
+    rows = ["NC_1\tsource\t1..1000\torganism\tX",
+            "\tmRNA\t10..100\tlocus_tag\tL_1", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T1",
+            "\tmRNA\t10..200\tlocus_tag\tL_1", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T2",
+            "\tCDS\t10..100\tlocus_tag\tL_1", "\t\t\tproduct\tp", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T1",
+            "\tCDS\t10..200\tlocus_tag\tL_1", "\t\t\tproduct\tp", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T2"]
+    ann = AnnFile.read(_write(tmp_path, rows))
+    findings = [Finding("ANN4300", "WAR", "NC_1", "CDS", 6, "Complete CDS must be at least 90 bases"),
+                Finding("ANN4300", "WAR", "NC_1", "CDS", 9, "Complete CDS must be at least 90 bases")]
+    apply(ann, findings, {"ANN4300": ("misc", {})})
+    assert _keys(ann) == ["source", "misc_feature", "misc_feature"]
+
+
+def test_identical_cds_isoforms_target_the_right_one(tmp_path):
+    rows = ["NC_1\tsource\t1..1000\torganism\tX"] + _pair_rows(1, "10..100", "T1") + _pair_rows(1, "10..100", "T2")
+    ann = AnnFile.read(_write(tmp_path, rows))
+    cds_t2 = [f for f in ann.features() if f.key == "CDS"][1]
+    apply(ann, [Finding("ANN4300", "WAR", "NC_1", "CDS", cds_t2.first + 1, "short")], {"ANN4300": ("misc", {})})
+    feats = [f for f in ann.features() if f.entry != "COMMON"]
+    assert [f.key for f in feats] == ["source", "mRNA", "CDS", "misc_feature"]
+    assert "T1" in feats[1].get(ann.rows, "note") and "T2" in feats[3].qualifiers(ann.rows)[-1][1]
+
+
+def test_shared_cds_removes_every_listed_mrna(tmp_path):
+    rows = ["NC_1\tsource\t1..1000\torganism\tX",
+            "\tmRNA\t10..100\tlocus_tag\tL_1", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T1",
+            "\tmRNA\t5..100\tlocus_tag\tL_1", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T2",
+            "\tCDS\t10..100\tlocus_tag\tL_1", "\t\t\tproduct\tp", "\t\t\tnote\tsubmitter_gene_id: G, submitter_transcript_id: T1, T2"]
+    ann = AnnFile.read(_write(tmp_path, rows))
+    cds = next(f for f in ann.features() if f.key == "CDS")
+    op_misc(ann, cds, reason="x")
+    assert _keys(ann) == ["source", "misc_feature"]
+
+
+def test_artificial_location_skips_non_cds_features(tmp_path):
+    rows = ["NC_1\tsource\t1..1000\torganism\tX", "\tintron\t50..60\t\t"]
+    ann = AnnFile.read(_write(tmp_path, rows))
+    log = apply(ann, [Finding("AXS6810", "WAR", "NC_1", "intron", 2, "Non-canonical splice sites (Found: GT-GT at 50..60)")],
+                {"AXS6810": ("artificial-location", {"value": "low-quality sequence region"})})
+    assert not any(k == "artificial_location" for f in ann.features() for k, _ in f.qualifiers(ann.rows))
+    assert any("skip" in l and "intron" in l for l in log)
+
+
+def test_drop_and_misc_refuse_source(tmp_path):
+    rows = ["NC_1\tsource\t1..1000\torganism\tX", "\t\t\tstrain\tS288C"]
+    ann = AnnFile.read(_write(tmp_path, rows))
+    log = apply(ann, [Finding("ANN1110", "WAR", "NC_1", "source", 1, "strain matches an institution code")],
+                {"ANN1110": ("drop", {})})
+    assert _keys(ann) == ["source"] and any("skip" in l for l in log)
+
+
+def test_unresolvable_finding_aborts_without_edits(tmp_path):
+    ann = _ann()
+    cds = _cds2(ann)
+    before = [r.cols[:] for r in ann.rows]
+    findings = [Finding("ANN4300", "WAR", "NC_1", "CDS", cds.first + 1, "short"),
+                Finding("ANN4300", "WAR", "NC_1", "CDS", cds.first + 2, "short")]      # points at a qualifier row
+    with pytest.raises(ValueError, match="does not match"):
+        apply(ann, findings, {"ANN4300": ("misc", {})})
+    assert [r.cols for r in ann.rows] == before
+
+
+def test_location_in_message_must_match_the_row(tmp_path):
+    ann = _ann()
+    cds = _cds2(ann)
+    with pytest.raises(ValueError, match="does not match"):
+        apply(ann, [Finding("AXS6810", "WAR", "NC_1", "CDS", cds.first + 1, "(Found: GT-AT in CDS at join(1..2,3..4))")],
+              {"AXS6810": ("artificial-location", {"value": "low-quality sequence region"})})
+
+
+def test_keep_other_with_missing_cds_is_skipped_not_raised(tmp_path):
+    ann = _ann()
+    t = _trna(ann).first + 1
+    log = apply(ann, [Finding("ANN5320", "ERR", "NC_1", "tRNA", t, "(Found: tRNA 600..671 in CDS 999..1000)")],
+                {"ANN5320": ("overlap-drop", {"keep": "other"})})
+    assert any(l.startswith("skip") for l in log) and _keys(ann) == ["source", "mRNA", "CDS", "mRNA", "CDS", "tRNA"]
+
+
+def test_defaults_include_short_intron_code():
+    assert DEFAULTS["ANN6840"] == ("artificial-location", {"value": "low-quality sequence region"})

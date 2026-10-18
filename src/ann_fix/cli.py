@@ -6,7 +6,7 @@ import json
 import sys
 
 from .annfile import AnnFile
-from .operations import DEFAULTS, IGNORABLE, OPERATIONS, apply
+from .operations import ARTIFICIAL_LOCATION_VALUES, DEFAULTS, IGNORABLE, KEEP_VALUES, OPERATIONS, apply
 from .report import Finding, group_by_code, parse_details
 
 
@@ -44,7 +44,17 @@ def _parse_apply(spec: str, present: list[str]) -> dict[str, tuple[str, dict]]:
             raise ValueError(f"unknown operation {op!r}; choose from {sorted(OPERATIONS)}")
         kwargs = dict(DEFAULTS.get(code, ("", {}))[1]) if DEFAULTS.get(code, ("", {}))[0] == op else {}
         if arg:
-            kwargs["keep" if op.startswith("overlap") else "value"] = arg
+            if op.startswith("overlap"):
+                keep = {"trna": "other"}.get(arg.lower(), arg.lower())
+                if keep not in KEEP_VALUES:
+                    raise ValueError(f"keep must be one of cds/other (got {arg!r})")
+                kwargs["keep"] = keep
+            elif op == "artificial-location":
+                if arg not in ARTIFICIAL_LOCATION_VALUES:
+                    raise ValueError(f"artificial_location value must be one of {sorted(ARTIFICIAL_LOCATION_VALUES)}")
+                kwargs["value"] = arg
+            else:
+                raise ValueError(f"{op} takes no :ARG")
         choice[code] = (op, kwargs)
     return choice
 
@@ -87,7 +97,12 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"error: {exc}\n")
         return 2
     findings = [f for fs in groups.values() for f in fs]
-    for line in apply(ann, findings, choice):
+    try:
+        log = apply(ann, findings, choice)
+    except ValueError as exc:
+        sys.stderr.write(f"error: {exc}; nothing written\n")
+        return 1
+    for line in log:
         print(line)
     ann.write(args.out)
     print(f"wrote {args.out}")

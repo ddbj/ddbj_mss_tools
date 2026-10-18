@@ -61,10 +61,11 @@ def test_apply_defaults_then_idempotent(tmp_path, capsys):
     assert keys == ["source", "mRNA", "CDS", "misc_feature"]       # tRNA dropped, 2nd pair -> misc
     misc = next(f for f in fixed.features() if f.key == "misc_feature")
     assert ("artificial_location", "low-quality sequence region") not in misc.qualifiers(fixed.rows)
-    # applying the same report again on the fixed file: every finding is stale -> file unchanged
+    # applying the same report again on the fixed file: the report no longer matches -> nothing written, exit 1
     before = out.read_bytes()
-    assert main(["--ann", str(out), "--report", str(rep), "--apply", "defaults", "--out", str(out)]) == 0
+    assert main(["--ann", str(out), "--report", str(rep), "--apply", "defaults", "--out", str(out)]) == 1
     assert out.read_bytes() == before
+    assert "does not match" in capsys.readouterr().err
 
 
 def test_apply_explicit_spec(tmp_path):
@@ -76,8 +77,16 @@ def test_apply_explicit_spec(tmp_path):
     fixed = AnnFile.read(out)
     keys = [f.key for f in fixed.features() if f.entry != "COMMON"]
     assert keys == ["source", "mRNA", "CDS", "tRNA"]
-    # AXS6810 pointed at the CDS that overlap-drop removed first -> skipped, no artificial_location anywhere
+    # AXS6810 pointed at the CDS that overlap-drop removed in the same run -> skipped, no artificial_location anywhere
     assert not any(k == "artificial_location" for f in fixed.features() for k, _ in f.qualifiers(fixed.rows))
+
+
+def test_bad_keep_or_value_exits_2(tmp_path):
+    ann, rep = _setup(tmp_path)
+    out = str(tmp_path / "o.ann")
+    assert main(["--ann", str(ann), "--report", str(rep), "--apply", "ANN5320=overlap-drop:bogus", "--out", out]) == 2
+    assert main(["--ann", str(ann), "--report", str(rep), "--apply", "AXS6810=artificial-location:made up", "--out", out]) == 2
+    assert main(["--ann", str(ann), "--report", str(rep), "--apply", "ANN5320=overlap-drop:CDS", "--out", out]) == 0
 
 
 def test_apply_unknown_code_is_notice(tmp_path, capsys):

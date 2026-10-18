@@ -479,7 +479,7 @@ def build_gene_features(gene, mode, assigner, genome_seq, cfg, diagnostics) -> l
             # emit it as the internal-stop path does (one misc_feature, no mRNA row)
             if locus_tag is None:
                 locus_tag = assigner.assign(gene)
-            note = gff_misc_child.attributes.get("note", ["nonfunctional CDS"])[0]
+            note = gff_misc_child.note[0] if gff_misc_child.note else "nonfunctional CDS"
             gff_misc.append(MssFeature("misc_feature",
                                        build_insdc_location(gff_misc_child.spans, len(genome_seq)),
                                        [MssQualifier("locus_tag", locus_tag), MssQualifier("note", note),

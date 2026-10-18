@@ -565,11 +565,11 @@ ann_fix --ann sub/NAME.ann --report ... --apply 'ANN4300=misc,ANN5320=overlap-dr
 | `drop` | feature（と対になる mRNA/CDS）を削除 |
 | `overlap-drop[:cds\|other]` / `overlap-misc[:cds\|other]` | 重なり系の指摘で片側を削除 / misc 化。`cds` は指摘された側（tRNA など）を落とし CDS を残す（既定）、`other` はメッセージ中の CDS 側を落とす |
 
-既定の対応: `ANN5320` → `overlap-drop:cds`、`ANN4300` → `misc`、`AXS6810` → `artificial-location`。
+既定の対応: `ANN5320` → `overlap-drop:cds`、`ANN4300` → `misc`、`AXS6810` / `ANN6840` → `artificial-location`（CDS/mRNA のみ。intron など他の feature は skip）。
 注意: validator の AXS6810（非標準スプライス部位）は qualifier によらず必ず報告されます（抑止条件が無い）。`artificial-location` は
 登録者の判断を `.ann` に記録するためのもので、再検証しても AXS6810 の件数は減りません。
 `ANN2520`（アイソフォームの locus_tag 共有）と `ANN2542`（`/gene` 無しの locus_tag 共有）は無視可として表示するだけです。
-同じレポートを 2 回 apply しても壊れません（既に無い行は skip として表示）。
+レポートはそれを出した `.ann` にしか適用できません。修正後のファイルに同じレポートを再適用すると「report does not match」で何も書かずに終了します（exit 1）。再検証してから新しいレポートで apply してください。同一実行内で先の操作が消した feature を指す指摘は skip として表示されます。
 
 ## mss2ff の使い方
 
@@ -1194,7 +1194,7 @@ Entries are assigned serial numbers sequentially in the order they appear in the
 Resolves ddbj-validator findings (`validation_report_details.txt`) directly on a gff2mss `.ann`:
 `--detect` lists findings per code with the default operation, `--apply` applies the chosen operations
 (`defaults`, or `CODE=OP[:ARG],...` with OP in `misc`, `artificial-location`, `drop`, `overlap-drop`, `overlap-misc`)
-and writes `--out`. Untouched rows are preserved byte-for-byte; applying the same report twice is safe.
+and writes `--out`. Untouched rows are preserved byte-for-byte. A report applies only to the `.ann` it was produced from: re-applying it to the fixed file exits 1 without writing (re-validate first).
 Defaults: `ANN5320` → `overlap-drop:cds`, `ANN4300` → `misc`, `AXS6810` → `artificial-location` (`low-quality sequence region`);
 `ANN2520` / `ANN2542` are shown as ignorable. ann_fix never runs the validator: re-validate afterwards.
 

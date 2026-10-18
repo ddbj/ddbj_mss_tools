@@ -1,6 +1,8 @@
 """Assemble a DDBJ MSS .ann: features from gff2mss, COMMON/source from common."""
 from __future__ import annotations
 
+import sys
+
 from Bio import SeqIO
 
 from ddbj_gff import parse
@@ -32,6 +34,9 @@ def build_ann_text(gff_path, fasta_path, mss_config_path, common_path,
 
     diagnostics: list = []
     per_entry = build_entry_features(doc, seqs, cfg, diagnostics)
+    for d in diagnostics:
+        if d.code in ("root-ignored", "missing-sequence"):      # features silently lost otherwise
+            sys.stderr.write(f"[gff2mss] {d.severity.value} {d.code}: {d.message}\n")
 
     common = load_common_json(common_path)
     common_dict = common.model_dump(exclude_none=True)

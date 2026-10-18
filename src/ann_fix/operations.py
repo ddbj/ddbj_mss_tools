@@ -1,92 +1,101 @@
-"""Operations on a gff2mss .ann driven by ddbj-validator findings, plus the code -> default table."""
+"""Operations on a gff2mss .ann driven by ddbj-validator findings, plus the code -> default table.
+
+Features are addressed by the identity of their first AnnRow object, never by line
+number alone: rows are resolved from the untouched file before any edit, and a row
+that an earlier operation removed or replaced simply no longer resolves (-> skip).
+"""
 from __future__ import annotations
 
 import re
 
-from .annfile import AnnFeature, AnnFile
+from .annfile import AnnFeature, AnnFile, AnnRow
 from .report import Finding
 
 ARTIFICIAL_LOCATION_DEFAULT = "low-quality sequence region"
+ARTIFICIAL_LOCATION_VALUES = {"low-quality sequence region", "heterogeneous population sequenced"}
 
 DEFAULTS: dict[str, tuple[str, dict]] = {
     "ANN5320": ("overlap-drop", {"keep": "cds"}),
     "ANN4300": ("misc", {}),
     "AXS6810": ("artificial-location", {"value": ARTIFICIAL_LOCATION_DEFAULT}),
+    "ANN6840": ("artificial-location", {"value": ARTIFICIAL_LOCATION_DEFAULT}),   # intron < 10 bp
 }
 IGNORABLE: dict[str, str] = {
     "ANN2520": "同一遺伝子のアイソフォームが locus_tag を共有（想定どおり）",
     "ANN2542": "/gene 無しの locus_tag 共有（gff2mss の仕様。放置してよい）",
 }
 OPERATIONS = {"misc", "artificial-location", "drop", "overlap-drop", "overlap-misc"}
+KEEP_VALUES = {"cds", "other"}
 
 _DROP_ON_MISC = {"transl_table", "codon_start", "product", "gene", "inference", "transl_except",
                  "artificial_location"}
+_PROTECTED_KEYS = {"source", "TOPOLOGY", "KEYWORD", "COMMON"}
+_AL_KEYS = {"CDS", "mRNA"}
 _TID = re.compile(r"submitter_transcript_id:\s*(.+?)\s*$")
 _IN_CDS = re.compile(r"\bin CDS (\S+)")
 
 
 # -- lookup helpers ----------------------------------------------------------
 
-def _tid(ann: AnnFile, feat: AnnFeature) -> str | None:
+def _tids(ann: AnnFile, feat: AnnFeature) -> set[str]:
     for k, v in feat.qualifiers(ann.rows):
         if k == "note":
             m = _TID.search(v)
             if m:
-                return m.group(1).rstrip(",")
-    return None
+                return {t.strip() for t in m.group(1).split(", ") if t.strip()}
+    return set()
 
 
-def _ident(ann: AnnFile, feat: AnnFeature) -> tuple:
-    return (feat.entry, feat.key, feat.location, feat.get(ann.rows, "locus_tag"))
+def _row(ann: AnnFile, feat: AnnFeature) -> AnnRow:
+    return ann.rows[feat.first]
 
 
-def _find(ann: AnnFile, ident: tuple) -> AnnFeature | None:
-    """Locate a feature by identity captured before rows moved."""
-    entry, key, loc, tag = ident
+def _feat_of_row(ann: AnnFile, row: AnnRow) -> AnnFeature | None:
     for f in ann.features():
-        if (f.entry, f.key, f.location) == (entry, key, loc) and f.get(ann.rows, "locus_tag") == tag:
+        if ann.rows[f.first] is row:
             return f
     return None
 
 
-def _partner(ann: AnnFile, feat: AnnFeature, key: str) -> AnnFeature | None:
-    tid = _tid(ann, feat)
+def _partners(ann: AnnFile, feat: AnnFeature) -> list[AnnFeature]:
+    """mRNA(s) of a CDS / CDS of an mRNA, by submitter_transcript_id (fallback: locus_tag)."""
+    if feat.key not in ("CDS", "mRNA"):
+        return []
+    want = "mRNA" if feat.key == "CDS" else "CDS"
+    mine = _tids(ann, feat)
+    cands = [f for f in ann.features() if f.entry == feat.entry and f.key == want]
+    if mine:
+        return [f for f in cands if _tids(ann, f) & mine]
     tag = feat.get(ann.rows, "locus_tag")
-    cands = [f for f in ann.features() if f.entry == feat.entry and f.key == key]
-    if tid is not None:
-        for f in cands:
-            if _tid(ann, f) == tid:
-                return f
-        return None
-    for f in cands:
-        if tag is not None and f.get(ann.rows, "locus_tag") == tag:
-            return f
-    return None
+    return [f for f in cands if tag is not None and f.get(ann.rows, "locus_tag") == tag][:1]
 
 
 def paired_mrna(ann: AnnFile, cds: AnnFeature) -> AnnFeature | None:
-    return _partner(ann, cds, "mRNA") if cds.key == "CDS" else None
+    p = _partners(ann, cds) if cds.key == "CDS" else []
+    return p[0] if p else None
 
 
 def paired_cds(ann: AnnFile, mrna: AnnFeature) -> AnnFeature | None:
-    return _partner(ann, mrna, "CDS") if mrna.key == "mRNA" else None
-
-
-def _pair(ann: AnnFile, feat: AnnFeature) -> AnnFeature | None:
-    return paired_mrna(ann, feat) if feat.key == "CDS" else paired_cds(ann, feat)
+    p = _partners(ann, mrna) if mrna.key == "mRNA" else []
+    return p[0] if p else None
 
 
 # -- operations --------------------------------------------------------------
 
+def _delete_rows(ann: AnnFile, rows: list[AnnRow]) -> int:
+    n = 0
+    for r in rows:
+        f = _feat_of_row(ann, r)
+        if f is not None:
+            ann.delete_feature(f)
+            n += 1
+    return n
+
+
 def op_drop(ann: AnnFile, feat: AnnFeature, pair: bool = True, **kw) -> str:
-    partner = _pair(ann, feat) if pair else None
-    pid = _ident(ann, partner) if partner is not None else None
-    ann.delete_feature(feat)
-    if pid is not None:
-        partner = _find(ann, pid)
-        if partner is not None:
-            ann.delete_feature(partner)
-    return f"dropped {feat.key} {feat.location}" + (" and its pair" if partner else "")
+    rows = [_row(ann, feat)] + ([_row(ann, p) for p in _partners(ann, feat)] if pair else [])
+    n = _delete_rows(ann, rows)
+    return f"dropped {feat.key} {feat.location}" + (f" and {n - 1} paired feature(s)" if n > 1 else "")
 
 
 def op_misc(ann: AnnFile, feat: AnnFeature, reason: str = "", **kw) -> str:
@@ -94,11 +103,9 @@ def op_misc(ann: AnnFile, feat: AnnFeature, reason: str = "", **kw) -> str:
         cds = paired_cds(ann, feat)
         if cds is not None:
             feat = cds
-    partner = _pair(ann, feat) if feat.key == "CDS" else None
-    if partner is not None:
-        fid = _ident(ann, feat)
-        ann.delete_feature(partner)
-        feat = _find(ann, fid)
+    target = _row(ann, feat)
+    _delete_rows(ann, [_row(ann, p) for p in _partners(ann, feat)] if feat.key == "CDS" else [])
+    feat = _feat_of_row(ann, target)
     quals = feat.qualifiers(ann.rows)
     tag = feat.get(ann.rows, "locus_tag")
     product = feat.get(ann.rows, "product")
@@ -112,14 +119,11 @@ def op_misc(ann: AnnFile, feat: AnnFeature, reason: str = "", **kw) -> str:
 
 
 def op_artificial_location(ann: AnnFile, feat: AnnFeature, value: str = ARTIFICIAL_LOCATION_DEFAULT, **kw) -> str:
-    targets = [_ident(ann, feat)]
-    partner = _pair(ann, feat)
-    if partner is not None:
-        targets.append(_ident(ann, partner))
+    rows = [_row(ann, feat)] + [_row(ann, p) for p in _partners(ann, feat)]
     added = 0
-    for ident in targets:
-        t = _find(ann, ident)
-        if t is not None and ("artificial_location", value) not in t.qualifiers(ann.rows):
+    for r in rows:
+        t = _feat_of_row(ann, r)
+        if t is not None and t.key in _AL_KEYS and ("artificial_location", value) not in t.qualifiers(ann.rows):
             ann.add_qualifier(t, "artificial_location", value)
             added += 1
     return f"artificial_location on {feat.key} {feat.location} ({added} added)"
@@ -159,26 +163,59 @@ _OPS = {"misc": op_misc, "artificial-location": op_artificial_location, "drop": 
         "overlap-drop": op_overlap_drop, "overlap-misc": op_overlap_misc}
 
 
+def _resolve(ann: AnnFile, f: Finding) -> AnnRow | None:
+    """The first row of the feature a finding points at, or None when the report does not fit this file."""
+    if f.line is None or not 1 <= f.line <= len(ann.rows):
+        return None
+    row = ann.rows[f.line - 1]
+    if row.cols[1] != f.feature:
+        return None
+    if "Found:" in f.message and row.cols[2] and row.cols[2] not in f.message:
+        return None
+    return row
+
+
 def apply(ann: AnnFile, findings: list[Finding], choice: dict[str, tuple[str, dict]]) -> list[str]:
     log: list[str] = []
     present = {f.code for f in findings}
     for code in choice:
         if code not in present:
             log.append(f"no findings for {code}")
-    todo = [f for f in findings if f.code in choice]
-    # ponytail: descending line order keeps earlier indices valid; a pair deleted above a
-    # not-yet-processed feature shifts it and that finding is then skipped (logged), not misapplied.
-    todo.sort(key=lambda f: -(f.line or 0))
-    for f in todo:
-        if f.line is None:
-            log.append(f"skip: {f.code} is file-level (no line)")
+    todo = []
+    unresolved = 0
+    for f in findings:
+        if f.code not in choice:
             continue
-        feat = ann.feature_at_line(f.line)
-        if feat is None or feat.key != f.feature:
-            log.append(f"skip: line {f.line} no longer matches {f.feature} ({f.code})")
+        if f.line is None:
+            continue                      # file-level findings carry no feature
+        row = _resolve(ann, f)
+        if row is None:
+            unresolved += 1
+            continue
+        todo.append((f, row))
+    skipped_file_level = {f.code for f in findings if f.code in choice and f.line is None}
+    for code in sorted(skipped_file_level):
+        log.append(f"skip: {code} is file-level (no feature)")
+    if unresolved:
+        raise ValueError(f"report does not match this .ann ({unresolved} finding(s) do not point at the "
+                         f"reported feature); re-run ddbj-validator on this file first")
+    for f, row in todo:
+        feat = _feat_of_row(ann, row)
+        if feat is None:
+            log.append(f"skip: line {f.line} {f.feature} already changed by an earlier operation ({f.code})")
             continue
         op, kwargs = choice[f.code]
+        if op == "artificial-location" and feat.key not in _AL_KEYS:
+            log.append(f"skip: line {f.line} {feat.key}: artificial_location is only for CDS/mRNA ({f.code})")
+            continue
+        if op != "artificial-location" and feat.key in _PROTECTED_KEYS:
+            log.append(f"skip: line {f.line} {feat.key}: {op} is not allowed on this feature ({f.code})")
+            continue
         reason = f"{f.code}: {f.message.split('(')[0].strip()}"
-        msg = _OPS[op](ann, feat, finding=f, reason=reason, **kwargs)
+        try:
+            msg = _OPS[op](ann, feat, finding=f, reason=reason, **kwargs)
+        except ValueError as exc:
+            log.append(f"skip: line {f.line} {feat.key}: {exc} ({f.code})")
+            continue
         log.append(f"{f.code} line {f.line}: {msg}")
     return log
