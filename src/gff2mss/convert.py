@@ -468,10 +468,23 @@ def build_gene_features(gene, mode, assigner, genome_seq, cfg, diagnostics) -> l
 
     features = []
     misc_feats: list = []
+    gff_misc: list = []
     locus_tag = None
     cds_index = {}
     cds_order = []
     for mrna in transcripts:
+        gff_misc_child = next((c for c in mrna.children if c.type == "misc_feature"), None)
+        if gff_misc_child is not None and not collect_spans(mrna, "CDS"):
+            # a CDS demoted to misc_feature upstream (ddbj_gff.repair internal-stop-to-misc):
+            # emit it as the internal-stop path does (one misc_feature, no mRNA row)
+            if locus_tag is None:
+                locus_tag = assigner.assign(gene)
+            note = gff_misc_child.attributes.get("note", ["nonfunctional CDS"])[0]
+            gff_misc.append(MssFeature("misc_feature",
+                                       build_insdc_location(gff_misc_child.spans, len(genome_seq)),
+                                       [MssQualifier("locus_tag", locus_tag), MssQualifier("note", note),
+                                        _submitter_note(gene, mrna)]))
+            continue
         if not collect_spans(mrna, "exon") and not collect_spans(mrna, "CDS"):
             diagnostics.append(Diagnostic(Severity.WARNING, None, "no-exon",
                                           f"mRNA {mrna.id!r} has no exon or CDS; skipped"))
@@ -502,6 +515,7 @@ def build_gene_features(gene, mode, assigner, genome_seq, cfg, diagnostics) -> l
             features.append(cds)
     if not features and misc_feats:
         features.append(misc_feats[0])
+    features.extend(gff_misc)
     return features
 
 
@@ -543,6 +557,15 @@ def build_entry_features(doc, seqs, cfg, diagnostics: list) -> dict:
                                           f"{seqid}: skipped {skipped} pseudogene feature(s)"))
         introns = [f for f in doc.features if f.type == "intron"
                    and any(s.seqid == seqid for s in f.spans)]
+        ignored = [f for f in doc.roots
+                   if any(s.seqid == seqid for s in f.spans)
+                   and f.type not in ("gene", "intron") and f.type not in _PARENTLESS_RNA_TYPES
+                   and not _is_pseudogene(f)]
+        if ignored:
+            types = sorted({f.type for f in ignored})
+            diagnostics.append(Diagnostic(Severity.WARNING, None, "root-ignored",
+                                          f"{seqid}: ignored {len(ignored)} root feature(s) of type(s) {types}; "
+                                          f"only gene/RNA roots are converted"))
 
         items = ([(_span_start(g), g) for g in genes]
                  + [(_span_start(r), r) for r in parentless]
