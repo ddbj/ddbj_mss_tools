@@ -34,6 +34,7 @@ from ann_fix.annfile import AnnFeature, AnnFile
 from ann_meta.categories import PASS_THROUGH, REGENERATE_FF, WGS_LIKE
 from ann_meta.extract import COMMON_TARGETS
 from ann_meta.model import Entry
+from ann_meta.shape import normalize_common
 from common.common_builder import create_common
 from common.qualifiers import qualifier_def
 from common.source_builder import (
@@ -229,6 +230,7 @@ def _append_entry(ann: AnnFile, e: Entry, build: _SourceBuilder) -> None:
 
 def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str) -> AnnFile:
     """Rewrite *ann* in place from *common* (common JSON) and *entries*; return it."""
+    common = normalize_common(common)
     rules = _rules(category)
     source_identifier = (common.get("SOURCE_IDENTIFIER") or common.get("INFRASPECIFIC_NAME_MODIFIER")
                          or rules.source_identifier or "")

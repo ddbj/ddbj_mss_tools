@@ -194,10 +194,12 @@ def test_write_entries_tsv(tmp_path):
         rows = list(csv.reader(fh, delimiter="\t"))
     header = rows[0]
     assert header[:6] == ["#seq_id", "type", "seq_name", "status", "topology", "ff_definition"]
-    assert header[6:] == ["collection_date", "geo_loc_name", "isolate", "note", "organism"]
+    assert header[6:] == ["collection_date", "geo_loc_name", "isolate", "note", "note", "organism"]
     by_id = {r[0]: dict(zip(header, r)) for r in rows[1:]}
-    assert by_id["COI_01"]["note"] == "voucher deposited in NSMT"
-    assert by_id["COI_02"]["note"] == ""          # two notes: JSON only
+    coi1 = next(r for r in rows if r[0] == "COI_01")
+    assert coi1[9:11] == ["voucher deposited in NSMT", ""]
+    coi2 = next(r for r in rows if r[0] == "COI_02")
+    assert coi2[9:11] == ["larva", "voucher deposited in NSMT"]    # one column per occurrence
     assert by_id["COI_02"]["organism"] == "Hydropsyche orientalis"
     assert by_id["COI_03"]["type"] == "unplaced"
     assert by_id["COI_03"]["ff_definition"] == "@@[organism]@@ @@[isolate]@@ COI gene, partial cds"

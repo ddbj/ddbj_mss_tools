@@ -28,8 +28,8 @@ from ann_fix.annfile import AnnFile
 from ann_meta.apply import apply
 from ann_meta.entries_tsv import read_entries, write_entries
 from ann_meta.extract import COMMON_TARGETS, extract, read_fasta_lengths
-from ann_meta.validate import Issue, validate
-from common.models import CommonModel
+from ann_meta.shape import LenientCommon, alias_clashes, normalize_common
+from ann_meta.validate import Issue, char_issues, validate
 
 _RANGE = re.compile(r"^1\.\.(\d+)$")
 
@@ -67,9 +67,17 @@ def _read_fasta(path: str) -> dict[str, int]:
         raise _UserError(f"cannot read FASTA {path}: {exc}") from None
 
 
+def _printable(value: str | None) -> str | None:
+    """Lone surrogates (from a JSON escape) cannot be printed as UTF-8: show them escaped."""
+    if value is None:
+        return None
+    return value.encode("utf-8", "backslashreplace").decode("utf-8")
+
+
 def _issues_out(issues: list[Issue]) -> int:
-    print(json.dumps({"issues": [{"field": i.field, "entry": i.entry, "message": i.message} for i in issues]},
-                     ensure_ascii=False, indent=2))
+    rows = [{"field": _printable(i.field), "entry": _printable(i.entry), "message": _printable(i.message)}
+            for i in issues]
+    print(json.dumps({"issues": rows}, ensure_ascii=False, indent=2))
     return 2
 
 
@@ -102,9 +110,10 @@ def _load_common(path: str) -> dict:
 
 
 def _shape_issues(common: dict) -> list[Issue]:
-    issues: list[Issue] = []
+    """Structure only (``ann_meta.shape``): required items are not a gate."""
+    issues = [Issue(f, None, "bad_shape: the same DBLINK item is given twice (alias)") for f in alias_clashes(common)]
     try:
-        CommonModel.model_validate(common)
+        LenientCommon.model_validate(normalize_common(common))
     except ValidationError as exc:
         for e in exc.errors():
             field = ".".join(str(p) for p in e["loc"]) or "common"
@@ -122,11 +131,12 @@ def _shape_issues(common: dict) -> list[Issue]:
             issues.append(Issue(f"_extra.{feature}", None, "bad_shape: must be a list of [name, value] pairs"))
             continue
         for i, pair in enumerate(pairs):
-            ok = (isinstance(pair, list) and len(pair) == 2 and isinstance(pair[0], str)
+            ok = (isinstance(pair, list) and len(pair) == 2 and isinstance(pair[0], str) and pair[0] != ""
                   and isinstance(pair[1], (str, bool)))
             if not ok:
                 issues.append(Issue(f"_extra.{feature}.{i}", None,
-                                    "bad_shape: must be [name, value] with a string name and a string/boolean value"))
+                                    "bad_shape: must be [name, value] with a non-empty string name "
+                                    "and a string/boolean value"))
     return issues
 
 
@@ -170,7 +180,7 @@ def _write_atomic(ann: AnnFile, out: str) -> None:
 
 def _cmd_apply(args) -> int:
     common = _load_common(args.common)
-    shape = _shape_issues(common)
+    shape = char_issues(common) or _shape_issues(common)
     if shape:
         return _issues_out(shape)
     try:

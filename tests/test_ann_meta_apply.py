@@ -423,9 +423,6 @@ def test_read_entries_tsv_roundtrip(tmp_path):
     entries: list[Entry] = []
     for name in FIXTURES:
         for e in _load(name)[1].entries:
-            names = [q for q, _ in e.extra]
-            if len(names) != len(set(names)):
-                continue                       # repeated extra names cannot be shown in a TSV cell
             entries.append(dataclasses.replace(e, length=None))
     entries.append(Entry("x1", None, type="organelle", seq_name="mitochondrion", status="complete",
                          topology="circular", overrides={"environmental_sample": True, "strain": "A"},
@@ -444,8 +441,8 @@ def test_read_entries_rejects_bad_tables(tmp_path):
     p.write_text("#seq_id\ttype\tseq_name\tstatus\ttopology\n", encoding="utf-8")
     with pytest.raises(ValueError, match="ff_definition"):
         read_entries(p)
-    p.write_text("#seq_id\ttype\tseq_name\tstatus\ttopology\tff_definition\tnote\tnote\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="duplicate"):
+    p.write_text("#seq_id\ttype\tseq_name\tstatus\ttopology\ttype\tff_definition\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate column.*type"):
         read_entries(p)
     p.write_text("#seq_id\ttype\tseq_name\tstatus\ttopology\tff_definition\ns1\tunplaced\t\tpartial\t\t\tx\n",
                  encoding="utf-8")
@@ -552,3 +549,31 @@ def test_tsa_per_entry_names_contigs_by_submitter_seqid(tmp_path):
     q1 = srcs[0].qualifiers(ann.rows)
     assert ("submitter_seqid", "t1") in q1
     assert ("ff_definition", "@@[organism]@@ RNA, @@[submitter_seqid]@@") in q1
+
+
+def test_entries_tsv_repeated_qualifier_columns(tmp_path):
+    # C1: repeated qualifiers (two /note rows) get one column per occurrence and come back in order
+    _, doc, _ = _load("marker_set")
+    coi2 = next(e for e in doc.entries if e.seq_id == "COI_02")
+    assert coi2.extra == [("note", "larva"), ("note", "voucher deposited in NSMT")]
+    entries = [dataclasses.replace(e, length=None) for e in doc.entries]
+    entries.append(Entry("x1", None, overrides={"note": "single"}, extra=[("my_q", "a"), ("my_q", "b"),
+                                                                         ("my_q", "c")]))
+    out = tmp_path / "e.tsv"
+    write_entries(entries, out)
+    header = out.read_text().splitlines()[0].split("\t")
+    assert header.count("note") == 2 and header.count("my_q") == 3
+    back = read_entries(out)
+    assert back == entries
+    assert next(e for e in back if e.seq_id == "COI_02").extra == [
+        ("note", "larva"), ("note", "voucher deposited in NSMT")]
+
+
+def test_read_entries_repeated_columns_by_hand(tmp_path):
+    p = tmp_path / "e.tsv"
+    p.write_text("#seq_id\ttype\tseq_name\tstatus\ttopology\tff_definition\tnote\tstrain\tnote\n"
+                 "s1\tunplaced\t\tpartial\t\t\tb\tK\ta\n"
+                 "s2\tunplaced\t\tpartial\t\t\t\t\tonly\n", encoding="utf-8")
+    s1, s2 = read_entries(p)
+    assert s1.overrides == {"strain": "K"} and s1.extra == [("note", "b"), ("note", "a")]
+    assert s2.overrides == {"note": "only"} and s2.extra == []

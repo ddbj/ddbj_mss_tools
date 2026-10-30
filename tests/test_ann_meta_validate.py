@@ -1,3 +1,5 @@
+import pytest
+
 from ann_meta.model import Entry
 from ann_meta.validate import Issue, validate
 
@@ -55,9 +57,9 @@ def test_rejects_unknown_qualifier_unless_allowed():
     common = {**COMMON, "SOURCE": {**COMMON["SOURCE"], "sub_strain": "x"}}
     assert set(_codes(_v(common=common, entries=entries))) == {"unknown_qualifier"}
     assert len(_v(common=common, entries=entries)) == 2
-    # role names left in extra by extract are known qualifiers
+    # role names left in extra by extract are reserved (I5): the role comes from type / seq_name
     assert _v(entries=[Entry("s1", 100, type="chromosome", seq_name="1", status="complete",
-                             extra=[("plasmid", "p1")])]) == []
+                             extra=[("plasmid", "p1")])]) == [Issue("plasmid", "s1", "reserved_qualifier")]
 
 
 def test_tsv_typo_column_is_rejected(tmp_path):
@@ -156,3 +158,52 @@ def test_unknown_category():
     assert _v(category="FOO") == [Issue("category", None, "unknown_category")]
     for ok in ("GENE", "NONE", "GNM", "WGS", "ENV", "MAG", "MAG-WGS", "TSA", "TSA-ENV"):
         assert _v(category=ok) == [], ok
+
+
+# -- final review fixes ------------------------------------------------------------
+
+def test_reserved_names_in_extra_and_overrides():
+    # I5: a role name or a generated qualifier given as a TSV column bypassed the role rules
+    for name in ("chromosome", "plasmid", "organelle", "segment", "submitter_seqid", "ff_definition"):
+        entries = [Entry("s1", 100, extra=[(name, "x")])]
+        assert _v(entries=entries, category="WGS") == [Issue(name, "s1", "reserved_qualifier")], name
+        entries = [Entry("s1", 100, overrides={name: "x"})]
+        assert _v(entries=entries, category="WGS") == [Issue(name, "s1", "reserved_qualifier")], name
+
+
+@pytest.mark.parametrize("sid", ["]@@ x @@[", "my q", "plasmid", "submitter_seqid", "not_a_qualifier", 5])
+def test_bad_source_identifier(sid):
+    # I6: SOURCE_IDENTIFIER is put into the ff_definition template as @@[<name>]@@
+    common = {**COMMON, "SOURCE_IDENTIFIER": sid}
+    assert _v(common=common) == [Issue("SOURCE_IDENTIFIER", None, "bad_source_identifier")]
+    common = {**COMMON, "INFRASPECIFIC_NAME_MODIFIER": sid}
+    assert _v(common=common) == [Issue("INFRASPECIFIC_NAME_MODIFIER", None, "bad_source_identifier")]
+
+
+def test_good_source_identifier():
+    for sid in ("strain", "isolate", "cultivar", "", None):
+        assert _v(common={**COMMON, "SOURCE_IDENTIFIER": sid}) == [], sid
+    common = {**COMMON, "SOURCE_IDENTIFIER": "my_name"}
+    assert _v(common=common, allowed_unknown={"my_name"}) == []
+
+
+def test_surrogate_is_forbidden():
+    # M2: a lone surrogate (JSON "\ud800") cannot be written as UTF-8
+    common = {**COMMON, "SUBMITTER": {"ab_name": ["Mishima,T."], "contact": "a\ud800"}}
+    assert _v(common=common) == [Issue("SUBMITTER.contact", None, "forbidden_char")]
+    assert "forbidden_char" in _codes(_v(entries=[Entry("s1", 100, overrides={"strain": "\udfff"})]))
+
+
+def test_pass_through_categories_skip_role_rules_but_check_domains():
+    # I3b: GENE / NONE keep the roles as given (plasmid-only, viruses: circular complete)
+    entries = [Entry("v1", 100, status="complete", topology="circular"),
+               Entry("p1", 100, type="plasmid", status="complete", topology="circular"),
+               Entry("c1", 100, type="chromosome", status="partial", topology="circular"),
+               Entry("u1", 100, seq_name="x")]
+    for cat in ("GENE", "NONE"):
+        assert _v(entries=entries, category=cat) == [], cat
+    assert set(_codes(_v(entries=entries, category="GNM"))) == {
+        "unplaced_not_partial", "unplaced_circular", "plasmid_needs_name", "partial_circular",
+        "unplaced_with_name"}
+    bad = [Entry("x1", 100, type="contig", status="done", topology="round")]
+    assert _codes(_v(entries=bad, category="GENE")) == ["bad_type", "bad_status", "bad_topology"]

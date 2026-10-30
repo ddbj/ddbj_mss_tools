@@ -4,7 +4,8 @@
 :class:`Issue` whose ``message`` is a short machine-friendly code:
 
 * ``forbidden_char`` — a control character (Unicode category ``Cc``: tab, CR,
-  LF, ``\\x7f-\\x9f`` ...) or anything ``str.splitlines`` treats as a line
+  LF, ``\\x7f-\\x9f`` ...), a lone surrogate (``Cs``, cannot be written as
+  UTF-8) or anything ``str.splitlines`` treats as a line
   break (``\\x1c-\\x1e``, ``\\u2028``, ``\\u2029`` ...) in any value or
   qualifier name. ``AnnFile.read`` splits lines with ``splitlines``, so such a
   value could move rows into another feature or entry.
@@ -12,14 +13,19 @@
   or an entry's ``extra`` that is neither in ``source_qualifiers.json`` nor in
   *allowed_unknown* (``MetaDoc.unknown_qualifiers`` on a round trip).
 * ``reserved_qualifier`` — ``ff_definition`` / ``submitter_seqid`` / a role name
-  given in ``SOURCE`` or overrides (apply generates these itself).
+  given in ``SOURCE``, an entry's overrides or an entry's ``extra`` (apply
+  generates these itself; the role comes from ``type`` / ``seq_name``).
+* ``bad_source_identifier`` — ``SOURCE_IDENTIFIER`` (or
+  ``INFRASPECIFIC_NAME_MODIFIER``) is not a plain qualifier name that is known
+  or allowed and not reserved (it becomes ``@@[<name>]@@`` in ff_definition).
 * ``bad_type`` / ``bad_status`` / ``bad_topology`` — value outside the domain.
 * role rules — ``unplaced_with_name``, ``unplaced_not_partial``,
   ``unplaced_circular``, ``partial_circular``, ``plasmid_needs_name``,
   ``organelle_needs_name``, ``chromosome_needs_name`` / ``segment_needs_name``
-  (only when there are two or more of them).
+  (only when there are two or more of them). Not checked for the pass-through
+  categories ``GENE`` / ``NONE`` (their roles are written as given).
 * ``role_not_allowed_for_category`` — a role other than ``unplaced`` for a
-  category whose entries are all unplaced (WGS family, ENV, TSA, GENE).
+  category whose entries are all unplaced (WGS family, ENV, TSA).
 * ``empty_seq_id``, ``duplicate_seq_id``, ``seq_id_not_in_fasta``, ``no_entries``,
   ``seq_id_missing_from_table`` (a FASTA id with no row in the table).
 * ``unknown_category`` — not ``NONE``, ``GENE`` or a name in
@@ -27,6 +33,7 @@
 """
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 
@@ -40,6 +47,7 @@ TYPES = ROLES + ("unplaced",)
 STATUSES = ("complete", "partial")
 TOPOLOGIES = ("circular", "linear", "")
 RESERVED = frozenset({"ff_definition", "submitter_seqid", *ROLES})
+_QUALIFIER_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
 @dataclass
@@ -54,7 +62,7 @@ def _bad(value) -> bool:
         return False
     if len(f"x{value}x".splitlines()) > 1:
         return True
-    return any(unicodedata.category(c) == "Cc" for c in value)
+    return any(unicodedata.category(c) in ("Cc", "Cs") for c in value)
 
 
 def _walk(value, path: str, issues: list[Issue]) -> None:
@@ -70,6 +78,14 @@ def _walk(value, path: str, issues: list[Issue]) -> None:
             _walk(v, f"{path}.{i}", issues)
     elif _bad(value):
         issues.append(Issue(path, None, "forbidden_char"))
+
+
+def char_issues(common: dict) -> list[Issue]:
+    """``forbidden_char`` issues in the common JSON (run before the shape check,
+    which would only say "not a valid string" for a lone surrogate)."""
+    issues: list[Issue] = []
+    _walk(common, "", issues)
+    return issues
 
 
 def _category_ok(category: str) -> bool:
@@ -91,6 +107,14 @@ def validate(common: dict, entries: list[Entry], *, category: str, fasta_ids: li
     _walk(common, "", issues)
     known = known_qualifier_names()
     allowed = set(known) | set(allowed_unknown)
+
+    for key in ("SOURCE_IDENTIFIER", "INFRASPECIFIC_NAME_MODIFIER"):
+        sid = common.get(key)
+        if sid is None or sid == "":
+            continue
+        if (not isinstance(sid, str) or not _QUALIFIER_NAME.fullmatch(sid) or sid in RESERVED
+                or sid not in allowed):
+            issues.append(Issue(key, None, "bad_source_identifier"))
 
     source = common.get("SOURCE") or {}
     if isinstance(source, dict):
@@ -124,7 +148,9 @@ def validate(common: dict, entries: list[Entry], *, category: str, fasta_ids: li
             elif q not in allowed:
                 issues.append(Issue(q, eid, "unknown_qualifier"))
         for q in dict.fromkeys(q for q, _ in e.extra):
-            if q not in allowed:
+            if q in RESERVED:
+                issues.append(Issue(q, eid, "reserved_qualifier"))
+            elif q not in allowed:
                 issues.append(Issue(q, eid, "unknown_qualifier"))
 
         if not e.seq_id:
@@ -143,6 +169,8 @@ def validate(common: dict, entries: list[Entry], *, category: str, fasta_ids: li
         if e.topology not in TOPOLOGIES:
             issues.append(Issue("topology", eid, "bad_topology"))
 
+        if category in PASS_THROUGH:
+            continue
         if e.type == "unplaced":
             if e.seq_name:
                 issues.append(Issue("seq_name", eid, "unplaced_with_name"))

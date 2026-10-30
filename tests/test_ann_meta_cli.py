@@ -247,3 +247,114 @@ def test_internal_error_exit_1_no_traceback(tmp_path, capsys, monkeypatch):
     assert cap.out == ""
     assert cap.err.strip() == "error: internal: IndexError: list index out of range"
     assert not (tmp_path / "o.ann").exists()
+
+
+# -- final review fixes ------------------------------------------------------------
+
+def _mutated(tmp_path, capsys, mutate):
+    _, common, tsv = _extract(tmp_path, capsys)
+    data = json.loads(common.read_text())
+    mutate(data)
+    common.write_text(json.dumps(data), encoding="utf-8")
+    return common, tsv
+
+
+def _rows(path: Path) -> list[list[str]]:
+    return [r.cols[3:5] for r in AnnFile.read(path).rows]
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda d: d.__setitem__("DBLINK", {"project": "PRJDB1"}),
+    lambda d: d["SUBMITTER"].pop("ab_name"),
+    lambda d: d["SUBMITTER"].__setitem__("ab_name", []),
+    lambda d: d["REFERENCE"][0].update(year="", status="unpublished"),
+    lambda d: d["REFERENCE"][0].update(status="Published", journal="J"),
+    lambda d: d["REFERENCE"][0].pop("title"),
+    lambda d: d.__setitem__("SUBMITTER", {"contact": "X", "fax": "1"}),
+], ids=["dblink_project_only", "submitter_no_ab_name", "submitter_empty_ab_name",
+        "reference_blank_year_lower_status", "published_without_volume", "reference_no_title",
+        "submitter_extra_field"])
+def test_apply_accepts_partially_filled_common(tmp_path, capsys, mutate):
+    # I2: required items are not a gate; the shape check is structural only
+    common, tsv = _mutated(tmp_path, capsys, mutate)
+    assert _apply(tmp_path, common, tsv) == 0, capsys.readouterr().out
+
+
+def test_apply_drops_null_fields(tmp_path, capsys):
+    common, tsv = _mutated(tmp_path, capsys, lambda d: d["SUBMITTER"].update(contact=None, fax=None))
+    assert _apply(tmp_path, common, tsv) == 0, capsys.readouterr().out
+    rows = _rows(tmp_path / "o.ann")
+    assert not any(q in ("contact", "fax") for q, _ in rows)
+    assert not any(v == "None" for _, v in rows)
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda d: d["REFERENCE"][0].__setitem__("year", 2026),
+    lambda d: d["SUBMITTER"].__setitem__("contact", 5),
+    lambda d: d["SUBMITTER"].__setitem__("ab_name", "Mishima,T."),
+    lambda d: d["SUBMITTER"].__setitem__("fax", {"a": "b"}),
+    lambda d: d.__setitem__("DBLINK", ["PRJDB1"]),
+    lambda d: d["SOURCE"].__setitem__("note", 5),
+    lambda d: d.__setitem__("SOURCE_IDENTIFIER", ["strain"]),
+    lambda d: d.__setitem__("_extra", {"COMMENT": [["", "x"]]}),
+    lambda d: d.__setitem__("DBLINK", {"project": "PRJDB1", "bioproject": "PRJDB2"}),
+    lambda d: d.__setitem__("DBLINK", {"sra": ["DRR1"], "sequence read archive": ["DRR2"]}),
+], ids=["year_int", "contact_int", "ab_name_str", "extra_field_dict", "dblink_list", "source_int",
+        "source_identifier_list", "extra_empty_name", "dblink_alias_clash", "dblink_sra_alias_clash"])
+def test_apply_bad_shape_structural(tmp_path, capsys, mutate):
+    common, tsv = _mutated(tmp_path, capsys, mutate)
+    assert _apply(tmp_path, common, tsv) == 2
+    issues = json.loads(capsys.readouterr().out)["issues"]
+    assert issues and all(i["message"].startswith("bad_shape:") for i in issues), issues
+    assert not (tmp_path / "o.ann").exists()
+
+
+def test_apply_maps_dblink_aliases(tmp_path, capsys):
+    # M1: COMMON aliases are written with the MSS names
+    common, tsv = _mutated(tmp_path, capsys, lambda d: d.__setitem__(
+        "DBLINK", {"bioproject": "PRJDB9", "biosample": "SAMD9", "sra": ["DRR9"]}))
+    assert _apply(tmp_path, common, tsv) == 0, capsys.readouterr().out
+    rows = AnnFile.read(tmp_path / "o.ann").rows
+    assert [r.cols for r in rows[:3]] == [["COMMON", "DBLINK", "", "project", "PRJDB9"],
+                                          ["", "", "", "biosample", "SAMD9"],
+                                          ["", "", "", "sequence read archive", "DRR9"]]
+
+
+def test_apply_lone_surrogate_exit_2(tmp_path, capsys):
+    # M2: a JSON "\ud800" escape is an input issue, not an internal error
+    _, common, tsv = _extract(tmp_path, capsys)
+    data = json.loads(common.read_text())
+    data["SUBMITTER"]["contact"] = "\ud800"
+    data["SUBMITTER"]["x\udfff"] = "v"
+    common.write_text(json.dumps(data), encoding="utf-8")        # ensure_ascii: stays an escape
+    assert _apply(tmp_path, common, tsv) == 2
+    issues = json.loads(capsys.readouterr().out)["issues"]
+    assert {"field": "SUBMITTER.contact", "entry": None, "message": "forbidden_char"} in issues
+    assert any(i["field"].startswith("SUBMITTER.x") and i["message"] == "forbidden_char" for i in issues)
+    assert not (tmp_path / "o.ann").exists()
+
+
+def test_apply_bad_source_identifier_exit_2(tmp_path, capsys):
+    # I6
+    common, tsv = _mutated(tmp_path, capsys, lambda d: d.__setitem__("SOURCE_IDENTIFIER", "]@@ x @@["))
+    assert _apply(tmp_path, common, tsv) == 2
+    assert json.loads(capsys.readouterr().out)["issues"] == [
+        {"field": "SOURCE_IDENTIFIER", "entry": None, "message": "bad_source_identifier"}]
+
+
+def test_apply_role_column_in_tsv_is_reserved(tmp_path, capsys):
+    # I5: /plasmid via a TSV column on a WGS contig
+    tsv = tmp_path / "e.tsv"
+    assert main(["extract", "--ann", str(FIX / "dfast_draft.ann"), "--entries-out", str(tsv)]) == 0
+    doc = json.loads(capsys.readouterr().out)
+    common = tmp_path / "c.json"
+    common.write_text(json.dumps(_common_from_doc(doc)), encoding="utf-8")
+    lines = tsv.read_text().splitlines()
+    lines[0] += "\tplasmid"
+    lines[1] += "\tpEVIL"
+    tsv.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    rc = main(["apply", "--ann", str(FIX / "dfast_draft.ann"), "--common", str(common), "--entries", str(tsv),
+               "--out", str(tmp_path / "o.ann"), "--category", "WGS"])
+    assert rc == 2
+    assert json.loads(capsys.readouterr().out)["issues"] == [
+        {"field": "plasmid", "entry": "sequence1", "message": "reserved_qualifier"}]

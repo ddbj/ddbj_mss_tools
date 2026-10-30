@@ -1,17 +1,20 @@
 """Entry table TSV: one row per entry with its role and per-entry qualifiers.
 
-Header: ``#seq_id type seq_name status topology ff_definition`` followed by one
-column per qualifier name (the sorted union of every entry's ``overrides`` and
-``extra`` names). An empty cell means "not specified". Flag qualifiers
-(``True``) are written as ``yes``. A qualifier that appears more than once in
-an entry's ``extra`` cannot be shown in one cell: its cell is left empty and
-the full list stays in the JSON (``MetaDoc``).
+Header: ``#seq_id type seq_name status topology ff_definition`` followed by the
+qualifier columns: every name in an entry's ``overrides`` or ``extra``, sorted,
+and repeated as often as the entry with the most occurrences has it (two
+``/note`` rows -> two ``note`` columns; the n-th column holds the n-th
+occurrence, entries with fewer leave the rest empty). The six fixed columns
+are unique. An empty cell means "not specified". Flag qualifiers (``True``)
+are written as ``yes``.
 
-``read_entries`` reads the table back: known qualifier names go to
-``overrides``, unknown names and role names (``chromosome`` / ``plasmid`` /
-``organelle`` / ``segment``, which ``extract`` leaves in ``extra`` when an entry
-has a second role) go to ``extra`` in column order. An empty cell means "not
-specified" (a fixed column then keeps the ``Entry`` default).
+``read_entries`` reads the table back, row by row: a qualifier with one
+non-empty cell goes to ``overrides`` when its name is known (and not a role
+name), otherwise to ``extra``; a qualifier with two or more non-empty cells
+(a repeated column) goes to ``extra``, all values in column order. Role names
+(``chromosome`` / ``plasmid`` / ``organelle`` / ``segment``) always go to
+``extra`` (``validate`` reports them: the role comes from ``type``). An empty
+fixed cell keeps the ``Entry`` default.
 
 ``yes`` becomes the flag ``True`` only for a known boolean qualifier
 (``environmental_sample`` ...) or an unknown name; a known non-boolean
@@ -37,26 +40,30 @@ def _cell(value) -> str:
     return str(value)
 
 
+def _qualifier_values(e: Entry) -> dict[str, list[QualValue]]:
+    out: dict[str, list[QualValue]] = {}
+    for q, v in e.overrides.items():
+        out.setdefault(q, []).append(v)
+    for q, v in e.extra:
+        out.setdefault(q, []).append(v)
+    return out
+
+
 def write_entries(entries: list[Entry], path: str | Path) -> None:
-    names: set[str] = set()
-    for e in entries:
-        names.update(e.overrides)
-        names.update(q for q, _ in e.extra)
-    qual_cols = sorted(names)
-    lines = ["\t".join(FIXED_COLUMNS + tuple(qual_cols))]
-    for e in entries:
-        counts: dict[str, int] = {}
-        for q, _ in e.extra:
-            counts[q] = counts.get(q, 0) + 1
-        extra_single = {q: v for q, v in e.extra if counts[q] == 1}
+    values = [_qualifier_values(e) for e in entries]
+    width: dict[str, int] = {}
+    for vals in values:
+        for q, vs in vals.items():
+            width[q] = max(width.get(q, 0), len(vs))
+    names = sorted(width)
+    header = list(FIXED_COLUMNS) + [q for q in names for _ in range(width[q])]
+    lines = ["\t".join(header)]
+    for e, vals in zip(entries, values):
         cells = [e.seq_id, e.type, e.seq_name, e.status, e.topology, e.ff_definition or ""]
-        for q in qual_cols:
-            if q in e.overrides:
-                cells.append(_cell(e.overrides[q]))
-            elif counts.get(q, 0) == 1:
-                cells.append(_cell(extra_single[q]))
-            else:
-                cells.append("")
+        for q in names:
+            vs = vals.get(q, [])
+            cells.extend(_cell(v) for v in vs)
+            cells.extend([""] * (width[q] - len(vs)))
         lines.append("\t".join(cells))
     with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write("\n".join(lines) + "\n")
@@ -73,7 +80,7 @@ def read_entries(path: str | Path) -> list[Entry]:
     """Read an entry table written by :func:`write_entries` (or edited by hand).
 
     Raises ``ValueError`` (with the line number) for a missing / malformed header,
-    duplicate column names or a row with more cells than the header.
+    a repeated fixed column or a row with more cells than the header.
     """
     with open(path, encoding="utf-8", newline="") as fh:
         # split on LF only: str.splitlines would also split on \x1c, \u2028 ... inside a cell
@@ -84,9 +91,11 @@ def read_entries(path: str | Path) -> list[Entry]:
     missing = [c for c in FIXED_COLUMNS if c not in header]
     if missing:
         raise ValueError(f"entry table: header lacks column(s): {', '.join(missing)}")
-    dupes = sorted({c for c in header if header.count(c) > 1})
+    dupes = [c for c in FIXED_COLUMNS if header.count(c) > 1]
     if dupes:
         raise ValueError(f"entry table: duplicate column(s): {', '.join(dupes)}")
+    fixed = {c: header.index(c) for c in FIXED_COLUMNS}
+    qual_cols = [(i, name) for i, name in enumerate(header) if name not in FIXED_COLUMNS]
     known = known_qualifier_names()
     entries: list[Entry] = []
     for lineno, line in enumerate(lines[1:], start=2):
@@ -95,18 +104,19 @@ def read_entries(path: str | Path) -> list[Entry]:
         cells = line.split("\t")
         if len(cells) > len(header):
             raise ValueError(f"entry table line {lineno}: {len(cells)} cells, header has {len(header)}")
-        row = dict(zip(header, cells + [""] * (len(header) - len(cells))))
-        e = Entry(seq_id=row["#seq_id"], length=None)
-        for col, attr in (("type", "type"), ("seq_name", "seq_name"), ("status", "status"),
-                          ("topology", "topology"), ("ff_definition", "ff_definition")):
-            if row[col]:
-                setattr(e, attr, row[col])
-        for name in header:
-            if name in FIXED_COLUMNS or not row[name]:
-                continue
-            if name in known and name not in _ROLE_NAMES:
-                e.overrides[name] = _value(name, row[name])
+        cells += [""] * (len(header) - len(cells))
+        e = Entry(seq_id=cells[fixed["#seq_id"]], length=None)
+        for col in ("type", "seq_name", "status", "topology", "ff_definition"):
+            if cells[fixed[col]]:
+                setattr(e, col, cells[fixed[col]])
+        given: dict[str, list[str]] = {}
+        for i, name in qual_cols:
+            if cells[i]:
+                given.setdefault(name, []).append(cells[i])
+        for name, vs in given.items():
+            if len(vs) == 1 and name in known and name not in _ROLE_NAMES:
+                e.overrides[name] = _value(name, vs[0])
             else:
-                e.extra.append((name, _value(name, row[name])))
+                e.extra.extend((name, _value(name, v)) for v in vs)
         entries.append(e)
     return entries
