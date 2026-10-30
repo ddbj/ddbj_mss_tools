@@ -10,16 +10,20 @@ the full list stays in the JSON (``MetaDoc``).
 ``read_entries`` reads the table back: known qualifier names go to
 ``overrides``, unknown names and role names (``chromosome`` / ``plasmid`` /
 ``organelle`` / ``segment``, which ``extract`` leaves in ``extra`` when an entry
-has a second role) go to ``extra`` in column order. ``yes`` becomes ``True``;
-an empty cell means "not specified" (a fixed column then keeps the ``Entry``
-default).
+has a second role) go to ``extra`` in column order. An empty cell means "not
+specified" (a fixed column then keeps the ``Entry`` default).
+
+``yes`` becomes the flag ``True`` only for a known boolean qualifier
+(``environmental_sample`` ...) or an unknown name; a known non-boolean
+qualifier keeps the string (``/strain="yes"``). Ambiguity: for an unknown
+qualifier the table cannot tell a flag from the literal value ``yes``.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from ann_meta.model import Entry, QualValue
-from common.qualifiers import known_qualifier_names
+from common.qualifiers import known_qualifier_names, qualifier_def
 
 FIXED_COLUMNS = ("#seq_id", "type", "seq_name", "status", "topology", "ff_definition")
 _ROLE_NAMES = ("chromosome", "plasmid", "organelle", "segment")
@@ -58,8 +62,11 @@ def write_entries(entries: list[Entry], path: str | Path) -> None:
         fh.write("\n".join(lines) + "\n")
 
 
-def _value(cell: str) -> QualValue:
-    return True if cell == "yes" else cell
+def _value(name: str, cell: str) -> QualValue:
+    if cell != "yes":
+        return cell
+    d = qualifier_def(name)
+    return True if d is None or d.get("boolean") else cell
 
 
 def read_entries(path: str | Path) -> list[Entry]:
@@ -98,8 +105,8 @@ def read_entries(path: str | Path) -> list[Entry]:
             if name in FIXED_COLUMNS or not row[name]:
                 continue
             if name in known and name not in _ROLE_NAMES:
-                e.overrides[name] = _value(row[name])
+                e.overrides[name] = _value(name, row[name])
             else:
-                e.extra.append((name, _value(row[name])))
+                e.extra.append((name, _value(name, row[name])))
         entries.append(e)
     return entries

@@ -20,7 +20,10 @@ line ending), so annotation features survive unchanged:
    goes directly before it when the entry is circular. Existing TOPOLOGY rows
    and extra source features of the entry are removed.
 
-``apply`` does not validate; run :func:`ann_meta.validate.validate` first.
+The entry table must cover every entry of the .ann: an entry missing from it
+raises ``ValueError("entry_missing_from_table: <id>")`` before anything is
+changed. ``apply`` does not otherwise validate; run
+:func:`ann_meta.validate.validate` first.
 """
 from __future__ import annotations
 
@@ -232,6 +235,11 @@ def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str) ->
     rules = _rules(category)
     source_identifier = (common.get("SOURCE_IDENTIFIER") or common.get("INFRASPECIFIC_NAME_MODIFIER")
                          or rules.source_identifier or "")
+
+    listed = {e.seq_id for e in entries}
+    for f in ann.features():
+        if f.entry and f.entry != "COMMON" and f.entry not in listed:
+            raise ValueError(f"entry_missing_from_table: {f.entry}")
 
     _apply_common_targets(ann, common)
 

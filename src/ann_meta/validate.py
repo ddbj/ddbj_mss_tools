@@ -3,11 +3,14 @@
 ``validate`` never raises on bad input; it returns every problem as an
 :class:`Issue` whose ``message`` is a short machine-friendly code:
 
-* ``forbidden_char`` — a tab, newline or other control character (``\\x00-\\x1f``,
-  ``\\x7f``) in any value or qualifier name (they would break the 5-column .ann).
-* ``unknown_qualifier`` — a qualifier name in ``SOURCE`` or an entry's overrides
-  that is neither in ``source_qualifiers.json`` nor in *allowed_unknown*
-  (names in an entry's ``extra`` are pass-through and always allowed).
+* ``forbidden_char`` — a control character (Unicode category ``Cc``: tab, CR,
+  LF, ``\\x7f-\\x9f`` ...) or anything ``str.splitlines`` treats as a line
+  break (``\\x1c-\\x1e``, ``\\u2028``, ``\\u2029`` ...) in any value or
+  qualifier name. ``AnnFile.read`` splits lines with ``splitlines``, so such a
+  value could move rows into another feature or entry.
+* ``unknown_qualifier`` — a qualifier name in ``SOURCE``, an entry's overrides
+  or an entry's ``extra`` that is neither in ``source_qualifiers.json`` nor in
+  *allowed_unknown* (``MetaDoc.unknown_qualifiers`` on a round trip).
 * ``reserved_qualifier`` — ``ff_definition`` / ``submitter_seqid`` / a role name
   given in ``SOURCE`` or overrides (apply generates these itself).
 * ``bad_type`` / ``bad_status`` / ``bad_topology`` — value outside the domain.
@@ -17,13 +20,14 @@
   (only when there are two or more of them).
 * ``role_not_allowed_for_category`` — a role other than ``unplaced`` for a
   category whose entries are all unplaced (WGS family, ENV, TSA, GENE).
-* ``empty_seq_id``, ``duplicate_seq_id``, ``seq_id_not_in_fasta``, ``no_entries``.
+* ``empty_seq_id``, ``duplicate_seq_id``, ``seq_id_not_in_fasta``, ``no_entries``,
+  ``seq_id_missing_from_table`` (a FASTA id with no row in the table).
 * ``unknown_category`` — not ``NONE``, ``GENE`` or a name in
   ``submission_categories.json``.
 """
 from __future__ import annotations
 
-import re
+import unicodedata
 from dataclasses import dataclass
 
 from ann_meta.model import Entry
@@ -38,7 +42,6 @@ TOPOLOGIES = ("circular", "linear", "")
 # every other category takes unplaced entries only
 ROLE_CATEGORIES = frozenset({"NONE", "GNM", "MAG", "TPA-GNM"})
 RESERVED = frozenset({"ff_definition", "submitter_seqid", *ROLES})
-_FORBIDDEN = re.compile(r"[\x00-\x1f\x7f]")
 
 
 @dataclass
@@ -49,7 +52,11 @@ class Issue:
 
 
 def _bad(value) -> bool:
-    return isinstance(value, str) and bool(_FORBIDDEN.search(value))
+    if not isinstance(value, str):
+        return False
+    if len(f"x{value}x".splitlines()) > 1:
+        return True
+    return any(unicodedata.category(c) == "Cc" for c in value)
 
 
 def _walk(value, path: str, issues: list[Issue]) -> None:
@@ -86,8 +93,6 @@ def validate(common: dict, entries: list[Entry], *, category: str, fasta_ids: li
     _walk(common, "", issues)
     known = known_qualifier_names()
     allowed = set(known) | set(allowed_unknown)
-    for e in entries:
-        allowed.update(q for q, _ in e.extra)
 
     source = common.get("SOURCE") or {}
     if isinstance(source, dict):
@@ -119,6 +124,9 @@ def validate(common: dict, entries: list[Entry], *, category: str, fasta_ids: li
             if q in RESERVED:
                 issues.append(Issue(q, eid, "reserved_qualifier"))
             elif q not in allowed:
+                issues.append(Issue(q, eid, "unknown_qualifier"))
+        for q in dict.fromkeys(q for q, _ in e.extra):
+            if q not in allowed:
                 issues.append(Issue(q, eid, "unknown_qualifier"))
 
         if not e.seq_id:
@@ -153,4 +161,8 @@ def validate(common: dict, entries: list[Entry], *, category: str, fasta_ids: li
                 issues.append(Issue("seq_name", eid, f"{e.type}_needs_name"))
             if e.type in ROLES and category not in ROLE_CATEGORIES:
                 issues.append(Issue("type", eid, "role_not_allowed_for_category"))
+    if fasta_ids is not None:
+        for fid in fasta_ids:
+            if fid not in seen:
+                issues.append(Issue("entries", fid, "seq_id_missing_from_table"))
     return issues

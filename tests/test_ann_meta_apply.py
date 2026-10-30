@@ -460,3 +460,57 @@ def test_read_entries_crlf_short_rows_and_blank_lines(tmp_path):
     assert read_entries(p) == [
         Entry("s1", None, type="chromosome", seq_name="1", status="complete", topology="circular"),
         Entry("s2", None)]
+
+
+# -- fix round 1 -----------------------------------------------------------------
+
+def test_apply_raises_for_ann_entry_missing_from_table():
+    for name, category in (("dfast_draft", "WGS"), ("dfast_complete", "GNM")):
+        ann, doc, _ = _load(name)
+        before = [list(r.cols) + [r.eol] for r in ann.rows]
+        with pytest.raises(ValueError, match="entry_missing_from_table: sequence2"):
+            apply(ann, _common(doc), [e for e in doc.entries if e.seq_id != "sequence2"], category=category)
+        assert [list(r.cols) + [r.eol] for r in ann.rows] == before      # nothing touched
+
+
+def test_common_source_layout_removes_every_entry_source(tmp_path):
+    lines = [
+        "COMMON\tsource\t1..E\torganism\tBacillus subtilis",
+        "\t\t\tmol_type\tgenomic DNA",
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+        "\t\t\tmol_type\tgenomic DNA",
+        "\tTOPOLOGY\t\tlinear\t",
+        "\tCDS\t1..300\tproduct\thypothetical protein",
+        "seq2\tCDS\t1..200\tproduct\thypothetical protein",
+    ]
+    src = _ann(tmp_path, lines)
+    lengths = {"seq1": 300, "seq2": 200}
+    out = _apply_file(src, tmp_path / "out.ann", category="WGS", lengths=lengths)
+    feats = AnnFile.read(out).features()
+    assert [(f.entry, f.key) for f in feats] == [("COMMON", "source"), ("seq1", "CDS"), ("seq2", "CDS")]
+    doc = extract(AnnFile.read(out), lengths)
+    assert not any(n.code == "both_common_and_entry_source" for n in doc.notes)
+    out2 = tmp_path / "out2.ann"
+    apply(AnnFile.read(out), _common(doc), doc.entries, category="WGS").write(out2)
+    assert out2.read_bytes() == out.read_bytes()
+
+
+def test_literal_yes_survives_tsv_and_apply(tmp_path):
+    ann = AnnFile.read(_ann(tmp_path, MINI))
+    doc = extract(ann)
+    doc.entries[0].overrides["strain"] = "yes"
+    doc.entries[0].overrides["environmental_sample"] = True
+    doc.entries[0].extra.append(("my_flag", True))
+    tsv = tmp_path / "e.tsv"
+    write_entries(doc.entries, tsv)
+    entries = read_entries(tsv)
+    assert entries[0].overrides["strain"] == "yes"
+    assert entries[0].overrides["environmental_sample"] is True
+    assert entries[0].extra == [("my_flag", True)]
+    for e, orig in zip(entries, doc.entries):
+        e.length = orig.length
+    apply(ann, _common(doc), entries, category="GENE")
+    s1 = next(f for f in ann.features() if f.key == "source")
+    quals = s1.qualifiers(ann.rows)
+    assert ("strain", "yes") in quals
+    assert ("environmental_sample", "") in quals and ("my_flag", "") in quals

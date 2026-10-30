@@ -46,8 +46,44 @@ def test_rejects_unknown_qualifier_unless_allowed():
     common = {**COMMON, "SOURCE": {**COMMON["SOURCE"], "sub_strain": "x"}}
     assert Issue("SOURCE.sub_strain", None, "unknown_qualifier") in _v(common=common)
     assert _v(common=common, allowed_unknown={"sub_strain"}) == []
-    # extras are pass-through: their names count as allowed
-    assert _v(entries=[Entry("s1", 100, extra=[("my_flag", True)])]) == []
+    # extra names go through the same gate: they do not widen the whitelist
+    entries = [Entry("s1", 100, extra=[("my_flag", True)])]
+    assert _v(entries=entries) == [Issue("my_flag", "s1", "unknown_qualifier")]
+    assert _v(entries=entries, allowed_unknown={"my_flag"}) == []
+    # an unknown extra name in one entry does not let SOURCE use it
+    entries = [Entry("s1", 100, extra=[("sub_strain", "y")])]
+    common = {**COMMON, "SOURCE": {**COMMON["SOURCE"], "sub_strain": "x"}}
+    assert set(_codes(_v(common=common, entries=entries))) == {"unknown_qualifier"}
+    assert len(_v(common=common, entries=entries)) == 2
+    # role names left in extra by extract are known qualifiers
+    assert _v(entries=[Entry("s1", 100, type="chromosome", seq_name="1", status="complete",
+                             extra=[("plasmid", "p1")])]) == []
+
+
+def test_tsv_typo_column_is_rejected(tmp_path):
+    from ann_meta.entries_tsv import read_entries
+    p = tmp_path / "e.tsv"
+    p.write_text("#seq_id\ttype\tseq_name\tstatus\ttopology\tff_definition\tstrian\n"
+                 "s1\tunplaced\t\tpartial\t\t\tK-12\n", encoding="utf-8")
+    entries = read_entries(p)
+    assert _v(entries=entries) == [Issue("strian", "s1", "unknown_qualifier")]
+
+
+def test_rejects_line_separators_and_c1_controls():
+    for bad in ("Hanako\u2028s1\tDATE", "a\u2028b", "a\u2029b", "a\x85b", "a\x1cb", "a\x0bb", "a\x9fb"):
+        common = {**COMMON, "SUBMITTER": {"ab_name": ["Mishima,T."], "contact": bad}}
+        assert Issue("SUBMITTER.contact", None, "forbidden_char") in _v(common=common), repr(bad)
+        issues = _v(entries=[Entry("s1", 100, overrides={"strain": bad})])
+        assert Issue("strain", "s1", "forbidden_char") in issues, repr(bad)
+        assert "forbidden_char" in _codes(_v(entries=[Entry("s1", 100, ff_definition=bad)])), repr(bad)
+    ok = {**COMMON, "SUBMITTER": {"ab_name": ["Müller,J."], "contact": "谷澤 靖洋 — Ångström café"}}
+    assert _v(common=ok) == []
+    assert _v(entries=[Entry("s1", 100, overrides={"strain": "株 NIG-1 µ"})]) == []
+
+
+def test_fasta_id_missing_from_table():
+    issues = _v(entries=[Entry("s1", 100)], fasta_ids=["s1", "s2"])
+    assert issues == [Issue("entries", "s2", "seq_id_missing_from_table")]
 
 
 def test_reserved_qualifier_in_overrides():
