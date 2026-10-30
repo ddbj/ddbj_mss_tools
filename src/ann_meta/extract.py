@@ -151,13 +151,30 @@ def _empty_placeholder(name: str, value: str) -> bool:
     return value == "" and d is not None and not d.get("boolean")
 
 
-def _qual_value(name: str, value: str) -> str | bool:
+def _qual_value(value: str) -> str | bool:
     return True if value == "" else value
 
 
-def _has_circular(feats: list[AnnFeature], rows) -> bool:
-    return any(f.key == "TOPOLOGY" and any("circular" in (q, v) for q, v in f.qualifiers(rows))
-               for f in feats)
+def _note_unnamed(f: AnnFeature, rows, entry: str | None, notes: list[Note]) -> None:
+    """Rows with a value but no qualifier name are invisible to AnnFeature.qualifiers."""
+    for r in rows[f.first:f.last + 1]:
+        if not r.cols[3] and r.cols[4]:
+            notes.append(Note("unnamed_qualifier", entry, r.cols[4]))
+
+
+def _topology(eid: str, feats: list[AnnFeature], rows, notes: list[Note]) -> str:
+    """"circular" if a TOPOLOGY row says so; any other TOPOLOGY value gets a note."""
+    topology = ""
+    for f in feats:
+        if f.key != "TOPOLOGY":
+            continue
+        quals = f.qualifiers(rows)
+        if any("circular" in (q, v) for q, v in quals):
+            topology = "circular"
+        else:
+            value = next((x for q, v in quals for x in (q, v) if x), "")
+            notes.append(Note("topology_not_circular", eid, value))
+    return topology
 
 
 def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDoc:
@@ -167,6 +184,9 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
 
     common_feats = [f for f in feats if f.entry == "COMMON"]
     common, common_extra, untouched, raw_common = _read_common(common_feats, rows, notes)
+    for f in common_feats:
+        if f.key in COMMON_TARGETS or f.key == "source":
+            _note_unnamed(f, rows, None, notes)
 
     common_sources = [f for f in common_feats if f.key == "source"]
     common_src: list[tuple[str, str]] | None = None
@@ -188,6 +208,8 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
                 entry_ids.append(f.entry)
                 by_entry[f.entry] = []
             by_entry[f.entry].append(f)
+            if f.key in ("source", "TOPOLOGY"):
+                _note_unnamed(f, rows, f.entry, notes)
     entry_src: dict[str, list[tuple[str, str]]] = {}
     for eid in entry_ids:
         srcs = [f for f in by_entry[eid] if f.key == "source"]
@@ -210,6 +232,9 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
             if eid not in fasta_lengths:
                 notes.append(Note("entry_not_in_fasta", eid, ""))
         entry_ids += [i for i in fasta_lengths if i not in by_entry]
+
+    if has_common and not entry_ids:
+        notes.append(Note("common_source_without_entries", None, ""))
 
     if not has_common and not entry_src:
         notes.insert(0, Note("no_source", None, ""))
@@ -244,8 +269,7 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
         entries.append(e)
         quals = merged.get(eid)
         has_topology = any(f.key == "TOPOLOGY" for f in by_entry.get(eid, []))
-        if _has_circular(by_entry.get(eid, []), rows):
-            e.topology = "circular"
+        e.topology = _topology(eid, by_entry.get(eid, []), rows, notes)
         if quals is None:
             sketches.append(EntrySketch(eid, has_topology, None, {}))
             continue
@@ -275,7 +299,7 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
             elif _empty_placeholder(q, v):
                 continue
             else:
-                cand[q] = _qual_value(q, v)
+                cand[q] = _qual_value(v)
                 seq.append((q, v, "cand"))
         if e.ff_definition and _COMPLETE.search(e.ff_definition):
             e.status = "complete"
@@ -300,13 +324,13 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
             continue
         for q, v, kind in ordered[e.seq_id]:
             if kind == "extra":
-                e.extra.append((q, v))
+                e.extra.append((q, _qual_value(v)))
             elif q in source:
                 continue
             elif q in known:
-                e.overrides[q] = _qual_value(q, v)
+                e.overrides[q] = _qual_value(v)
             else:
-                e.extra.append((q, v))
+                e.extra.append((q, _qual_value(v)))
 
     source_identifier = None
     for e in entries:

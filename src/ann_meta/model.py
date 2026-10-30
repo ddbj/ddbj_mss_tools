@@ -23,7 +23,7 @@ class Entry:
     topology: str = ""              # circular | linear | ""
     overrides: dict[str, QualValue] = field(default_factory=dict)
     ff_definition: str | None = None
-    extra: list[tuple[str, str]] = field(default_factory=list)
+    extra: list[tuple[str, QualValue]] = field(default_factory=list)
 
 
 @dataclass
@@ -64,6 +64,7 @@ class MetaDoc:
 
     @classmethod
     def from_json(cls, d: dict) -> "MetaDoc":
+        d = copy.deepcopy(d)
         cat = d.get("category") or {}
         return cls(
             category=CategoryGuess(value=cat.get("value"), evidence=list(cat.get("evidence", [])),

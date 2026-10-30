@@ -71,6 +71,8 @@ def test_dfast_complete():
 
 def test_marker_set():
     doc = _doc("marker_set")
+    # marker_set.ann intentionally has no "organelle mitochondrion" on the COI
+    # entries: with /organelle on every entry detect_category would say MISC.
     assert doc.category.value is None
     assert doc.source == {"mol_type": "genomic DNA"}
     for e in doc.entries:
@@ -210,3 +212,102 @@ def test_write_entries_flag_and_none(tmp_path):
     assert lines[0] == "#seq_id\ttype\tseq_name\tstatus\ttopology\tff_definition\tenvironmental_sample\tsub_strain"
     assert lines[1] == "s1\tunplaced\t\tpartial\t\t\tyes\t"
     assert lines[2] == "s2\tplasmid\tp1\tcomplete\tcircular\t\t\ta"
+
+
+# -- fix round 1: every dropped row gets a note ------------------------------
+
+def test_unnamed_qualifier_row_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "COMMON\tSUBMITTER\t\tab_name\tSuzuki,H.",
+        "\t\t\t\tstray common value",
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+        "\t\t\t\torphan value",
+        "\t\t\tmol_type\tgenomic DNA",
+    ])
+    doc = extract(ann)
+    assert Note("unnamed_qualifier", None, "stray common value") in doc.notes
+    assert Note("unnamed_qualifier", "seq1", "orphan value") in doc.notes
+    assert doc.source == {"organism": "Bacillus subtilis", "mol_type": "genomic DNA"}
+
+
+def test_topology_not_circular_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+        "\tTOPOLOGY\t\tlinear",
+    ])
+    doc = extract(ann)
+    assert doc.entries[0].topology == ""
+    assert Note("topology_not_circular", "seq1", "linear") in doc.notes
+
+
+def test_common_source_without_entries_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "COMMON\tsource\t1..E\torganism\tBacillus subtilis",
+        "\t\t\tmol_type\tgenomic DNA",
+    ])
+    doc = extract(ann)
+    assert doc.entries == []
+    assert Note("common_source_without_entries", None, "") in doc.notes
+
+
+def test_repeated_common_feature_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "COMMON\tSUBMITTER\t\tab_name\tSuzuki,H.",
+        "\tSUBMITTER\t\tab_name\tTanaka,K.",
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+    ])
+    doc = extract(ann)
+    assert Note("repeated_common_feature", None, "SUBMITTER") in doc.notes
+    assert doc.common["SUBMITTER"] == {"ab_name": ["Suzuki,H."]}
+    assert doc.common_extra["SUBMITTER"] == [("ab_name", "Tanaka,K.")]
+
+
+def test_multiple_roles_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+        "\t\t\tchromosome\t1",
+        "\t\t\tplasmid\tp1",
+    ])
+    doc = extract(ann)
+    e = doc.entries[0]
+    assert (e.type, e.seq_name) == ("chromosome", "1")
+    assert e.extra == [("plasmid", "p1")]
+    assert Note("multiple_roles", "seq1", "plasmid") in doc.notes
+
+
+def test_entry_without_source_and_not_in_fasta(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+        "seq2\tCDS\t1..300\tproduct\thypothetical protein",
+    ])
+    doc = extract(ann, {"seq1": 300, "seq3": 120})
+    assert Note("entry_without_source", "seq2", "") in doc.notes
+    assert Note("entry_without_source", "seq3", "") in doc.notes
+    assert Note("entry_not_in_fasta", "seq2", "") in doc.notes
+    assert [e.seq_id for e in doc.entries] == ["seq1", "seq2", "seq3"]
+    assert doc.source == {"organism": "Bacillus subtilis"}
+
+
+def test_source_location_mismatch_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "seq1\tsource\t1..290\torganism\tBacillus subtilis",
+    ])
+    doc = extract(ann, {"seq1": 300})
+    assert Note("source_location", "seq1", "1..290") in doc.notes
+
+
+def test_unknown_empty_valued_extra_survives_tsv(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
+        "\t\t\tmy_flag\t",
+        "seq2\tsource\t1..300\torganism\tBacillus subtilis",
+    ])
+    doc = extract(ann)
+    assert doc.entries[0].extra == [("my_flag", True)]
+    assert MetaDoc.from_json(doc.to_json()) == doc
+    out = tmp_path / "e.tsv"
+    write_entries(doc.entries, out)
+    header, row1, row2 = out.read_text(encoding="utf-8").splitlines()
+    assert header.split("\t")[-1] == "my_flag"
+    assert row1.split("\t")[-1] == "yes"
+    assert row2.split("\t")[-1] == ""
