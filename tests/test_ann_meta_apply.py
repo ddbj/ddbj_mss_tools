@@ -11,7 +11,8 @@ from ann_meta.model import Entry, MetaDoc
 from ann_meta.validate import Issue, validate
 
 FIX = Path(__file__).parent / "ann_meta_fixtures"
-FIXTURES = ("dfast_draft", "dfast_complete", "marker_set", "handmade")
+FIXTURES = ("dfast_draft", "dfast_complete", "marker_set", "handmade", "plasmid_only", "single_chromosome",
+            "wgs_featureless")
 
 
 # -- helpers -------------------------------------------------------------------
@@ -34,7 +35,8 @@ def _common(doc: MetaDoc) -> dict:
 
 
 def _category(doc: MetaDoc) -> str:
-    return doc.category.value or "GENE"
+    """mss_tools category for the detected MSS data type (MISC / none -> GENE, as the portal does)."""
+    return {"GNM": "GNM", "WGS": "WGS"}.get(doc.category.value, "GENE")
 
 
 def _apply_file(src: Path, out: Path, *, common=None, entries=None, category=None,
@@ -113,7 +115,9 @@ def test_roundtrip_feature_rows_identical(name, tmp_path):
     src = FIX / f"{name}.ann"
     out = _apply_file(src, tmp_path / "out.ann", lengths=read_fasta_lengths(FIX / f"{name}.fasta"))
     _assert_feature_rows_equal(src, out)
-    assert [m for m in _entry_markers(out)] == [m for m in _entry_markers(src)]
+    # a featureless contig has no rows left in the COMMON-source layout (ruling)
+    dropped = {"contig2"} if name == "wgs_featureless" else set()
+    assert _entry_markers(out) == [m for m in _entry_markers(src) if m not in dropped]
     if name == "handmade":
         assert _no_bare_lf(out.read_bytes())
     else:

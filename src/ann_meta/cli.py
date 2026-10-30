@@ -11,6 +11,8 @@
     "message"}]}`` on stdout and exit 2 without writing. Otherwise rewrite the
     COMMON / source rows and write Z through a temporary file in Z's directory
     (so ``--out`` may equal ``--ann``). Exit 0. Unreadable inputs exit 1.
+    The common JSON is checked for structure only (``ann_meta.shape``); with
+    ``--fasta`` entries without rows are inserted at their FASTA position.
 """
 from __future__ import annotations
 

@@ -618,19 +618,31 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
 - `--common` は mss_builder の common JSON と同じ形に `SOURCE`（source の qualifier）、`SOURCE_IDENTIFIER`、
   `_extra`（COMMON の feature ごとの `[名前, 値]` の並び。`true` は値なし行、`false` は出力しない）を加えたもの:
   `{"DBLINK": {"project": "PRJDB1", "sample": "SAMD1"}, "SOURCE": {"organism": "Escherichia coli", "strain": "K-12"}, "_extra": {"COMMENT": [["line", "..."]]}}`
-- エントリ表 TSV（タブ区切り）: `#seq_id type seq_name status topology ff_definition` の後に qualifier 名の列。空欄は「指定なし」、flag は `yes`（例: `sequence1⇥chromosome⇥⇥complete⇥circular⇥⇥...`、⇥ はタブ）
+  形の検査は構造だけです（各項目は省略可、値は文字列・文字列のリスト・SOURCE では真偽値。`null` は「指定なし」として書きません）。
+  必須項目（DBLINK の sample、SUBMITTER の著者、REFERENCE の status の値など）は検査しないので、一部だけ埋まった COMMON もそのまま保存できます。
+  DBLINK の別名（`bioproject`、`biosample`、`sra`、`DRA`、`sequence read archive`）は MSS の名前で書きます（同じ項目を 2 つの名前で渡すと `bad_shape`）。
+  `SOURCE_IDENTIFIER` は既知（または許可した）qualifier 名に限ります（`bad_source_identifier`）。
+- エントリ表 TSV（タブ区切り）: `#seq_id type seq_name status topology ff_definition` の後に qualifier 名の列。空欄は「指定なし」、flag は `yes`（例: `sequence1⇥chromosome⇥⇥complete⇥circular⇥⇥...`、⇥ はタブ）。
+  同じ qualifier が 1 エントリに複数ある（`/note` 2 行など）ときは同じ名前の列を繰り返し、左から順に読み書きします。
+  未知の qualifier の `yes` は flag（値なし行）として読みます。値が文字どおり `yes` の未知 qualifier とは区別できません（既知の非 flag qualifier の `yes` は値のまま）。
+  `chromosome` / `plasmid` / `organelle` / `segment` / `submitter_seqid` / `ff_definition` の列は `reserved_qualifier`（役割は `type` / `seq_name` で指定）。
 - `--fasta` があれば seq_id を FASTA と照合し長さに使います。無ければ既存 source の `1..N` から長さを取ります。
+  `extract` は `--fasta` があればエントリを FASTA の順に並べ、`apply` は `.ann` に行の無いエントリを FASTA の順の位置（次のエントリの前）に差し込みます。
 - `--allow-unknown` を省くと、入力 `.ann` に既にある未知の qualifier 名だけを許可します（そのままの往復はフラグ不要）。
-- レイアウト: カテゴリが WGS / MAG-WGS / ENV で全エントリが unplaced かつエントリ別 qualifier が無いときは COMMON の source 1 つ（`1..E`）、
-  それ以外はエントリごとの source。
+- レイアウト: カテゴリが WGS / MAG-WGS / ENV / TSA / TSA-ENV で全エントリが unplaced かつエントリ別 qualifier が無いときは COMMON の source 1 つ
+  （`1..E`、`submitter_seqid @@[entry]@@`。mss_builder の WGS・tsa2mss と同じ）、それ以外はエントリごとの source。
+  COMMON の source に寄せると、source 行しか無いエントリ（feature の無い contig）は行が無くなり、エントリ名（1 列目）は残った最初の行に移ります。
+  後でエントリごとの source に戻すと、そのエントリは FASTA の順の位置に戻ります。
 - ff_definition: GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV では type・status から作り直し（上記 ff_definition の表と同じ規則）、
   NONE / GENE では表の `ff_definition` をそのまま書きます。そのままの往復でも作り直されるため、元の値と変わることがあります
   （例: GNM の単一 complete chromosome は `..., complete genome` → `..., chromosome, complete genome`）。
-- `_extra` のキーは上記 6 つの COMMON feature に限ります（それ以外は `bad_shape: not a COMMON target` で終了 2）。
+- 役割: `/chromosome` 等の無いエントリでも、ff_definition に `, chromosome` / `complete genome` があるか circular なら名前の無い chromosome として読みます。
+  NONE / GENE（MISC やマーカーなど）では役割・名前・topology を与えたとおりに書き、役割の規則（unplaced は partial・linear など）は検査しません。
+- `_extra` のキーは上記 6 つの COMMON feature に限り、名前は空にできません（`bad_shape`）。
 
 終了コード: `0` 成功 / `1` 入力が読めない（stderr に 1 行） / `2` 入力の問題（stdout に
-`{"issues": [{"field": ..., "entry": ..., "message": ...}]}`、出力は書かない。`forbidden_char`、`unknown_qualifier`、`bad_shape: ...`、
-`bad_entries_tsv: ...`、`entry_missing_from_table: ...` など）。
+`{"issues": [{"field": ..., "entry": ..., "message": ...}]}`、出力は書かない。`forbidden_char`、`unknown_qualifier`、`reserved_qualifier`、
+`bad_source_identifier`、`bad_shape: ...`、`bad_entries_tsv: ...`、`entry_missing_from_table: ...` など）。
 
 ## mss2ff の使い方
 
@@ -1308,14 +1320,31 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
 - `--common`: the mss_builder common JSON plus `SOURCE` (source qualifiers), `SOURCE_IDENTIFIER` and `_extra`
   (per COMMON feature, a list of `[name, value]`; `true` = valueless row, `false` = omitted), e.g.
   `{"DBLINK": {"project": "PRJDB1", "sample": "SAMD1"}, "SOURCE": {"organism": "Escherichia coli"}, "_extra": {"COMMENT": [["line", "..."]]}}`
+  The shape check is structural only (every field optional; strings, string lists and, in SOURCE, booleans; `null` = not given,
+  nothing written). Required items (DBLINK sample, SUBMITTER authors, REFERENCE status values, ...) are not checked, so a
+  partially filled COMMON can be saved unchanged. DBLINK aliases (`bioproject`, `biosample`, `sra`, `DRA`,
+  `sequence read archive`) are written with the MSS names (one item under two names is `bad_shape`).
+  `SOURCE_IDENTIFIER` must be a known (or allowed) qualifier name (`bad_source_identifier`).
 - Entry table TSV: `#seq_id type seq_name status topology ff_definition`, then one column per qualifier; empty = not specified, flags = `yes`.
-- `--fasta` checks seq_ids and gives lengths; without it lengths come from existing `1..N` sources.
+  A qualifier repeated in an entry (two `/note` rows, ...) gets a repeated column, read and written left to right.
+  `yes` under an unknown qualifier is read as a flag (valueless row): it cannot be told from the literal value `yes`
+  (a known non-flag qualifier keeps `yes` as its value). Columns `chromosome` / `plasmid` / `organelle` / `segment` /
+  `submitter_seqid` / `ff_definition` are `reserved_qualifier` (give the role with `type` / `seq_name`).
+- `--fasta` checks seq_ids and gives lengths; without it lengths come from existing `1..N` sources. With `--fasta`,
+  `extract` lists entries in FASTA order and `apply` inserts an entry that has no rows at its FASTA position (before the next entry).
   Without `--allow-unknown`, the unknown qualifier names already in the input `.ann` are allowed.
-- Layout: one COMMON source (`1..E`) when the category is WGS / MAG-WGS / ENV and every entry is unplaced without
-  per-entry qualifiers; otherwise one source per entry. ff_definition is regenerated from type/status for
+- Layout: one COMMON source (`1..E`, `submitter_seqid @@[entry]@@`, as mss_builder's WGS and tsa2mss) when the category is
+  WGS / MAG-WGS / ENV / TSA / TSA-ENV and every entry is unplaced without per-entry qualifiers; otherwise one source per entry.
+  In the COMMON-source layout an entry whose only rows were its source (a featureless contig) has no rows left, and an
+  entry's marker (column 1) moves to its first remaining row; switching back to per-entry sources puts such an entry back
+  at its FASTA position. ff_definition is regenerated from type/status for
   GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV and written as given for NONE / GENE. Regeneration also happens on a plain
   round trip, so the value can change (e.g. GNM single complete chromosome: `..., complete genome` → `..., chromosome, complete genome`).
-- `_extra` keys must be one of the six COMMON targets; any other key is `bad_shape: not a COMMON target` (exit 2).
+- Roles: an entry without `/chromosome` etc. whose ff_definition says `, chromosome` / `complete genome`, or that is circular,
+  is read as an unnamed chromosome. For NONE / GENE (MISC, markers, ...) roles, names and topology are written as given and
+  the role rules (unplaced = partial and linear, ...) are not checked.
+- `_extra` keys must be one of the six COMMON targets (else `bad_shape: not a COMMON target`, exit 2) and names must be non-empty.
 
 Exit codes: `0` success; `1` unreadable input (one line on stderr); `2` input problems — `{"issues": [{"field", "entry", "message"}]}`
-on stdout and nothing written (`forbidden_char`, `unknown_qualifier`, `bad_shape: ...`, `bad_entries_tsv: ...`, `entry_missing_from_table: ...`).
+on stdout and nothing written (`forbidden_char`, `unknown_qualifier`, `reserved_qualifier`, `bad_source_identifier`, `bad_shape: ...`,
+`bad_entries_tsv: ...`, `entry_missing_from_table: ...`).

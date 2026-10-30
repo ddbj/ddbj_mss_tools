@@ -7,7 +7,7 @@ import pytest
 from ann_fix.annfile import AnnFile
 from ann_meta.cli import main
 from ann_meta.entries_tsv import read_entries
-from ann_meta.extract import COMMON_TARGETS
+from ann_meta.extract import COMMON_TARGETS, read_fasta_lengths
 
 FIX = Path(__file__).parent / "ann_meta_fixtures"
 
@@ -358,3 +358,82 @@ def test_apply_role_column_in_tsv_is_reserved(tmp_path, capsys):
     assert rc == 2
     assert json.loads(capsys.readouterr().out)["issues"] == [
         {"field": "plasmid", "entry": "sequence1", "message": "reserved_qualifier"}]
+
+
+# -- end to end over every fixture (M3) ---------------------------------------------
+
+def _ggs_common(doc: dict, category: str) -> dict:
+    """The common JSON as the GGS portal assembles it (spec section 6)."""
+    c = _common_from_doc(doc)
+    c["_submission_category"] = category
+    return c
+
+
+def _non_metadata_rows(path: Path) -> list[bytes]:
+    """Rows outside source / TOPOLOGY / the COMMON targets, without column 1 (entry markers
+    may move) but with the line ending."""
+    out, entry, key = [], "", ""
+    for raw in path.read_bytes().splitlines(keepends=True):
+        body = raw.rstrip(b"\r\n")
+        cols = body.split(b"\t") + [b""] * 5
+        if cols[0]:
+            entry = cols[0].decode()
+        if cols[1]:
+            key = cols[1].decode()
+        if key in ("source", "TOPOLOGY") or (entry == "COMMON" and key in COMMON_TARGETS):
+            continue
+        out.append(b"\t".join(cols[1:5]) + raw[len(body):])
+    return out
+
+
+def _markers(path: Path) -> list[str]:
+    return [r.cols[0] for r in AnnFile.read(path).rows if r.cols[0] and r.cols[0] != "COMMON"]
+
+
+def _cycle(tmp_path: Path, capsys, ann: Path, fasta: Path, category: str, tag: str):
+    tsv = tmp_path / f"{tag}.tsv"
+    assert main(["extract", "--ann", str(ann), "--fasta", str(fasta), "--entries-out", str(tsv)]) == 0
+    doc = json.loads(capsys.readouterr().out)
+    common = tmp_path / f"{tag}.json"
+    common.write_text(json.dumps(_ggs_common(doc, category)), encoding="utf-8")
+    out = tmp_path / f"{tag}.ann"
+    rc = main(["apply", "--ann", str(ann), "--common", str(common), "--entries", str(tsv), "--out", str(out),
+               "--category", category, "--fasta", str(fasta)])
+    assert rc == 0, capsys.readouterr().out
+    return doc, out
+
+
+E2E = [("dfast_draft", "WGS"), ("dfast_complete", "GNM"), ("marker_set", "GENE"), ("handmade", "WGS"),
+       ("plasmid_only", "GENE"), ("single_chromosome", "GNM"), ("wgs_featureless", "WGS"),
+       ("handmade", "GENE"), ("dfast_draft", "GNM"), ("plasmid_only", "NONE")]
+
+
+@pytest.mark.parametrize("name,category", E2E, ids=[f"{n}-{c}" for n, c in E2E])
+def test_cli_end_to_end(tmp_path, capsys, name, category):
+    src, fasta = FIX / f"{name}.ann", FIX / f"{name}.fasta"
+    doc, o1 = _cycle(tmp_path, capsys, src, fasta, category, "1")
+    assert _non_metadata_rows(o1) == _non_metadata_rows(src)
+    fasta_ids = list(read_fasta_lengths(fasta))
+    assert [e["seq_id"] for e in doc["entries"]] == fasta_ids
+    assert [m for m in _markers(o1)] == [i for i in fasta_ids if i in _markers(o1)]   # FASTA order
+
+    doc2, o2 = _cycle(tmp_path, capsys, o1, fasta, category, "2")
+    for key in ("common", "common_extra", "source", "source_identifier", "untouched_common_features",
+                "unknown_qualifiers"):
+        assert doc2[key] == doc[key], key
+    fields = ["seq_id", "type", "seq_name", "status", "topology", "overrides", "extra"]
+    if category in ("GENE", "NONE"):
+        fields.append("ff_definition")                # written as given
+    assert [{k: e[k] for k in fields} for e in doc2["entries"]] == \
+        [{k: e[k] for k in fields} for e in doc["entries"]]
+    assert o2.read_bytes() == o1.read_bytes()        # a second save changes nothing
+
+
+def test_cli_featureless_contig_returns_in_fasta_order(tmp_path, capsys):
+    # I1: WGS save drops contig2's rows; a later per-entry save (here GNM) puts it back in place
+    fasta = FIX / "wgs_featureless.fasta"
+    _, o1 = _cycle(tmp_path, capsys, FIX / "wgs_featureless.ann", fasta, "WGS", "1")
+    assert _markers(o1) == ["contig1", "contig3"]
+    _, o2 = _cycle(tmp_path, capsys, o1, fasta, "GNM", "2")
+    assert _markers(o2) == ["contig1", "contig2", "contig3"]
+    assert _non_metadata_rows(o2) == _non_metadata_rows(FIX / "wgs_featureless.ann")
