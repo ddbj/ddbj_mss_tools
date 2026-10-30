@@ -27,7 +27,7 @@ from pydantic import ValidationError
 from ann_fix.annfile import AnnFile
 from ann_meta.apply import apply
 from ann_meta.entries_tsv import read_entries, write_entries
-from ann_meta.extract import extract, read_fasta_lengths
+from ann_meta.extract import COMMON_TARGETS, extract, read_fasta_lengths
 from ann_meta.validate import Issue, validate
 from common.models import CommonModel
 
@@ -104,6 +104,9 @@ def _shape_issues(common: dict) -> list[Issue]:
     if not isinstance(extra, dict):
         return issues + [Issue("_extra", None, "bad_shape: must be an object of feature -> [[name, value], ...]")]
     for feature, pairs in extra.items():
+        if feature not in COMMON_TARGETS:   # apply would drop it silently
+            issues.append(Issue(f"_extra.{feature}", None, "bad_shape: not a COMMON target"))
+            continue
         if not isinstance(pairs, list):
             issues.append(Issue(f"_extra.{feature}", None, "bad_shape: must be a list of [name, value] pairs"))
             continue

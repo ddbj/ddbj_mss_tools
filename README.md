@@ -624,7 +624,9 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
 - レイアウト: カテゴリが WGS / MAG-WGS / ENV で全エントリが unplaced かつエントリ別 qualifier が無いときは COMMON の source 1 つ（`1..E`）、
   それ以外はエントリごとの source。
 - ff_definition: GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV では type・status から作り直し（上記 ff_definition の表と同じ規則）、
-  NONE / GENE では表の `ff_definition` をそのまま書きます。
+  NONE / GENE では表の `ff_definition` をそのまま書きます。そのままの往復でも作り直されるため、元の値と変わることがあります
+  （例: GNM の単一 complete chromosome は `..., complete genome` → `..., chromosome, complete genome`）。
+- `_extra` のキーは上記 6 つの COMMON feature に限ります（それ以外は `bad_shape: not a COMMON target` で終了 2）。
 
 終了コード: `0` 成功 / `1` 入力が読めない（stderr に 1 行） / `2` 入力の問題（stdout に
 `{"issues": [{"field": ..., "entry": ..., "message": ...}]}`、出力は書かない。`forbidden_char`、`unknown_qualifier`、`bad_shape: ...`、
@@ -1311,7 +1313,9 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
   Without `--allow-unknown`, the unknown qualifier names already in the input `.ann` are allowed.
 - Layout: one COMMON source (`1..E`) when the category is WGS / MAG-WGS / ENV and every entry is unplaced without
   per-entry qualifiers; otherwise one source per entry. ff_definition is regenerated from type/status for
-  GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV and written as given for NONE / GENE.
+  GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV and written as given for NONE / GENE. Regeneration also happens on a plain
+  round trip, so the value can change (e.g. GNM single complete chromosome: `..., complete genome` → `..., chromosome, complete genome`).
+- `_extra` keys must be one of the six COMMON targets; any other key is `bad_shape: not a COMMON target` (exit 2).
 
 Exit codes: `0` success; `1` unreadable input (one line on stderr); `2` input problems — `{"issues": [{"field", "entry", "message"}]}`
 on stdout and nothing written (`forbidden_char`, `unknown_qualifier`, `bad_shape: ...`, `bad_entries_tsv: ...`, `entry_missing_from_table: ...`).

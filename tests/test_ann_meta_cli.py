@@ -191,3 +191,14 @@ def test_apply_extra_flag_values(tmp_path, capsys):
     rows = [r.cols[3:5] for r in AnnFile.read(tmp_path / "o.ann").rows]
     assert ["flag_on", ""] in rows
     assert not any(c[0] == "flag_off" for c in rows)
+
+
+def test_apply_rejects_extra_for_non_target_feature(tmp_path, capsys):
+    _, common, tsv = _extract(tmp_path, capsys)
+    data = json.loads(common.read_text())
+    data["_extra"] = {"KEYWORD": [["keyword", "x"]], "COMMENT": [["line", "ok"]]}
+    common.write_text(json.dumps(data), encoding="utf-8")
+    assert _apply(tmp_path, common, tsv) == 2
+    issues = json.loads(capsys.readouterr().out)["issues"]
+    assert issues == [{"field": "_extra.KEYWORD", "entry": None, "message": "bad_shape: not a COMMON target"}]
+    assert not (tmp_path / "o.ann").exists()
