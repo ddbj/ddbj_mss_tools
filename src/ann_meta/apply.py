@@ -11,10 +11,11 @@ line ending), so annotation features survive unchanged:
    DATATYPE, DIVISION, KEYWORD and unknown COMMON features are not touched,
    even when the common JSON has keys of those names.
 2. ``source`` and ``TOPOLOGY``. Layout ``common_source`` (one COMMON source at
-   ``1..E``) is used only when the category is WGS-like, every entry is
-   unplaced without per-entry qualifiers and every entry keeps at least one
-   other feature; otherwise every entry gets its own source (layout
-   ``per_entry``). A per-entry source is ``SOURCE`` -> overrides -> role
+   ``1..E``) is used only when the category is WGS-like and every entry is
+   unplaced without per-entry qualifiers; otherwise every entry gets its own
+   source (layout ``per_entry``). In ``common_source`` a contig whose only rows
+   were its source has no rows afterwards (as in mss_builder's WGS output: the
+   COMMON source covers every FASTA entry). A per-entry source is ``SOURCE`` -> overrides -> role
    qualifier -> ``ff_definition`` -> ``extra``; a ``TOPOLOGY circular`` row
    goes directly before it when the entry is circular. Existing TOPOLOGY rows
    and extra source features of the entry are removed.
@@ -40,10 +41,8 @@ from common.source_builder import (
 )
 from common.submission_category import SubmissionCategoryRules, get_category_rules
 
-# Categories whose sequences go under one COMMON source when they are all
-# unplaced. WGS and MAG-WGS have required_datatype WGS in
-# submission_categories.json; ENV is added by the spec (ENV submissions are
-# contig sets like WGS).
+# Categories whose all-unplaced entries share one COMMON source (WGS, MAG-WGS = required_datatype WGS).
+# ENV has no required_datatype in submission_categories.json; it is listed by the spec (contig sets like WGS).
 COMMON_SOURCE_CATEGORIES = frozenset({"WGS", "MAG-WGS", "ENV"})
 # Categories whose ff_definition is regenerated from the role; for the others
 # (NONE, GENE) the entry's ff_definition is written as given.
@@ -141,14 +140,11 @@ def _common_source_blocks(common: dict, category: str, source_identifier: str) -
 
 # -- entries -------------------------------------------------------------------
 
-def _decide_layout(category: str, entries: list[Entry], by_entry: dict[str, list[AnnFeature]]) -> str:
+def _decide_layout(category: str, entries: list[Entry]) -> str:
     if category not in COMMON_SOURCE_CATEGORIES:
         return "per_entry"
-    for e in entries:
-        if e.type != "unplaced" or e.overrides or e.extra:
-            return "per_entry"
-        if not any(f.key not in ("source", "TOPOLOGY") for f in by_entry.get(e.seq_id, [])):
-            return "per_entry"          # the entry would have no rows left
+    if any(e.type != "unplaced" or e.overrides or e.extra for e in entries):
+        return "per_entry"
     return "common_source"
 
 
@@ -239,18 +235,14 @@ def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str) ->
 
     _apply_common_targets(ann, common)
 
-    by_entry: dict[str, list[AnnFeature]] = {}
-    for f in ann.features():
-        if f.entry and f.entry != "COMMON":
-            by_entry.setdefault(f.entry, []).append(f)
-    layout = _decide_layout(category, entries, by_entry)
+    layout = _decide_layout(category, entries)
 
     for f in reversed([f for f in ann.features() if f.entry == "COMMON" and f.key == "source"]):
         ann.delete_feature(f)
     if layout == "common_source":
         _insert_blocks(ann, _common_end(ann), _common_source_blocks(common, category, source_identifier))
 
-    by_entry = {}
+    by_entry: dict[str, list[AnnFeature]] = {}
     for f in ann.features():
         if f.entry and f.entry != "COMMON":
             by_entry.setdefault(f.entry, []).append(f)
@@ -258,7 +250,8 @@ def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str) ->
     present = [e for e in entries if e.seq_id in by_entry]
     for e in sorted(present, key=lambda e: by_entry[e.seq_id][0].first, reverse=True):
         _rewrite_entry(ann, e, by_entry[e.seq_id], layout, build)
-    for e in entries:
-        if e.seq_id not in by_entry:
-            _append_entry(ann, e, build)
+    if layout == "per_entry":           # in common_source the COMMON source covers FASTA-only entries
+        for e in entries:
+            if e.seq_id not in by_entry:
+                _append_entry(ann, e, build)
     return ann

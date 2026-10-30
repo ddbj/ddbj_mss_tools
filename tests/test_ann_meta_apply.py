@@ -49,15 +49,14 @@ def _apply_file(src: Path, out: Path, *, common=None, entries=None, category=Non
     return out
 
 
-def _feature_rows(path: Path) -> list[tuple[str, bytes]]:
-    """Every row outside source / TOPOLOGY / the 6 COMMON targets, as (entry, raw bytes).
+def _feature_rows(path: Path) -> list[tuple[str, bytes, bool]]:
+    """Every row outside source / TOPOLOGY / the 6 COMMON targets, in order.
 
-    The raw bytes are the line after its first tab, eol included: the entry marker
-    (column 1) moves to the next row when the row that held it is removed, so the
-    entry a row belongs to is compared separately.
+    Each item is (entry, raw line incl. eol, first kept row of its entry).
     """
     out = []
     entry = key = ""
+    seen: set[str] = set()
     for raw in path.read_bytes().splitlines(keepends=True):
         cols = raw.rstrip(b"\r\n").split(b"\t")
         cols += [b""] * (5 - len(cols))
@@ -67,8 +66,35 @@ def _feature_rows(path: Path) -> list[tuple[str, bytes]]:
             key = cols[1].decode()
         if key in ("source", "TOPOLOGY") or (entry == "COMMON" and key in COMMON_TARGETS):
             continue
-        out.append((entry, raw.split(b"\t", 1)[1] if b"\t" in raw else raw))
+        out.append((entry, raw, entry not in seen))
+        seen.add(entry)
     return out
+
+
+def _assert_feature_rows_equal(src: Path, out: Path) -> None:
+    """Kept rows are byte-identical (column 1 included).
+
+    Only exceptions, both on the first remaining row of an entry, where the entry
+    marker legitimately moves (columns 2-5 and the eol must still match):
+    - the entry's source was removed (COMMON-source layout): the row takes over
+      the marker, so column 1 must be the entry id;
+    - a source was inserted for an entry that had none: the new source takes
+      the marker, so column 1 must become empty.
+    """
+    a, b = _feature_rows(src), _feature_rows(out)
+    assert [(e, first) for e, _, first in a] == [(e, first) for e, _, first in b]
+    in_sources = {f.entry for f in AnnFile.read(src).features() if f.key == "source"}
+    out_sources = {f.entry for f in AnnFile.read(out).features() if f.key == "source"}
+    for (entry, raw_a, first), (_, raw_b, _) in zip(a, b):
+        if raw_a == raw_b:
+            continue
+        assert first, (raw_a, raw_b)
+        marker = entry.encode()
+        if entry in in_sources and entry not in out_sources:
+            assert raw_a.startswith(b"\t") and raw_b == marker + raw_a, (raw_a, raw_b)
+        else:
+            assert entry not in in_sources and entry in out_sources, (raw_a, raw_b)
+            assert raw_b.startswith(b"\t") and raw_a == marker + raw_b, (raw_a, raw_b)
 
 
 def _entry_markers(path: Path) -> list[str]:
@@ -86,7 +112,7 @@ def _no_bare_lf(data: bytes) -> bool:
 def test_roundtrip_feature_rows_identical(name, tmp_path):
     src = FIX / f"{name}.ann"
     out = _apply_file(src, tmp_path / "out.ann", lengths=read_fasta_lengths(FIX / f"{name}.fasta"))
-    assert _feature_rows(out) == _feature_rows(src)
+    _assert_feature_rows_equal(src, out)
     assert [m for m in _entry_markers(out)] == [m for m in _entry_markers(src)]
     if name == "handmade":
         assert _no_bare_lf(out.read_bytes())
@@ -104,7 +130,7 @@ def test_roundtrip_feature_rows_identical_crlf_and_no_final_newline(name, tmp_pa
         out = _apply_file(src, tmp_path / f"{variant}.out.ann",
                           lengths=read_fasta_lengths(FIX / f"{name}.fasta"))
         result = out.read_bytes()
-        assert _feature_rows(out) == _feature_rows(src), variant
+        _assert_feature_rows_equal(src, out)
         assert result.endswith(b"\n") == body.endswith(b"\n"), variant
         if variant.startswith("crlf"):
             assert _no_bare_lf(result), variant
@@ -281,7 +307,7 @@ def test_apply_keeps_missing_final_newline(tmp_path):
     data = out.read_bytes()
     assert not data.endswith(b"\n")
     assert data.endswith(b"\t\t\tstrain\tHS-9")
-    assert _feature_rows(out) == _feature_rows(src)
+    _assert_feature_rows_equal(src, out)
 
 
 def test_apply_crlf_without_final_newline_stays_crlf(tmp_path):
@@ -298,7 +324,7 @@ def test_apply_crlf_without_final_newline_stays_crlf(tmp_path):
     assert not data.endswith(b"\n")
     assert _no_bare_lf(data)
     assert b"\r\n\tTOPOLOGY\t\tcircular\t\r\n\tsource\t1..200\t" in data
-    assert _feature_rows(out) == _feature_rows(src)
+    _assert_feature_rows_equal(src, out)
 
 
 def test_apply_inserts_missing_entry_source(tmp_path):
@@ -320,22 +346,29 @@ def test_apply_inserts_missing_entry_source(tmp_path):
     assert [f.key for f in seq3] == ["TOPOLOGY", "source"]
     assert seq3[1].location == "1..50"
     assert seq3[1].get(ann.rows, "plasmid") == "p3"
-    assert _feature_rows(out) == _feature_rows(src)
+    _assert_feature_rows_equal(src, out)
 
 
-def test_apply_common_source_falls_back_when_an_entry_would_be_empty(tmp_path):
-    lines = [
-        "seq1\tsource\t1..300\torganism\tBacillus subtilis",
-        "\t\t\tmol_type\tgenomic DNA",
-        "\tCDS\t1..300\tproduct\thypothetical protein",
-        "seq2\tsource\t1..200\torganism\tBacillus subtilis",
-        "\t\t\tmol_type\tgenomic DNA",
-    ]
-    ann = AnnFile.read(_ann(tmp_path, lines))
-    doc = extract(ann, {"seq1": 300, "seq2": 200})
-    apply(ann, _common(doc), doc.entries, category="WGS")
-    feats = ann.features()
-    assert [(f.entry, f.key) for f in feats] == [("seq1", "source"), ("seq1", "CDS"), ("seq2", "source")]
+def test_common_source_layout_drops_rows_of_featureless_contig(tmp_path):
+    lines = (FIX / "dfast_draft.ann").read_text(encoding="utf-8").split("\n")
+    s2 = lines.index(next(ln for ln in lines if ln.startswith("sequence2\tsource")))
+    s3 = lines.index(next(ln for ln in lines if ln.startswith("sequence3\tsource")))
+    lines = lines[:s2 + 5] + lines[s3:]          # sequence2 keeps only its 5 source rows
+    src = tmp_path / "in.ann"
+    src.write_text("\n".join(lines), encoding="utf-8")
+    lengths = read_fasta_lengths(FIX / "dfast_draft.fasta")
+    out = _apply_file(src, tmp_path / "out.ann", category="WGS", lengths=lengths)
+    feats = AnnFile.read(out).features()
+    assert not any(f.entry == "sequence2" for f in feats)
+    assert [f.entry for f in feats if f.key == "CDS"] == ["sequence1", "sequence3"]
+    _assert_feature_rows_equal(src, out)
+    doc = extract(AnnFile.read(out), lengths)
+    assert [e.seq_id for e in doc.entries] == ["sequence1", "sequence3", "sequence2"]
+    assert doc.layout == "common_source"
+    # a second pass keeps the layout and does not append a source for sequence2
+    out2 = tmp_path / "out2.ann"
+    apply(AnnFile.read(out), _common(doc), doc.entries, category="WGS").write(out2)
+    assert out2.read_bytes() == out.read_bytes()
 
 
 def test_apply_creates_common_block_when_absent(tmp_path):
