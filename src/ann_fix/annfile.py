@@ -130,6 +130,34 @@ class AnnFile:
             self.rows[feat.last].eol = "\n"
         self.rows.insert(feat.last + 1, AnnRow(["", "", "", key, value], eol))
 
+    def insert_feature(self, at_row: int, entry_col: str, key: str, location: str,
+                       qualifiers: list[tuple[str, str]]) -> AnnFeature:
+        """Insert a new feature before row index *at_row* (``len(rows)`` appends).
+
+        New rows take the line ending of the row before *at_row* ("\n" if there is
+        none). Appending after a final row without a newline gives that row "\n"
+        and leaves the new last row without one, so the file keeps its shape.
+        """
+        if not 0 <= at_row <= len(self.rows):
+            raise IndexError(f"insert position out of range: {at_row}")
+        prev = self.rows[at_row - 1] if at_row > 0 else None
+        eol = (prev.eol if prev else "") or "\n"
+        quals = qualifiers or [("", "")]
+        new_rows = [AnnRow([entry_col if i == 0 else "", key if i == 0 else "",
+                            location if i == 0 else "", k, v], eol)
+                    for i, (k, v) in enumerate(quals)]
+        if at_row == len(self.rows) and prev is not None and prev.eol == "":
+            prev.eol = "\n"
+            new_rows[-1].eol = ""
+        self.rows[at_row:at_row] = new_rows
+        entry = entry_col
+        if not entry:
+            for r in reversed(self.rows[:at_row]):
+                if r.cols[0]:
+                    entry = r.cols[0]
+                    break
+        return AnnFeature(entry, key, location, at_row, at_row + len(new_rows) - 1)
+
 
 def _is_qualifier_row(r: AnnRow) -> bool:
     return not r.cols[0] and not r.cols[1] and not r.cols[2]

@@ -58,3 +58,56 @@ def test_replace_and_add_qualifier():
     ann.add_qualifier(trna, "artificial_location", "low-quality sequence region")
     assert ann.rows[trna.last + 1].cols == ["", "", "", "artificial_location", "low-quality sequence region"]
     assert ann.rows[trna.last + 1].eol == "\n"
+
+
+def _serialize(ann: AnnFile) -> bytes:
+    return "".join("\t".join(r.cols) + r.eol for r in ann.rows).encode("utf-8")
+
+
+def test_insert_feature_middle(tmp_path):
+    data = FX.read_bytes()
+    ann = AnnFile.read(FX)
+    first = ann.features()[0]
+    feat = ann.insert_feature(first.first, "COMMON", "DBLINK", "",
+                              [("project", "PRJDB1"), ("biosample", "SAMD1")])
+    assert ann.features()[0].key == "DBLINK"
+    assert (feat.key, feat.first, feat.last) == ("DBLINK", 0, 1)
+    assert ann.rows[0].cols == ["COMMON", "DBLINK", "", "project", "PRJDB1"]
+    assert ann.rows[1].cols == ["", "", "", "biosample", "SAMD1"]
+    assert ann.rows[0].eol == ann.rows[1].eol == "\n"
+    ann.write(tmp_path / "out.ann")
+    out = (tmp_path / "out.ann").read_bytes()
+    lines = out.splitlines(keepends=True)
+    assert b"".join(lines[2:]) == data                          # every other row unchanged
+
+
+def test_insert_feature_at_end_keeps_missing_newline(tmp_path):
+    nofinal = FX.read_bytes().rstrip(b"\n")
+    p = tmp_path / "in.ann"
+    p.write_bytes(nofinal)
+    ann = AnnFile.read(p)
+    n = len(ann.rows)
+    feat = ann.insert_feature(n, "", "misc_feature", "1..10", [("note", "a"), ("note", "b")])
+    assert (feat.first, feat.last) == (n, n + 1)
+    ann.write(tmp_path / "out.ann")
+    out = (tmp_path / "out.ann").read_bytes()
+    assert not out.endswith(b"\n")
+    assert out == nofinal + b"\n\tmisc_feature\t1..10\tnote\ta\n\t\t\tnote\tb"
+
+
+def test_insert_feature_crlf(tmp_path):
+    crlf = FX.read_bytes().replace(b"\n", b"\r\n")
+    p = tmp_path / "in.ann"
+    p.write_bytes(crlf)
+    ann = AnnFile.read(p)
+    trna = next(f for f in ann.features() if f.key == "tRNA")
+    ann.insert_feature(trna.first, "", "gene", "1..10", [])
+    ann.insert_feature(len(ann.rows), "", "misc_feature", "5..6", [("note", "x")])
+    ann.write(tmp_path / "out.ann")
+    out = (tmp_path / "out.ann").read_bytes()
+    assert b"\tgene\t1..10\t\t\r\n" in out
+    assert out.endswith(b"\tmisc_feature\t5..6\tnote\tx\r\n")
+    assert b"\n" not in out.replace(b"\r\n", b"")
+    gene = next(f for f in ann.features() if f.key == "gene")
+    assert gene.qualifiers(ann.rows) == []
+    assert ann.rows[gene.last + 1].cols[1] == "tRNA"

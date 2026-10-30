@@ -29,6 +29,7 @@ batch_wgs_builder = "batch_wgs_builder.cli:main"
 gff2mss           = "gff2mss.cli:main"
 ann_fix           = "ann_fix.cli:main"
 tsa2mss           = "tsa2mss.cli:main"
+ann_meta          = "ann_meta.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -40,6 +41,7 @@ packages = [
     "src/gff2mss",
     "src/ann_fix",
     "src/tsa2mss",
+    "src/ann_meta",
 ]
 
 [tool.pytest.ini_options]
