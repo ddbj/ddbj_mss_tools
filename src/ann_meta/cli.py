@@ -111,15 +111,34 @@ def _load_common(path: str) -> dict:
     return data
 
 
+def _data_path(data, loc) -> str:
+    """The pydantic error location as a path into *data* (union member names such as
+    ``str`` / ``list[str]`` are not keys and are left out)."""
+    parts: list[str] = []
+    for p in loc:
+        if isinstance(data, dict) and p in data:
+            data = data[p]
+        elif isinstance(data, list) and isinstance(p, int) and 0 <= p < len(data):
+            data = data[p]
+        else:
+            continue
+        parts.append(str(p))
+    return ".".join(parts) or "common"
+
+
 def _shape_issues(common: dict) -> list[Issue]:
     """Structure only (``ann_meta.shape``): required items are not a gate."""
     issues = [Issue(f, None, "bad_shape: the same DBLINK item is given twice (alias)") for f in alias_clashes(common)]
+    normalized = normalize_common(common)
     try:
-        LenientCommon.model_validate(normalize_common(common))
+        LenientCommon.model_validate(normalized)
     except ValidationError as exc:
+        seen: set[str] = set()
         for e in exc.errors():
-            field = ".".join(str(p) for p in e["loc"]) or "common"
-            issues.append(Issue(field, None, f"bad_shape: {e['msg']}"))
+            field = _data_path(normalized, e["loc"])
+            if field not in seen:                 # one issue per field, not one per union member
+                seen.add(field)
+                issues.append(Issue(field, None, f"bad_shape: {e['msg']}"))
     extra = common.get("_extra")
     if extra is None:
         return issues

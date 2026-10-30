@@ -437,3 +437,10 @@ def test_cli_featureless_contig_returns_in_fasta_order(tmp_path, capsys):
     _, o2 = _cycle(tmp_path, capsys, o1, fasta, "GNM", "2")
     assert _markers(o2) == ["contig1", "contig2", "contig3"]
     assert _non_metadata_rows(o2) == _non_metadata_rows(FIX / "wgs_featureless.ann")
+
+
+def test_bad_shape_field_is_a_data_path(tmp_path, capsys):
+    common, tsv = _mutated(tmp_path, capsys, lambda d: d["SOURCE"].__setitem__("note", {"a": "b"}))
+    assert _apply(tmp_path, common, tsv) == 2
+    issues = json.loads(capsys.readouterr().out)["issues"]
+    assert [i["field"] for i in issues] == ["SOURCE.note"]
