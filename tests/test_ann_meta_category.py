@@ -198,3 +198,26 @@ def test_tpa_flag():
     assert g.tpa is True
     assert g.value is None
     assert g.evidence == ["DATATYPE type=TPA-WGS"]
+
+
+def test_misc_organelle_only_beats_gnm_topology():
+    entries = [_entry("m1", has_topology=True, ff_definition="Homo sapiens mitochondrial DNA, complete genome",
+                      organism="Homo sapiens", organelle="mitochondrion")]
+    g = detect_category({}, entries, 16_569)
+    assert g.value == "MISC"
+    assert g.evidence == ["source organelle (all entries)"]
+
+
+def test_misc_virus_beats_gnm_complete_genome():
+    entries = [_entry(ff_definition="Tomato mosaic virus RNA, complete genome", organism="Tomato mosaic virus")]
+    g = detect_category({}, entries, 6_400)
+    assert g.value == "MISC"
+    assert g.evidence == ["organism contains 'virus'"]
+
+
+def test_misc_plasmid_only_with_topology():
+    entries = [_entry("p1", has_topology=True, ff_definition="Escherichia coli plasmid pX DNA, complete sequence",
+                      organism="Escherichia coli")]
+    g = detect_category({}, entries, 60_000)
+    assert g.value == "MISC"
+    assert g.evidence == ["ff_definition 'plasmid ... complete sequence' (all entries)"]

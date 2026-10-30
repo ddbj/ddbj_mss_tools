@@ -16,11 +16,13 @@ wins (TPA is a separate flag and is checked before everything else):
          source /metagenome_source
     SAG  KEYWORD SAG / Single Amplified Genome
     WGS  DATATYPE WGS (or KEYWORD WGS) not caught by MAG / SAG above
-    GNM  no DATATYPE, and a TOPOLOGY row, an ff_definition with
-         "complete genome" / "chromosome", or a first entry > 1 Mb
     MISC no DATATYPE, and every ff_definition is "plasmid ... complete
          sequence", or every entry has /organelle, or an organism contains
-         "virus" / "phage"
+         "virus" / "phage" (checked before GNM: DDBJ files virus/phage
+         genomes, plasmid-only and organelle-only submissions under MISC
+         even though they are complete and usually carry TOPOLOGY)
+    GNM  no DATATYPE, and a TOPOLOGY row, an ff_definition with
+         "complete genome" / "chromosome", or a first entry > 1 Mb
     None nothing above matched (evidence is empty)
 
 Keyword matching is case-insensitive on whole keyword values; a KEYWORD
@@ -36,6 +38,7 @@ from dataclasses import dataclass, field
 # mss-reporter filetype.py COMPLETE_GENOME_MIN_LENGTH
 COMPLETE_GENOME_MIN_LENGTH = 1_000_000
 
+# Allowed CategoryGuess.value strings, for callers (form choices, validation) in later ann_meta tasks.
 CATEGORIES = ("GNM", "WGS", "MAG", "SAG", "TLS", "HTG", "TSA", "HTC", "EST", "MISC")
 
 
@@ -114,17 +117,7 @@ def detect_category(common: dict[str, list[tuple[str, str]]], entries: list[Entr
     rules.append(("WGS", dt("WGS") + _kw_evidence(keywords, {"WGS"})))
 
     if not datatypes:
-        gnm: list[str] = []
-        if any(e.has_topology for e in entries):
-            gnm.append("TOPOLOGY present")
         defs = [(e.ff_definition or "").lower() for e in entries]
-        for phrase in ("complete genome", "chromosome"):
-            if any(phrase in d for d in defs):
-                gnm.append(f"ff_definition '{phrase}'")
-        if first_entry_length is not None and first_entry_length > COMPLETE_GENOME_MIN_LENGTH:
-            gnm.append(f"first entry {first_entry_length:,} bp > {COMPLETE_GENOME_MIN_LENGTH:,}")
-        rules.append(("GNM", gnm))
-
         misc: list[str] = []
         if entries and all("plasmid" in d and "complete sequence" in d for d in defs):
             misc.append("ff_definition 'plasmid ... complete sequence' (all entries)")
@@ -135,6 +128,16 @@ def detect_category(common: dict[str, list[tuple[str, str]]], entries: list[Entr
             if any(word in o for o in organisms):
                 misc.append(f"organism contains '{word}'")
         rules.append(("MISC", misc))
+
+        gnm: list[str] = []
+        if any(e.has_topology for e in entries):
+            gnm.append("TOPOLOGY present")
+        for phrase in ("complete genome", "chromosome"):
+            if any(phrase in d for d in defs):
+                gnm.append(f"ff_definition '{phrase}'")
+        if first_entry_length is not None and first_entry_length > COMPLETE_GENOME_MIN_LENGTH:
+            gnm.append(f"first entry {first_entry_length:,} bp > {COMPLETE_GENOME_MIN_LENGTH:,}")
+        rules.append(("GNM", gnm))
 
     for value, evidence in rules:
         if evidence:
