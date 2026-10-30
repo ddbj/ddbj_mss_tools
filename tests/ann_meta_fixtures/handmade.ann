@@ -1,0 +1,32 @@
+COMMON	SUBMITTER		ab_name	Suzuki,H.
+			ab_name	Tanaka,K.
+			contact	Hanako Suzuki
+			email	hsuzuki@example.ac.jp
+			fax	81-55-981-0000
+			institute	Example University
+			country	Japan
+			city	Mishima
+			street	1-2-3 Bunkyo
+			zip	411-0000
+	REFERENCE		title	Draft genome of Bacillus subtilis strain HS-7
+			ab_name	Suzuki,H.
+			ab_name	Tanaka,K.
+			status	Unpublished
+	DATE		hold_date	20271231
+	KEYWORD		keyword	WGS
+	source	1..E	organism	Bacillus subtilis
+			mol_type	genomic DNA
+			strain	HS-7
+			sub_strain	HS-7a
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, contig: @@[entry]@@
+contig01	CDS	61..903	product	DNA polymerase III subunit beta
+			gene	dnaN
+			codon_start	1
+			transl_table	11
+contig02	assembly_gap	301..400	estimated_length	100
+			gap_type	within scaffold
+			linkage_evidence	paired-ends
+contig03	CDS	complement(<1..412)	product	hypothetical protein
+			codon_start	2
+			transl_table	11
