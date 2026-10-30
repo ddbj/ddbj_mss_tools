@@ -101,10 +101,21 @@ class AnnFile:
     def _entry_id_of(self, feat: AnnFeature) -> str:
         return self.rows[feat.first].cols[0]
 
+    def default_eol(self) -> str:
+        """The first non-empty line ending in the file ("\n" if there is none).
+
+        Used where the neighbouring row has no line ending (a final line without
+        a newline), so a CRLF file never gets a bare LF.
+        """
+        for r in self.rows:
+            if r.eol:
+                return r.eol
+        return "\n"
+
     def replace_feature(self, feat: AnnFeature, key: str, location: str,
                         qualifiers: list[tuple[str, str]]) -> None:
         entry_col = self._entry_id_of(feat)
-        eol = self.rows[feat.first].eol or "\n"
+        eol = self.rows[feat.first].eol or self.default_eol()
         quals = qualifiers or [("", "")]
         new_rows = []
         for i, (k, v) in enumerate(quals):
@@ -127,7 +138,7 @@ class AnnFile:
     def add_qualifier(self, feat: AnnFeature, key: str, value: str) -> None:
         eol = self.rows[feat.last].eol          # "" only on a final line without newline
         if not eol:
-            self.rows[feat.last].eol = "\n"
+            self.rows[feat.last].eol = self.default_eol()
         self.rows.insert(feat.last + 1, AnnRow(["", "", "", key, value], eol))
 
     def insert_feature(self, at_row: int, entry_col: str, key: str, location: str,
@@ -135,16 +146,19 @@ class AnnFile:
         """Insert a new feature before row index *at_row* (``len(rows)`` appends).
 
         New rows take the line ending of the row before *at_row* (at the top, of the
-        row at *at_row*; "\n" if neither exists). If the row at *at_row* carries
-        *entry_col* as its entry marker, the marker moves to the inserted block so an
-        entry never has two markers (another entry's marker is left alone). Appending after a final row without a newline gives that row "\n"
-        and leaves the new last row without one, so the file keeps its shape.
+        row at *at_row*; when that is empty, the file's first line ending, else "\n").
+        If the row at *at_row* carries *entry_col* as its entry marker, the marker
+        moves to the inserted block so an entry never has two markers (another
+        entry's marker is left alone).
+        Appending after a final row without a newline gives that row the file's
+        line ending and leaves the new last row without one, so the file keeps
+        its shape.
         """
         if not 0 <= at_row <= len(self.rows):
             raise IndexError(f"insert position out of range: {at_row}")
         prev = self.rows[at_row - 1] if at_row > 0 else None
         nxt = self.rows[at_row] if at_row < len(self.rows) else None
-        eol = (prev.eol if prev else (nxt.eol if nxt else "")) or "\n"
+        eol = (prev.eol if prev else (nxt.eol if nxt else "")) or self.default_eol()
         if entry_col and nxt is not None and nxt.cols[0] == entry_col:
             nxt.cols[0] = ""                    # the inserted block takes over the entry marker
         quals = qualifiers or [("", "")]
@@ -152,7 +166,7 @@ class AnnFile:
                             location if i == 0 else "", k, v], eol)
                     for i, (k, v) in enumerate(quals)]
         if at_row == len(self.rows) and prev is not None and prev.eol == "":
-            prev.eol = "\n"
+            prev.eol = eol
             new_rows[-1].eol = ""
         self.rows[at_row:at_row] = new_rows
         entry = entry_col

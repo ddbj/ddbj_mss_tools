@@ -146,3 +146,29 @@ def test_insert_feature_before_other_entry_keeps_its_marker():
     feat = ann.insert_feature(src.first, "", "misc_feature", "1..2", [("note", "x")])
     assert ann.rows[feat.last + 1].cols[0] == "NC_001133.9"
     assert ann.rows[feat.first].cols[0] == ""
+
+
+def test_crlf_without_final_newline_never_gets_bare_lf(tmp_path):
+    crlf = FX.read_bytes().replace(b"\n", b"\r\n").rstrip(b"\r\n")
+    p = tmp_path / "in.ann"
+    p.write_bytes(crlf)
+    ann = AnnFile.read(p)
+    ann.insert_feature(len(ann.rows), "", "misc_feature", "5..6", [("note", "x")])
+    last = ann.features()[-1]
+    ann.add_qualifier(last, "note", "y")
+    last = ann.features()[-1]
+    ann.replace_feature(last, "misc_feature", "5..7", [("note", "z"), ("note", "w")])
+    ann.write(tmp_path / "out.ann")
+    out = (tmp_path / "out.ann").read_bytes()
+    assert out.count(b"\n") == out.count(b"\r\n")
+    assert out.endswith(b"\t\t\tnote\tw")
+
+
+def test_replace_single_row_last_feature_crlf(tmp_path):
+    p = tmp_path / "in.ann"
+    p.write_bytes(b"s1\tsource\t1..10\torganism\tX\r\n\tCDS\t1..9\tproduct\tp")
+    ann = AnnFile.read(p)
+    ann.replace_feature(ann.features()[-1], "CDS", "1..9", [("product", "p"), ("note", "n")])
+    ann.write(tmp_path / "out.ann")
+    assert (tmp_path / "out.ann").read_bytes() == (
+        b"s1\tsource\t1..10\torganism\tX\r\n\tCDS\t1..9\tproduct\tp\r\n\t\t\tnote\tn")
