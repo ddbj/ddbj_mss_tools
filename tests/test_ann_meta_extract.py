@@ -313,3 +313,54 @@ def test_unknown_empty_valued_extra_survives_tsv(tmp_path):
     assert header.split("\t")[-1] == "my_flag"
     assert row1.split("\t")[-1] == "yes"
     assert row2.split("\t")[-1] == ""
+
+
+# -- final review fixes ------------------------------------------------------------
+
+COMPLETE_NO_CHR = [
+    "COMMON\tSUBMITTER\t\tab_name\tSuzuki,H.",
+    "c1\tTOPOLOGY\t\tcircular\t",
+    "\tsource\t1..5000\torganism\tBacillus subtilis",
+    "\t\t\tmol_type\tgenomic DNA",
+    "\t\t\tff_definition\t@@[organism]@@ DNA, complete genome",
+    "\tCDS\t1..300\tproduct\thypothetical protein",
+]
+
+
+def test_unnamed_single_chromosome(tmp_path):
+    # I3a: a complete genome without /chromosome is a chromosome with an empty name
+    doc = extract(_ann_from_rows(tmp_path, COMPLETE_NO_CHR), {"c1": 5000})
+    e = doc.entries[0]
+    assert (e.type, e.seq_name, e.status, e.topology) == ("chromosome", "", "complete", "circular")
+
+
+def test_unnamed_chromosome_by_ff_definition_or_topology(tmp_path):
+    rows = [
+        "c1\tsource\t1..500\torganism\tBacillus subtilis",
+        "\t\t\tff_definition\t@@[organism]@@ DNA, chromosome, partial genome",
+        "c2\tTOPOLOGY\t\tcircular\t",
+        "\tsource\t1..400\torganism\tBacillus subtilis",
+        "c3\tsource\t1..300\torganism\tBacillus subtilis",
+        "\t\t\tff_definition\t@@[organism]@@ chromosomal gene, partial cds",
+        "c4\tsource\t1..200\torganism\tBacillus subtilis",
+        "\t\t\tff_definition\t@@[organism]@@ DNA, unplaced sequence @@[entry]@@",
+    ]
+    doc = extract(_ann_from_rows(tmp_path, rows))
+    got = [(e.type, e.seq_name, e.status, e.topology) for e in doc.entries]
+    assert got == [("chromosome", "", "partial", ""), ("chromosome", "", "partial", "circular"),
+                   ("unplaced", "", "partial", ""), ("unplaced", "", "partial", "")]
+
+
+def test_entries_follow_fasta_order(tmp_path):
+    # I1: c2 has no rows (featureless contig in the COMMON-source layout); x1 is ann-only
+    rows = [
+        "COMMON\tsource\t1..E\torganism\tBacillus subtilis",
+        "\t\t\tmol_type\tgenomic DNA",
+        "c3\tCDS\t1..30\tproduct\tp3",
+        "c1\tCDS\t1..30\tproduct\tp1",
+        "x1\tCDS\t1..30\tproduct\tpx",
+    ]
+    doc = extract(_ann_from_rows(tmp_path, rows), {"c0": 10, "c1": 100, "c2": 50, "c3": 80})
+    assert [e.seq_id for e in doc.entries] == ["c0", "c1", "x1", "c2", "c3"]
+    # without a FASTA the ann order is kept
+    assert [e.seq_id for e in extract(_ann_from_rows(tmp_path, rows)).entries] == ["c3", "c1", "x1"]

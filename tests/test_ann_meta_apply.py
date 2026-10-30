@@ -363,7 +363,7 @@ def test_common_source_layout_drops_rows_of_featureless_contig(tmp_path):
     assert [f.entry for f in feats if f.key == "CDS"] == ["sequence1", "sequence3"]
     _assert_feature_rows_equal(src, out)
     doc = extract(AnnFile.read(out), lengths)
-    assert [e.seq_id for e in doc.entries] == ["sequence1", "sequence3", "sequence2"]
+    assert [e.seq_id for e in doc.entries] == ["sequence1", "sequence2", "sequence3"]   # FASTA order
     assert doc.layout == "common_source"
     # a second pass keeps the layout and does not append a source for sequence2
     out2 = tmp_path / "out2.ann"
@@ -577,3 +577,127 @@ def test_read_entries_repeated_columns_by_hand(tmp_path):
     s1, s2 = read_entries(p)
     assert s1.overrides == {"strain": "K"} and s1.extra == [("note", "b"), ("note", "a")]
     assert s2.overrides == {"note": "only"} and s2.extra == []
+
+
+WGS_GAP = [
+    "COMMON\tDATATYPE\t\ttype\tWGS",
+    "\tSUBMITTER\t\tab_name\tA,B.",
+    "c1\tsource\t1..100\tmol_type\tgenomic DNA",
+    "\t\t\torganism\tBacillus subtilis",
+    "\t\t\tsubmitter_seqid\t@@[entry]@@",
+    "\t\t\tff_definition\t@@[organism]@@ DNA, @@[submitter_seqid]@@",
+    "\tCDS\t1..30\tproduct\tp1",
+    "c2\tsource\t1..50\tmol_type\tgenomic DNA",
+    "\t\t\torganism\tBacillus subtilis",
+    "\t\t\tsubmitter_seqid\t@@[entry]@@",
+    "\t\t\tff_definition\t@@[organism]@@ DNA, @@[submitter_seqid]@@",
+    "c3\tsource\t1..80\tmol_type\tgenomic DNA",
+    "\t\t\torganism\tBacillus subtilis",
+    "\t\t\tsubmitter_seqid\t@@[entry]@@",
+    "\t\t\tff_definition\t@@[organism]@@ DNA, @@[submitter_seqid]@@",
+    "\tCDS\t1..30\tproduct\tp3",
+]
+GAP_LENGTHS = {"c1": 100, "c2": 50, "c3": 80}
+
+
+@pytest.mark.parametrize("eol,final", [("\n", True), ("\r\n", True), ("\r\n", False), ("\n", False)])
+@pytest.mark.parametrize("category", ["WGS", "GNM"])
+def test_featureless_contig_comes_back_in_fasta_order(tmp_path, eol, final, category):
+    # I1: WGS layout drops c2's rows; a later per-entry save must put c2 back between c1 and c3
+    src = _ann(tmp_path, WGS_GAP, eol=eol, final=final)
+    ann = AnnFile.read(src)
+    apply(ann, _common(extract(ann, GAP_LENGTHS)), extract(ann, GAP_LENGTHS).entries, category="WGS")
+    assert not any(f.entry == "c2" for f in ann.features())
+    doc = extract(ann, GAP_LENGTHS)
+    assert [e.seq_id for e in doc.entries] == ["c1", "c2", "c3"]
+    doc.entries[1].overrides["note"] = "my note"
+    apply(ann, _common(doc), doc.entries, category=category, fasta_order=["c1", "c2", "c3"])
+    out = tmp_path / "out.ann"
+    ann.write(out)
+    assert [m for m in _entry_markers(out) if m != "COMMON"] == ["c1", "c2", "c3"]
+    c2 = [f for f in ann.features() if f.entry == "c2"]
+    assert [f.key for f in c2] == ["source"] and c2[0].location == "1..50"
+    assert ("note", "my note") in c2[0].qualifiers(ann.rows)
+    data = out.read_bytes()
+    assert data.endswith(b"\n") == final
+    if eol == "\r\n":
+        assert _no_bare_lf(data)
+
+
+def test_missing_entries_inserted_before_next_existing_entry(tmp_path):
+    lines = MINI[:4] + ["seq4\tCDS\t1..200\tproduct\thypothetical protein"]
+    ann = AnnFile.read(_ann(tmp_path, lines))
+    lengths = {"seq0": 10, "seq1": 300, "seq2": 20, "seq3": 30, "seq4": 200, "seq5": 50}
+    doc = extract(ann, lengths)
+    assert [e.seq_id for e in doc.entries] == ["seq0", "seq1", "seq2", "seq3", "seq4", "seq5"]
+    doc.entries[3].topology, doc.entries[3].type = "circular", "plasmid"
+    doc.entries[3].seq_name, doc.entries[3].status = "p3", "complete"
+    apply(ann, _common(doc), doc.entries, category="GNM", fasta_order=list(lengths))
+    out = tmp_path / "out.ann"
+    ann.write(out)
+    assert _entry_markers(out) == ["COMMON", "seq0", "seq1", "seq2", "seq3", "seq4", "seq5"]
+    seq3 = [f.key for f in ann.features() if f.entry == "seq3"]
+    assert seq3 == ["TOPOLOGY", "source"]
+    # without fasta_order the order of the entry table is used
+    ann2 = AnnFile.read(_ann(tmp_path, lines, name="y.ann"))
+    apply(ann2, _common(doc), extract(ann2, lengths).entries, category="GNM")
+    ann2.write(tmp_path / "out2.ann")
+    assert _entry_markers(tmp_path / "out2.ann") == ["COMMON", "seq0", "seq1", "seq2", "seq3", "seq4", "seq5"]
+
+
+PLASMID_ONLY = [
+    "COMMON\tSUBMITTER\t\tab_name\tA,B.",
+    "p1\tTOPOLOGY\t\tcircular\t",
+    "\tsource\t1..5000\torganism\tEscherichia coli",
+    "\t\t\tmol_type\tgenomic DNA",
+    "\t\t\tplasmid\tpABC",
+    "\t\t\tff_definition\t@@[organism]@@ plasmid @@[plasmid]@@ DNA, complete sequence",
+    "\tCDS\t1..300\tproduct\trep",
+]
+PHAGE = [
+    "COMMON\tSUBMITTER\t\tab_name\tA,B.",
+    "v1\tTOPOLOGY\t\tcircular\t",
+    "\tsource\t1..5000\torganism\tEscherichia phage X",
+    "\t\t\tmol_type\tgenomic DNA",
+    "\t\t\tff_definition\t@@[organism]@@ DNA, complete genome",
+    "\tCDS\t1..300\tproduct\tcapsid protein",
+]
+
+
+@pytest.mark.parametrize("lines,eid", [(PLASMID_ONLY, "p1"), (PHAGE, "v1")])
+@pytest.mark.parametrize("category", ["GENE", "NONE"])
+def test_pass_through_keeps_roles_and_topology(tmp_path, lines, eid, category):
+    # I3b: MISC (plasmid-only, viruses) saved under GENE / NONE round-trips byte for byte
+    src = _ann(tmp_path, lines)
+    lengths = {eid: 5000}
+    ann = AnnFile.read(src)
+    doc = extract(ann, lengths)
+    assert doc.category.value == "MISC"
+    assert validate(_common(doc), doc.entries, category=category, fasta_ids=[eid],
+                    allowed_unknown=set(doc.unknown_qualifiers)) == []
+    apply(ann, _common(doc), doc.entries, category=category, fasta_order=[eid])
+    out = tmp_path / "out.ann"
+    ann.write(out)
+    assert out.read_bytes() == src.read_bytes()
+
+
+def test_unnamed_chromosome_round_trip_is_stable(tmp_path):
+    # I3a / p7: a single chromosome whose name was cleared stays a chromosome
+    ann, doc, lengths = _load("dfast_complete")
+    doc.entries[0].seq_name = ""
+    apply(ann, _common(doc), doc.entries, category="GNM")
+    src = next(f for f in ann.features() if f.entry == "sequence1" and f.key == "source")
+    assert src.get(ann.rows, "chromosome") is None
+    assert src.get(ann.rows, "ff_definition") == "@@[organism]@@ @@[strain]@@ DNA, chromosome, complete genome"
+    doc2 = extract(ann, lengths)
+    e = doc2.entries[0]
+    assert (e.type, e.seq_name, e.status, e.topology) == ("chromosome", "", "complete", "circular")
+    assert validate(_common(doc2), doc2.entries, category="GNM", fasta_ids=list(lengths),
+                    allowed_unknown=set(doc2.unknown_qualifiers)) == []
+    out1 = tmp_path / "o1.ann"
+    ann.write(out1)
+    apply(ann, _common(doc2), doc2.entries, category="GNM")
+    out2 = tmp_path / "o2.ann"
+    ann.write(out2)
+    assert out2.read_bytes() == out1.read_bytes()
+    assert extract(AnnFile.read(out2), lengths).entries == doc2.entries

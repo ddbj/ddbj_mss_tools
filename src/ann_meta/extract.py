@@ -9,8 +9,11 @@ Rules (spec section 5):
   ``untouched_common_features``.
 * A COMMON ``source`` is expanded to every entry; an entry's own ``source``
   overrides it qualifier by qualifier.
+* Entries are listed in FASTA order when FASTA lengths are given (entries
+  only in the .ann keep their place after the entry they follow there).
 * Per entry: ``chromosome`` / ``plasmid`` / ``organelle`` / ``segment`` give
-  the role, ``submitter_seqid`` is dropped (it is regenerated), ``ff_definition``
+  the role (an entry without one whose ff_definition says ``, chromosome`` /
+  ``complete genome`` or that is circular is an unnamed chromosome), ``submitter_seqid`` is dropped (it is regenerated), ``ff_definition``
   goes to ``Entry.ff_definition`` and a TOPOLOGY ``circular`` row to
   ``Entry.topology``. The remaining qualifiers go to ``source`` when every
   entry has the same value, otherwise to ``Entry.overrides`` (known names) or
@@ -36,6 +39,7 @@ _DROPPED = ("submitter_seqid",)
 _IDENTIFIER_EXCLUDED = {"organism", "entry", "submitter_seqid", *ROLE_QUALIFIERS}
 _PLACEHOLDER = re.compile(r"@@\[([^\]]+)\]@@")
 _COMPLETE = re.compile(r"\bcomplete\b", re.IGNORECASE)
+_CHROMOSOME = re.compile(r", chromosome\b|complete genome", re.IGNORECASE)
 _SIMPLE_LOCATION = re.compile(r"^1\.\.(\d+)$")
 
 _DBLINK_NAMES = {
@@ -177,6 +181,23 @@ def _topology(eid: str, feats: list[AnnFeature], rows, notes: list[Note]) -> str
     return topology
 
 
+def _fasta_order(ann_ids: list[str], fasta_ids: list[str]) -> list[str]:
+    """Entries in FASTA order; an ann-only entry stays right after the entry it follows in the ann."""
+    in_fasta = set(fasta_ids)
+    after: dict[str | None, list[str]] = {}
+    prev: str | None = None
+    for eid in ann_ids:
+        if eid in in_fasta:
+            prev = eid
+        else:
+            after.setdefault(prev, []).append(eid)
+    out = list(after.get(None, []))
+    for fid in fasta_ids:
+        out.append(fid)
+        out.extend(after.get(fid, []))
+    return out
+
+
 def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDoc:
     rows = ann.rows
     notes: list[Note] = []
@@ -231,7 +252,7 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
         for eid in entry_ids:
             if eid not in fasta_lengths:
                 notes.append(Note("entry_not_in_fasta", eid, ""))
-        entry_ids += [i for i in fasta_lengths if i not in by_entry]
+        entry_ids = _fasta_order(entry_ids, list(fasta_lengths))
 
     if has_common and not entry_ids:
         notes.append(Note("common_source_without_entries", None, ""))
@@ -303,6 +324,8 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
                 seq.append((q, v, "cand"))
         if e.ff_definition and _COMPLETE.search(e.ff_definition):
             e.status = "complete"
+        if not role_taken and (_CHROMOSOME.search(e.ff_definition or "") or e.topology == "circular"):
+            e.type = "chromosome"          # a single chromosome needs no /chromosome name
         candidates[eid] = cand
         ordered[eid] = seq
         sketch_quals: dict[str, str] = {}

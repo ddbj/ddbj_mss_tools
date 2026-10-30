@@ -209,7 +209,7 @@ def _cmd_apply(args) -> int:
     if issues:
         return _issues_out(issues)
     try:
-        apply(ann, common, entries, category=args.category)
+        apply(ann, common, entries, category=args.category, fasta_order=fasta_ids)
     except ValueError as exc:
         msg = str(exc)
         if msg.startswith("entry_missing_from_table:"):

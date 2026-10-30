@@ -22,7 +22,7 @@ wins (TPA is a separate flag and is checked before everything else):
          genomes, plasmid-only and organelle-only submissions under MISC
          even though they are complete and usually carry TOPOLOGY)
     GNM  no DATATYPE, and a TOPOLOGY row, an ff_definition with
-         "complete genome" / "chromosome", or a first entry > 1 Mb
+         "complete genome" / ", chromosome", or a first entry > 1 Mb
     None nothing above matched (evidence is empty)
 
 Keyword matching is case-insensitive on whole keyword values; a KEYWORD
@@ -132,7 +132,7 @@ def detect_category(common: dict[str, list[tuple[str, str]]], entries: list[Entr
         gnm: list[str] = []
         if any(e.has_topology for e in entries):
             gnm.append("TOPOLOGY present")
-        for phrase in ("complete genome", "chromosome"):
+        for phrase in ("complete genome", ", chromosome"):
             if any(phrase in d for d in defs):
                 gnm.append(f"ff_definition '{phrase}'")
         if first_entry_length is not None and first_entry_length > COMPLETE_GENOME_MIN_LENGTH:

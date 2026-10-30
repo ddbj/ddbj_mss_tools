@@ -133,7 +133,14 @@ def test_gnm_by_ff_definition_chromosome():
     entries = [_entry(ff_definition="Escherichia coli DNA, Chromosome 1", organism="E. coli")]
     g = detect_category({}, entries, 500)
     assert g.value == "GNM"
-    assert g.evidence == ["ff_definition 'chromosome'"]
+    assert g.evidence == ["ff_definition ', chromosome'"]
+
+
+def test_gnm_chromosome_phrase_is_anchored():
+    # a gene named after chromosomes is not a chromosome entry
+    entries = [_entry(ff_definition="@@[organism]@@ chromosome partition protein gene, partial cds",
+                     organism="E. coli")]
+    assert detect_category({}, entries, 500).value is None
 
 
 def test_gnm_requires_no_datatype():

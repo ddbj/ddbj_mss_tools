@@ -19,11 +19,19 @@ line ending), so annotation features survive unchanged:
    COMMON source covers every FASTA entry). A per-entry source is ``SOURCE`` -> overrides -> role
    qualifier -> ``ff_definition`` -> ``extra``; a ``TOPOLOGY circular`` row
    goes directly before it when the entry is circular. Existing TOPOLOGY rows
-   and extra source features of the entry are removed.
+   and extra source features of the entry are removed. An entry of the table
+   that has no rows in the .ann gets its rows inserted before the first entry
+   that follows it in FASTA order (*fasta_order*, else the table order) and is
+   in the .ann, or at the end -- MSS needs the .ann in FASTA order.
+   The role qualifier comes from ``type`` / ``seq_name``; ff_definition is
+   regenerated for ``categories.REGENERATE_FF`` and written as given for the
+   pass-through categories (GENE / NONE), whose roles and topology are also
+   written as given.
 
 The entry table must cover every entry of the .ann: an entry missing from it
 raises ``ValueError("entry_missing_from_table: <id>")`` before anything is
-changed. ``apply`` does not otherwise validate; run
+changed. DBLINK aliases are renamed and ``null`` COMMON fields dropped
+(``shape.normalize_common``). ``apply`` does not otherwise validate; run
 :func:`ann_meta.validate.validate` first.
 """
 from __future__ import annotations
@@ -218,18 +226,46 @@ def _location(e: Entry) -> str:
     return f"1..{e.length}"
 
 
-def _append_entry(ann: AnnFile, e: Entry, build: _SourceBuilder) -> None:
+def _insert_entry(ann: AnnFile, at: int, e: Entry, build: _SourceBuilder) -> int:
+    """Insert the rows of entry *e* (which has none) before row *at*; return the row after them."""
+    marker = e.seq_id
     if e.topology == "circular":
-        ann.insert_feature(len(ann.rows), e.seq_id, "TOPOLOGY", "", [("circular", "")])
-        ann.insert_feature(len(ann.rows), "", "source", _location(e), build.qualifiers(e))
-    else:
-        ann.insert_feature(len(ann.rows), e.seq_id, "source", _location(e), build.qualifiers(e))
+        at = ann.insert_feature(at, marker, "TOPOLOGY", "", [("circular", "")]).last + 1
+        marker = ""
+    return ann.insert_feature(at, marker, "source", _location(e), build.qualifiers(e)).last + 1
+
+
+def _insert_missing(ann: AnnFile, missing: list[Entry], order: list[str], build: _SourceBuilder) -> None:
+    first_row: dict[str, int] = {}
+    for f in ann.features():
+        if f.entry and f.entry != "COMMON":
+            first_row.setdefault(f.entry, f.first)
+    # the anchor of each missing entry: the first entry after it in *order* that is in the .ann
+    anchor: dict[str, int] = {}
+    nxt = len(ann.rows)
+    for sid in reversed(order):
+        if sid in first_row:
+            nxt = first_row[sid]
+        else:
+            anchor[sid] = nxt
+    groups: dict[int, list[Entry]] = {}
+    for e in missing:
+        groups.setdefault(anchor.get(e.seq_id, len(ann.rows)), []).append(e)
+    pos = {sid: i for i, sid in enumerate(order)}
+    for at in sorted(groups, reverse=True):          # bottom up: earlier anchors keep their index
+        for e in sorted(groups[at], key=lambda e: pos.get(e.seq_id, len(pos))):
+            at = _insert_entry(ann, at, e, build)
 
 
 # -- entry point -----------------------------------------------------------------
 
-def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str) -> AnnFile:
-    """Rewrite *ann* in place from *common* (common JSON) and *entries*; return it."""
+def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str,
+          fasta_order: list[str] | None = None) -> AnnFile:
+    """Rewrite *ann* in place from *common* (common JSON) and *entries*; return it.
+
+    *fasta_order* (the FASTA's ids in order) places entries that have no rows
+    in the .ann; without it the order of *entries* is used.
+    """
     common = normalize_common(common)
     rules = _rules(category)
     source_identifier = (common.get("SOURCE_IDENTIFIER") or common.get("INFRASPECIFIC_NAME_MODIFIER")
@@ -258,7 +294,8 @@ def apply(ann: AnnFile, common: dict, entries: list[Entry], *, category: str) ->
     for e in sorted(present, key=lambda e: by_entry[e.seq_id][0].first, reverse=True):
         _rewrite_entry(ann, e, by_entry[e.seq_id], layout, build)
     if layout == "per_entry":           # in common_source the COMMON source covers FASTA-only entries
-        for e in entries:
-            if e.seq_id not in by_entry:
-                _append_entry(ann, e, build)
+        missing = [e for e in entries if e.seq_id not in by_entry]
+        if missing:
+            order = fasta_order if fasta_order is not None else [e.seq_id for e in entries]
+            _insert_missing(ann, missing, order, build)
     return ann
