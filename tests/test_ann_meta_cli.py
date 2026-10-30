@@ -202,3 +202,48 @@ def test_apply_rejects_extra_for_non_target_feature(tmp_path, capsys):
     issues = json.loads(capsys.readouterr().out)["issues"]
     assert issues == [{"field": "_extra.KEYWORD", "entry": None, "message": "bad_shape: not a COMMON target"}]
     assert not (tmp_path / "o.ann").exists()
+
+
+# -- fix round 1 -------------------------------------------------------------------
+
+def test_apply_in_place_keeps_file_mode(tmp_path, capsys):
+    _, common, tsv = _extract(tmp_path, capsys)
+    ann = tmp_path / "x.ann"
+    shutil.copy(FIX / "dfast_complete.ann", ann)
+    ann.chmod(0o644)
+    assert main(["apply", "--ann", str(ann), "--common", str(common), "--entries", str(tsv),
+                 "--out", str(ann), "--category", "GNM"]) == 0
+    assert ann.stat().st_mode & 0o7777 == 0o644
+
+
+def test_apply_new_out_gets_umask_default(tmp_path, capsys):
+    import os
+    _, common, tsv = _extract(tmp_path, capsys)
+    old = os.umask(0o027)
+    try:
+        assert _apply(tmp_path, common, tsv) == 0
+    finally:
+        os.umask(old)
+    assert (tmp_path / "o.ann").stat().st_mode & 0o7777 == 0o640
+
+
+def test_usage_error_exit_1_empty_stdout(tmp_path, capsys):
+    rc = main(["apply", "--ann", "x.ann", "--common", "c.json", "--entries", "e.tsv", "--out", "o.ann"])
+    assert rc == 1
+    cap = capsys.readouterr()
+    assert cap.out == ""
+    assert "--category" in cap.err
+
+
+def test_internal_error_exit_1_no_traceback(tmp_path, capsys, monkeypatch):
+    import ann_meta.cli as cli
+    _, common, tsv = _extract(tmp_path, capsys)
+
+    def boom(*a, **k):
+        raise IndexError("list index out of range")
+    monkeypatch.setattr(cli, "apply", boom)
+    assert _apply(tmp_path, common, tsv) == 1
+    cap = capsys.readouterr()
+    assert cap.out == ""
+    assert cap.err.strip() == "error: internal: IndexError: list index out of range"
+    assert not (tmp_path / "o.ann").exists()

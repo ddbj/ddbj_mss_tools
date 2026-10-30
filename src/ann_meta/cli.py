@@ -38,6 +38,17 @@ class _UserError(Exception):
     """Unreadable input: exit 1 with a one-line message."""
 
 
+class _UsageError(Exception):
+    pass
+
+
+class _Parser(argparse.ArgumentParser):
+    """Usage errors exit 1 (stdout empty); exit 2 is reserved for the issues JSON."""
+
+    def error(self, message):
+        raise _UsageError(f"{self.prog}: {message}")
+
+
 def _err(msg: str) -> None:
     sys.stderr.write(f"error: {msg}\n")
 
@@ -130,6 +141,16 @@ def _source_lengths(ann: AnnFile) -> dict[str, int]:
     return out
 
 
+def _target_mode(target: Path) -> int:
+    """The existing file's mode, or the umask default for a new file."""
+    try:
+        return target.stat().st_mode & 0o7777
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        return 0o666 & ~umask
+
+
 def _write_atomic(ann: AnnFile, out: str) -> None:
     target = Path(out)
     fd, tmp = tempfile.mkstemp(dir=target.parent,
@@ -137,6 +158,7 @@ def _write_atomic(ann: AnnFile, out: str) -> None:
     os.close(fd)
     try:
         ann.write(tmp)
+        os.chmod(tmp, _target_mode(target))   # mkstemp creates 0600
         os.replace(tmp, target)
     except BaseException:
         try:
@@ -193,7 +215,7 @@ def _cmd_apply(args) -> int:
 # -- entry point -------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="ann_meta",
+    ap = _Parser(prog="ann_meta",
                                  description="Read and rewrite the metadata (COMMON / source) of a DDBJ MSS .ann")
     sub = ap.add_subparsers(dest="command", required=True)
 
@@ -213,12 +235,20 @@ def main(argv: list[str] | None = None) -> int:
     apl.add_argument("--allow-unknown", metavar="Q1,Q2",
                      help="qualifier names allowed besides the known ones "
                           "(default: the unknown names already in --ann)")
-    args = ap.parse_args(argv)
+    try:
+        args = ap.parse_args(argv)
+    except _UsageError as exc:
+        ap.print_usage(sys.stderr)
+        _err(str(exc))
+        return 1
 
     try:
         return _cmd_extract(args) if args.command == "extract" else _cmd_apply(args)
     except _UserError as exc:
         _err(str(exc))
+        return 1
+    except Exception as exc:  # last resort: no traceback for the caller
+        _err(f"internal: {type(exc).__name__}: {exc}")
         return 1
 
 
