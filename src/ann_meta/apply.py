@@ -117,7 +117,9 @@ def _apply_common_targets(ann: AnnFile, common: dict) -> None:
     blocks: list[tuple[str, str, Quals]] = []
     for name in COMMON_TARGETS:
         own = _blocks(create_common({name: common[name]})) if common.get(name) else []
-        pairs = [(str(k), "" if v is None or v is True else str(v)) for k, v in extra.get(name, [])]
+        # True / None -> valueless (flag) row; False -> no row
+        pairs = [(str(k), "" if v is None or v is True else str(v))
+                 for k, v in extra.get(name, []) if v is not False]
         if pairs:
             if own:
                 own[0][2].extend(pairs)

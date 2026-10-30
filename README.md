@@ -601,6 +601,35 @@ ann_fix --ann sub/NAME.ann --report ... --apply 'ANN4300=misc,ANN5320=overlap-dr
 `ANN2520`（アイソフォームの locus_tag 共有）と `ANN2542`（`/gene` 無しの locus_tag 共有）は無視可として表示するだけです。
 レポートはそれを出した `.ann` にしか適用できません。修正後のファイルに同じレポートを再適用すると「report does not match」で何も書かずに終了します（exit 1）。再検証してから新しいレポートで apply してください。同一実行内で先の操作が消した feature を指す指摘は skip として表示されます。
 
+## ann_meta の使い方
+
+持ち込んだ `.ann` のメタデータ（COMMON の DBLINK / SUBMITTER / REFERENCE / COMMENT / DATE / ST_COMMENT と、各エントリの `source` / `TOPOLOGY`）を
+読み取り（`extract`）、編集した内容で書き戻します（`apply`）。それ以外の行（gene / CDS など）は byte 単位でそのまま残ります。
+
+```bash
+# 読み取り: stdout に JSON（--json は省略可）、--entries-out でエントリ表 TSV も書く
+ann_meta extract --ann NAME.ann --fasta NAME.fasta --entries-out entries.tsv > meta.json
+
+# 書き戻し: --out は --ann と同じでもよい（一時ファイルに書いて置き換え）
+ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out NAME.ann \
+  --category GNM [--fasta NAME.fasta] [--allow-unknown q1,q2]
+```
+
+- `--common` は mss_builder の common JSON と同じ形に `SOURCE`（source の qualifier）、`SOURCE_IDENTIFIER`、
+  `_extra`（COMMON の feature ごとの `[名前, 値]` の並び。`true` は値なし行、`false` は出力しない）を加えたもの:
+  `{"DBLINK": {"project": "PRJDB1", "sample": "SAMD1"}, "SOURCE": {"organism": "Escherichia coli", "strain": "K-12"}, "_extra": {"COMMENT": [["line", "..."]]}}`
+- エントリ表 TSV（タブ区切り）: `#seq_id type seq_name status topology ff_definition` の後に qualifier 名の列。空欄は「指定なし」、flag は `yes`（例: `sequence1⇥chromosome⇥⇥complete⇥circular⇥⇥...`、⇥ はタブ）
+- `--fasta` があれば seq_id を FASTA と照合し長さに使います。無ければ既存 source の `1..N` から長さを取ります。
+- `--allow-unknown` を省くと、入力 `.ann` に既にある未知の qualifier 名だけを許可します（そのままの往復はフラグ不要）。
+- レイアウト: カテゴリが WGS / MAG-WGS / ENV で全エントリが unplaced かつエントリ別 qualifier が無いときは COMMON の source 1 つ（`1..E`）、
+  それ以外はエントリごとの source。
+- ff_definition: GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV では type・status から作り直し（上記 ff_definition の表と同じ規則）、
+  NONE / GENE では表の `ff_definition` をそのまま書きます。
+
+終了コード: `0` 成功 / `1` 入力が読めない（stderr に 1 行） / `2` 入力の問題（stdout に
+`{"issues": [{"field": ..., "entry": ..., "message": ...}]}`、出力は書かない。`forbidden_char`、`unknown_qualifier`、`bad_shape: ...`、
+`bad_entries_tsv: ...`、`entry_missing_from_table: ...` など）。
+
 ## mss2ff の使い方
 
 MSS アノテーションファイル（`.ann` または `.annt.tsv`）と FASTA ファイルから DDBJ Flat File を生成します。
@@ -1262,3 +1291,27 @@ Defaults: `ANN5320` → `overlap-drop:cds`, `ANN4300` → `misc`, `AXS6810` → 
 ann_fix --ann sub/NAME.ann --report sub_out/reports/validation_report_details.txt --detect --json
 ann_fix --ann sub/NAME.ann --report sub_out/reports/validation_report_details.txt --apply defaults --out sub/NAME.ann
 ```
+
+## ann_meta Usage
+
+Reads (`extract`) and rewrites (`apply`) the metadata of an existing `.ann`: COMMON DBLINK / SUBMITTER / REFERENCE /
+COMMENT / DATE / ST_COMMENT and each entry's `source` / `TOPOLOGY`. All other rows (gene, CDS, ...) stay byte-identical.
+
+```bash
+ann_meta extract --ann NAME.ann --fasta NAME.fasta --entries-out entries.tsv > meta.json   # always JSON
+ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out NAME.ann \
+  --category GNM [--fasta NAME.fasta] [--allow-unknown q1,q2]                               # --out may equal --ann
+```
+
+- `--common`: the mss_builder common JSON plus `SOURCE` (source qualifiers), `SOURCE_IDENTIFIER` and `_extra`
+  (per COMMON feature, a list of `[name, value]`; `true` = valueless row, `false` = omitted), e.g.
+  `{"DBLINK": {"project": "PRJDB1", "sample": "SAMD1"}, "SOURCE": {"organism": "Escherichia coli"}, "_extra": {"COMMENT": [["line", "..."]]}}`
+- Entry table TSV: `#seq_id type seq_name status topology ff_definition`, then one column per qualifier; empty = not specified, flags = `yes`.
+- `--fasta` checks seq_ids and gives lengths; without it lengths come from existing `1..N` sources.
+  Without `--allow-unknown`, the unknown qualifier names already in the input `.ann` are allowed.
+- Layout: one COMMON source (`1..E`) when the category is WGS / MAG-WGS / ENV and every entry is unplaced without
+  per-entry qualifiers; otherwise one source per entry. ff_definition is regenerated from type/status for
+  GNM / WGS / MAG / MAG-WGS / ENV / TSA / TSA-ENV and written as given for NONE / GENE.
+
+Exit codes: `0` success; `1` unreadable input (one line on stderr); `2` input problems — `{"issues": [{"field", "entry", "message"}]}`
+on stdout and nothing written (`forbidden_char`, `unknown_qualifier`, `bad_shape: ...`, `bad_entries_tsv: ...`, `entry_missing_from_table: ...`).
