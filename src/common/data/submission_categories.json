@@ -52,8 +52,16 @@
     "required_division": "TSA",
     "required_keywords": [["TSA"], ["Transcriptome Shotgun Assembly"]],
     "required_tagset_id": "Assembly-Data",
-    "required_st_comments": ["Sequencing Technology", "Coverage", "Assembly Method"],
-    "invalid_moltype": ["genomic DNA", "other DNA"]
+    "required_st_comments": ["Sequencing Technology", "Assembly Method"],
+    "invalid_moltype": ["genomic DNA", "other DNA"],
+    "required_source_qualifiers": ["geo_loc_name", "collection_date"],
+    "required_dblinks": ["sequence read archive"]
+  },
+
+  "TSA-ENV": {
+    "inherits": ["TSA", "ENV"],
+    "required_division": "TSA",
+    "required_source_qualifiers": ["isolation_source"]
   },
 
   "TPA": {

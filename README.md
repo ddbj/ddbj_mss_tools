@@ -31,6 +31,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
   - [基本的な使い方](#基本的な使い方-1)
   - [オプション一覧](#オプション一覧-1)
   - [WGS モードと染色体モード](#wgs-モードと染色体モード)
+- [tsa2mss の使い方](#tsa2mss-の使い方)
 - [batch_wgs_builder の使い方](#batch_wgs_builder-の使い方)
   - [基本的な使い方](#基本的な使い方-2)
   - [オプション一覧](#オプション一覧-2)
@@ -395,6 +396,34 @@ common JSON の形式は [egapx2mss と同じ](#common-json-ファイル)です�
 
 ---
 
+## tsa2mss の使い方
+
+トランスクリプトームアセンブリの FASTA と common JSON から、TSA（Transcriptome Shotgun Assembly）の MSS 登録ファイル（`.ann` / `.fa`）を作ります。
+対応するのは READ ARCHIVE（DRA/SRA の Run）を DBLINK で引用する TSA だけです。EST を PRIMARY 行で引用する TSA には対応していません。
+`--meta` を付けるとメタトランスクリプトームアセンブリとして扱います。
+
+```bash
+tsa2mss transcripts.fa --common examples/tsa2mss/common_tsa.json -o out/ -p tsa
+tsa2mss transcripts.fa --common examples/tsa2mss/common_meta_tsa.json --meta -o out/ -p meta_tsa
+```
+
+| オプション | 説明 |
+|---|---|
+| `input` | 入力 FASTA（各配列は転写方向 5'→3' に揃えておく） |
+| `-o/--outdir`, `-p/--prefix` | 出力先・ベースネーム（mss_builder と同じ） |
+| `--common JSON` | 必須。DBLINK, SUBMITTER, REFERENCE, ST_COMMENT, SOURCE, ASSEMBLY_GAP など |
+| `--meta` | メタトランスクリプトーム。KEYWORD `ENV` と `/environmental_sample` を付与（DIVISION は TSA のまま） |
+
+出力内容:
+
+- `DIVISION` は `TSA`、`KEYWORD` は `TSA` と `Transcriptome Shotgun Assembly`（`--meta` 時は `ENV` を追加）
+- source は COMMON に 1 つ（`1..E`、`submitter_seqid` は `@@[entry]@@`）。`mol_type` を省略すると `transcribed RNA` になる
+- 必須項目（無ければ警告を出し、空値で出力）: DBLINK `sequence read archive`、SOURCE `geo_loc_name`・`collection_date`（`--meta` 時は `isolation_source` も）、ST_COMMENT（tagset_id `Assembly-Data`）`Assembly Method`・`Sequencing Technology`（`Coverage`・`Assembly Name` は任意。`Assembly Method` はバージョンを ` v. ` の直後に書く、複数シークエンサーは `; ` 区切り）
+- 推奨: SOURCE に `tissue_type`, `dev_stage`, `sex` または `mating_type`（条件の異なる試料を混ぜたアセンブリでは付けない）
+- N の連続が 6 塩基以上ある場合は `ASSEMBLY_GAP` を設定して assembly_gap を付ける（例: `linkage_evidence: paired-ends`, `min_gap_length: 6`）。TSA では `estimated_length` を `unknown` にできないため、`unknown` になる設定（`align genus` など）はエラーで終了する
+
+---
+
 ## batch_wgs_builder の使い方
 
 サンプルリスト TSV と common JSON を入力とし、複数ゲノムの DDBJ MSS WGS/MAG-WGS 登録ファイル（`.ann` / `.fa`）を一括生成します。
@@ -508,6 +537,7 @@ DBLINK や source フィーチャーの情報は TSV で指定するため **DBL
 | `MAG` | — | ENV | ENV, MAG, Metagenome Assembled Genome | `isolate` | MAG（コンプリートゲノム） |
 | `MAG-WGS` | WGS | ENV | ENV, MAG, Metagenome Assembled Genome, WGS, STANDARD_DRAFT | `isolate` | MAG（ドラフトゲノム） |
 | `TSA` | — | TSA | TSA, Transcriptome Shotgun Assembly | — | Transcriptome Shotgun Assembly |
+| `TSA-ENV` | — | TSA | TSA, Transcriptome Shotgun Assembly, ENV | — | メタトランスクリプトーム TSA |
 | `TPA` | TPA | — | TPA, Third Party Data, TPA:assembly | — | Third Party Data |
 | `TPA-WGS` | TPA-WGS | — | TPA, Third Party Data, TPA:assembly, WGS, STANDARD_DRAFT | — | TPA ドラフトゲノム |
 | `TPA-GNM` | — | — | TPA, Third Party Data, TPA:assembly | — | TPA コンプリートゲノム |
@@ -648,6 +678,7 @@ A set of Python tools for generating DDBJ MSS (Mass Submission System) submissio
   - [Basic Usage](#basic-usage-1)
   - [Options](#options-1)
   - [WGS Mode and Chromosome Mode](#wgs-mode-and-chromosome-mode)
+- [tsa2mss Usage](#tsa2mss-usage)
 - [batch_wgs_builder Usage](#batch_wgs_builder-usage)
   - [Basic Usage](#basic-usage-2)
   - [Options](#options-2)
@@ -1008,6 +1039,34 @@ The common JSON format is the [same as egapx2mss](#common-json-file).
 
 ---
 
+## tsa2mss Usage
+
+Creates DDBJ MSS TSA (Transcriptome Shotgun Assembly) submission files (`.ann` / `.fa`) from a transcript assembly FASTA and a common JSON.
+Only TSA citing a READ ARCHIVE (DRA/SRA runs in DBLINK) is supported; EST-based TSA with PRIMARY lines is not.
+`--meta` handles metatranscriptome assemblies.
+
+```bash
+tsa2mss transcripts.fa --common examples/tsa2mss/common_tsa.json -o out/ -p tsa
+tsa2mss transcripts.fa --common examples/tsa2mss/common_meta_tsa.json --meta -o out/ -p meta_tsa
+```
+
+| Option | Description |
+|---|---|
+| `input` | Input FASTA (sequences oriented 5'→3' in the transcription direction) |
+| `-o/--outdir`, `-p/--prefix` | Output directory / basename (same as mss_builder) |
+| `--common JSON` | Required. DBLINK, SUBMITTER, REFERENCE, ST_COMMENT, SOURCE, ASSEMBLY_GAP, … |
+| `--meta` | Metatranscriptome: adds KEYWORD `ENV` and `/environmental_sample` (DIVISION stays TSA) |
+
+Output:
+
+- `DIVISION` `TSA`; `KEYWORD` `TSA`, `Transcriptome Shotgun Assembly` (plus `ENV` with `--meta`)
+- One source in COMMON (`1..E`, `submitter_seqid` = `@@[entry]@@`); `mol_type` defaults to `transcribed RNA`
+- Required (warned and written empty if missing): DBLINK `sequence read archive`; SOURCE `geo_loc_name`, `collection_date` (and `isolation_source` with `--meta`); ST_COMMENT (tagset_id `Assembly-Data`) `Assembly Method`, `Sequencing Technology` (`Coverage` and `Assembly Name` are optional; write the version right after ` v. ` in `Assembly Method`, separate multiple sequencers with `; `)
+- Recommended: SOURCE `tissue_type`, `dev_stage`, `sex` or `mating_type` (omit for assemblies pooled from different conditions)
+- Runs of 6 or more N must be marked: set `ASSEMBLY_GAP` (e.g. `linkage_evidence: paired-ends`, `min_gap_length: 6`). TSA cannot use `estimated_length` `unknown`, so settings that resolve to it (e.g. `align genus`) exit with an error
+
+---
+
 ## batch_wgs_builder Usage
 
 Batch-generates DDBJ MSS WGS/MAG-WGS submission files (`.ann` / `.fa`) for multiple genomes from a sample list TSV and a common JSON file.
@@ -1115,6 +1174,7 @@ Missing required fields trigger a warning and are filled with empty values.
 | `MAG` | — | ENV | ENV, MAG, Metagenome Assembled Genome | `isolate` | MAG (complete genome) |
 | `MAG-WGS` | WGS | ENV | ENV, MAG, Metagenome Assembled Genome, WGS, STANDARD_DRAFT | `isolate` | MAG (draft genome) |
 | `TSA` | — | TSA | TSA, Transcriptome Shotgun Assembly | — | Transcriptome Shotgun Assembly |
+| `TSA-ENV` | — | TSA | TSA, Transcriptome Shotgun Assembly, ENV | — | Metatranscriptome TSA |
 | `TPA` | TPA | — | TPA, Third Party Data, TPA:assembly | — | Third Party Data |
 | `TPA-WGS` | TPA-WGS | — | TPA, Third Party Data, TPA:assembly, WGS, STANDARD_DRAFT | — | TPA draft genome |
 | `TPA-GNM` | — | — | TPA, Third Party Data, TPA:assembly | — | TPA complete genome |

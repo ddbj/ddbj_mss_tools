@@ -1,0 +1,37 @@
+{
+    "DBLINK": {
+        "project": "PRJDB12690",
+        "sample": "SAMD00428386",
+        "sequence read archive": ["DRR331709"]
+    },
+    "SUBMITTER": {
+        "ab_name": ["Machida,R."],
+        "contact": "Ryuji Machida",
+        "email": "machida@example.org",
+        "institute": "Academia Sinica",
+        "department": "Biodiversity Research Centre",
+        "country": "Taiwan",
+        "city": "Taipei",
+        "street": "128 Academia Road, Section 2, Nankang",
+        "zip": "11529"
+    },
+    "REFERENCE": [
+        {
+            "title": "Coral reef zooplankton metatranscriptome",
+            "ab_name": ["Machida,R."],
+            "status": "Unpublished"
+        }
+    ],
+    "ST_COMMENT": {
+        "tagset_id": "Assembly-Data",
+        "Assembly Method": "Mira v. 4.9.6",
+        "Coverage": "Unknown",
+        "Sequencing Technology": "Illumina MiSeq"
+    },
+    "SOURCE": {
+        "organism": "zooplankton environmental sample",
+        "isolation_source": "coral reef",
+        "geo_loc_name": "Taiwan",
+        "collection_date": "2021-03-23"
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "DBLINK": {
+        "project": "PRJDB8530",
+        "sample": "SAMD00178449",
+        "sequence read archive": ["DRR184756", "DRR184758"]
+    },
+    "SUBMITTER": {
+        "ab_name": ["Yamato,K.T.", "Tanizawa,Y."],
+        "contact": "Katsuyuki T. Yamato",
+        "email": "yamato@example.ac.jp",
+        "institute": "Kindai University",
+        "department": "Faculty of Biology-Oriented Science and Technology",
+        "country": "Japan",
+        "state": "Wakayama",
+        "city": "Kinokawa",
+        "street": "Nishimitani 930",
+        "zip": "649-6493"
+    },
+    "REFERENCE": [
+        {
+            "title": "Full-length transcriptome of Marchantia polymorpha",
+            "ab_name": ["Yamato,K.T.", "Tanizawa,Y."],
+            "status": "Unpublished"
+        }
+    ],
+    "ST_COMMENT": {
+        "tagset_id": "Assembly-Data",
+        "Assembly Method": "PacBio IsoSeq pipeline v. 3.0",
+        "Coverage": "Unknown",
+        "Sequencing Technology": "PacBio Sequel"
+    },
+    "SOURCE": {
+        "organism": "Marchantia polymorpha subsp. ruderalis",
+        "strain": "Tak-1",
+        "sex": "male",
+        "geo_loc_name": "Japan: Kyoto",
+        "collection_date": "2018"
+    },
+    "SOURCE_IDENTIFIER": "strain",
+    "ASSEMBLY_GAP": {
+        "linkage_evidence": "paired-ends",
+        "min_gap_length": 6
+    }
+}

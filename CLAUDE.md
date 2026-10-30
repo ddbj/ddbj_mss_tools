@@ -8,6 +8,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
 - **batch_wgs_builder**: FASTAファイルと TSV のメタデータから DDBJ MSS WGS/MAG-WGS形式ファイルを一括生成
 - **mss2ff**: MSS アノテーションファイル (.ann / .annt.tsv) と FASTA から DDBJ Flat File を生成
 - **mss_builder**: MSS 登録ファイルのビルド支援ツール
+- **tsa2mss**: トランスクリプトームアセンブリ FASTA から DDBJ MSS TSA 登録ファイルを生成（READ ARCHIVE 引用型のみ。`--meta` でメタトランスクリプトーム = KEYWORD ENV + /environmental_sample）。中身は mss_builder の `write_mss_ann` に submission category `TSA` / `TSA-ENV` を渡す薄い CLI
 - **ann_fix**: ddbj-validator の指摘（validation_report_details.txt）を gff2mss 出力の .ann 上で解消する（misc_feature 格下げ、artificial_location 付与、重なりの片側削除）
 
 ## リポジトリ構成
@@ -32,6 +33,8 @@ src/
 ├── mss_builder/
 │   ├── cli.py               # エントリーポイント (mss_builder コマンド)
 │   └── ann_writer.py        # アノテーションファイル書き出し
+├── tsa2mss/
+│   └── cli.py               # エントリーポイント (tsa2mss コマンド)
 ├── mss2ff/
     ├── __init__.py
     ├── cli.py               # エントリーポイント (mss2ff コマンド)

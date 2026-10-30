@@ -160,9 +160,17 @@ def validate_and_fill(common_dict: dict, category: str) -> None:
     if rules.required_tagset_id:
         st = common_dict.get("ST_COMMENT")
         if st is not None:
-            for item in (st if isinstance(st, list) else [st]):
+            items = st if isinstance(st, list) else [st]
+            for item in items:
                 if not item.get("tagset_id"):
                     item["tagset_id"] = rules.required_tagset_id
+            if not any(item["tagset_id"] == rules.required_tagset_id for item in items):
+                print(
+                    f"[WARNING] [{category}] ST_COMMENT tagset_id should be"
+                    f" '{rules.required_tagset_id}'"
+                    f" (found: {[item['tagset_id'] for item in items]}).",
+                    file=sys.stderr,
+                )
 
     if rules.required_st_comments:
         st = common_dict.get("ST_COMMENT")
@@ -172,7 +180,8 @@ def validate_and_fill(common_dict: dict, category: str) -> None:
                 f" Required fields: {rules.required_st_comments}. Adding empty values.",
                 file=sys.stderr,
             )
-            common_dict["ST_COMMENT"] = {k: "" for k in rules.required_st_comments}
+            tagset = {"tagset_id": rules.required_tagset_id} if rules.required_tagset_id else {}
+            common_dict["ST_COMMENT"] = {**tagset, **{k: "" for k in rules.required_st_comments}}
         else:
             for item in (st if isinstance(st, list) else [st]):
                 for key in rules.required_st_comments:
