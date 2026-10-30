@@ -30,6 +30,7 @@ from __future__ import annotations
 import unicodedata
 from dataclasses import dataclass
 
+from ann_meta.categories import PASS_THROUGH, ROLE_CATEGORIES
 from ann_meta.model import Entry
 from common.qualifiers import known_qualifier_names
 from common.submission_category import get_category_rules
@@ -38,9 +39,6 @@ ROLES = ("chromosome", "plasmid", "organelle", "segment")
 TYPES = ROLES + ("unplaced",)
 STATUSES = ("complete", "partial")
 TOPOLOGIES = ("circular", "linear", "")
-# categories whose sequences may carry a role (chromosome / plasmid / ...);
-# every other category takes unplaced entries only
-ROLE_CATEGORIES = frozenset({"NONE", "GNM", "MAG", "TPA-GNM"})
 RESERVED = frozenset({"ff_definition", "submitter_seqid", *ROLES})
 
 
@@ -75,7 +73,7 @@ def _walk(value, path: str, issues: list[Issue]) -> None:
 
 
 def _category_ok(category: str) -> bool:
-    if category in ("NONE", "GENE"):
+    if category in PASS_THROUGH:
         return True
     try:
         get_category_rules(category)

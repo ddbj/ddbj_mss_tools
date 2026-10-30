@@ -11,8 +11,9 @@ line ending), so annotation features survive unchanged:
    DATATYPE, DIVISION, KEYWORD and unknown COMMON features are not touched,
    even when the common JSON has keys of those names.
 2. ``source`` and ``TOPOLOGY``. Layout ``common_source`` (one COMMON source at
-   ``1..E``) is used only when the category is WGS-like and every entry is
-   unplaced without per-entry qualifiers; otherwise every entry gets its own
+   ``1..E``) is used only when the category is WGS-like (``categories.WGS_LIKE``:
+   WGS, MAG-WGS, ENV, TSA, TSA-ENV) and every entry is unplaced without
+   per-entry qualifiers; otherwise every entry gets its own
    source (layout ``per_entry``). In ``common_source`` a contig whose only rows
    were its source has no rows afterwards (as in mss_builder's WGS output: the
    COMMON source covers every FASTA entry). A per-entry source is ``SOURCE`` -> overrides -> role
@@ -30,6 +31,7 @@ from __future__ import annotations
 import dataclasses
 
 from ann_fix.annfile import AnnFeature, AnnFile
+from ann_meta.categories import PASS_THROUGH, REGENERATE_FF, WGS_LIKE
 from ann_meta.extract import COMMON_TARGETS
 from ann_meta.model import Entry
 from common.common_builder import create_common
@@ -44,19 +46,12 @@ from common.source_builder import (
 )
 from common.submission_category import SubmissionCategoryRules, get_category_rules
 
-# Categories whose all-unplaced entries share one COMMON source (WGS, MAG-WGS = required_datatype WGS).
-# ENV has no required_datatype in submission_categories.json; it is listed by the spec (contig sets like WGS).
-COMMON_SOURCE_CATEGORIES = frozenset({"WGS", "MAG-WGS", "ENV"})
-# Categories whose ff_definition is regenerated from the role; for the others
-# (NONE, GENE) the entry's ff_definition is written as given.
-REGENERATE_FF_CATEGORIES = frozenset({"GNM", "WGS", "MAG", "MAG-WGS", "ENV", "TSA", "TSA-ENV"})
-_NO_RULES = ("NONE", "GENE")
 
 Quals = list[tuple[str, str]]
 
 
 def _rules(category: str) -> SubmissionCategoryRules:
-    return SubmissionCategoryRules() if category in _NO_RULES else get_category_rules(category)
+    return SubmissionCategoryRules() if category in PASS_THROUGH else get_category_rules(category)
 
 
 def _is_flag(name: str) -> bool:
@@ -146,7 +141,7 @@ def _common_source_blocks(common: dict, category: str, source_identifier: str) -
 # -- entries -------------------------------------------------------------------
 
 def _decide_layout(category: str, entries: list[Entry]) -> str:
-    if category not in COMMON_SOURCE_CATEGORIES:
+    if category not in WGS_LIKE:
         return "per_entry"
     if any(e.type != "unplaced" or e.overrides or e.extra for e in entries):
         return "per_entry"
@@ -157,8 +152,8 @@ class _SourceBuilder:
     def __init__(self, common: dict, entries: list[Entry], category: str, source_identifier: str):
         self.base = dict(common.get("SOURCE") or {})
         self.rules = _rules(category)
-        self.regenerate = category in REGENERATE_FF_CATEGORIES
-        self.is_wgs = category in COMMON_SOURCE_CATEGORIES and all(e.type == "unplaced" for e in entries)
+        self.regenerate = category in REGENERATE_FF
+        self.is_wgs = category in WGS_LIKE and all(e.type == "unplaced" for e in entries)
         self.source_identifier = source_identifier or None
         self.chromosomes = sum(1 for e in entries if e.type == "chromosome")
         self.segments = sum(1 for e in entries if e.type == "segment")

@@ -514,3 +514,41 @@ def test_literal_yes_survives_tsv_and_apply(tmp_path):
     quals = s1.qualifiers(ann.rows)
     assert ("strain", "yes") in quals
     assert ("environmental_sample", "") in quals and ("my_flag", "") in quals
+
+
+# -- final review fixes ------------------------------------------------------------
+
+TSA_ANN = [
+    "COMMON\tDATATYPE\t\ttype\tTSA",
+    "\tsource\t1..E\torganism\tOryza sativa",
+    "\t\t\tmol_type\ttranscribed RNA",
+    "\t\t\tsubmitter_seqid\t@@[entry]@@",
+    "\t\t\tff_definition\t@@[organism]@@ RNA, @@[submitter_seqid]@@",
+    "t1\tCDS\t1..30\tproduct\tp",
+]
+
+
+@pytest.mark.parametrize("category", ["TSA", "TSA-ENV"])
+def test_tsa_uses_the_wgs_layout(tmp_path, category):
+    # I4: TSA follows tsa2mss -- one COMMON source, contigs named by submitter_seqid
+    ann = AnnFile.read(_ann(tmp_path, TSA_ANN))
+    doc = extract(ann, {"t1": 300, "t2": 300})
+    apply(ann, _common(doc), doc.entries, category=category)
+    feats = ann.features()
+    assert [(f.entry, f.key) for f in feats] == [("COMMON", "DATATYPE"), ("COMMON", "source"), ("t1", "CDS")]
+    quals = feats[1].qualifiers(ann.rows)
+    assert ("submitter_seqid", "@@[entry]@@") in quals
+    assert ("ff_definition", "@@[organism]@@ RNA, @@[submitter_seqid]@@") in quals
+    assert (("environmental_sample", "") in quals) == (category == "TSA-ENV")
+
+
+def test_tsa_per_entry_names_contigs_by_submitter_seqid(tmp_path):
+    ann = AnnFile.read(_ann(tmp_path, TSA_ANN))
+    doc = extract(ann, {"t1": 300, "t2": 300})
+    doc.entries[1].overrides["note"] = "x"
+    apply(ann, _common(doc), doc.entries, category="TSA")
+    srcs = [f for f in ann.features() if f.key == "source"]
+    assert [f.entry for f in srcs] == ["t1", "t2"]
+    q1 = srcs[0].qualifiers(ann.rows)
+    assert ("submitter_seqid", "t1") in q1
+    assert ("ff_definition", "@@[organism]@@ RNA, @@[submitter_seqid]@@") in q1

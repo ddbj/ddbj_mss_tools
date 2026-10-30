@@ -127,8 +127,10 @@ def test_role_not_allowed_for_wgs():
                Entry("s2", 100)]
     issues = _v(entries=entries, category="WGS")
     assert issues == [Issue("type", "c1", "role_not_allowed_for_category")]
-    assert "role_not_allowed_for_category" in _codes(_v(entries=entries, category="GENE"))
     assert "role_not_allowed_for_category" in _codes(_v(entries=entries, category="TSA"))
+    assert "role_not_allowed_for_category" in _codes(_v(entries=entries, category="TSA-ENV"))
+    # pass-through categories keep the roles they were given (final review ruling)
+    assert _v(entries=entries, category="GENE") == []
     assert _v(entries=entries, category="GNM") == []
     assert _v(entries=entries, category="MAG") == []
     assert _v(entries=entries, category="NONE") == []
