@@ -1,0 +1,62 @@
+COMMON	DBLINK		project	PRJDB99901
+			biosample	SAMD99000001
+			sequence read archive	DRR990001
+	SUBMITTER		ab_name	Mishima,T.
+			ab_name	Yata,H.
+			contact	Taro Mishima
+			email	mishima@example.org
+			institute	National Institute of Genetics
+			department	Bioinformation and DDBJ Center
+			country	Japan
+			state	Shizuoka
+			city	Mishima
+			street	Yata 1111
+			zip	411-8540
+	REFERENCE		title	Complete genome sequence of Escherichia coli strain NIG-0001
+			ab_name	Mishima,T.
+			ab_name	Yata,H.
+			status	Unpublished
+			year	2026
+	COMMENT		line	Annotated by DFAST https://dfast.ddbj.nig.ac.jp/
+	ST_COMMENT		tagset_id	Genome-Assembly-Data
+			Assembly Method	Flye v. 2.9.5
+			Genome Coverage	120x
+			Sequencing Technology	Illumina MiSeq; Nanopore MinION
+sequence1	source	1..5400	organism	Escherichia coli
+			strain	NIG-0001
+			mol_type	genomic DNA
+			chromosome	1
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, complete genome
+			geo_loc_name	Japan:Shizuoka, Mishima
+			collection_date	2025-06-12
+			host	Homo sapiens
+			isolation_source	feces
+	TOPOLOGY		circular
+	CDS	complement(336..2798)	product	aspartokinase I
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG0001_00010
+			gene	thrA
+			inference	COORDINATES:ab initio prediction:MetaGeneAnnotator
+	CDS	2800..3732	product	homoserine kinase
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG0001_00020
+			gene	thrB
+			inference	COORDINATES:ab initio prediction:MetaGeneAnnotator
+sequence2	source	1..1500	organism	Escherichia coli
+			strain	NIG-0001
+			mol_type	genomic DNA
+			plasmid	pXYZ
+			ff_definition	@@[organism]@@ @@[strain]@@ plasmid @@[plasmid]@@ DNA, complete sequence
+			geo_loc_name	Japan:Shizuoka, Mishima
+			collection_date	2025-06-12
+			host	Homo sapiens
+			isolation_source	feces
+	TOPOLOGY		circular
+	CDS	101..1066	product	replication initiation protein
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG0001_p0010
+			gene	repA
+			inference	COORDINATES:ab initio prediction:MetaGeneAnnotator

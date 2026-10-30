@@ -10,6 +10,7 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
 - **mss_builder**: MSS 登録ファイルのビルド支援ツール
 - **tsa2mss**: トランスクリプトームアセンブリ FASTA から DDBJ MSS TSA 登録ファイルを生成（READ ARCHIVE 引用型のみ。`--meta` でメタトランスクリプトーム = KEYWORD ENV + /environmental_sample）。中身は mss_builder の `write_mss_ann` に submission category `TSA` / `TSA-ENV` を渡す薄い CLI
 - **ann_fix**: ddbj-validator の指摘（validation_report_details.txt）を gff2mss 出力の .ann 上で解消する（misc_feature 格下げ、artificial_location 付与、重なりの片側削除）
+- **ann_meta**: 持ち込んだ .ann の COMMON（DBLINK / SUBMITTER / REFERENCE ほか）と source を JSON・エントリ表 TSV に読み取り（`extract`）、編集結果を検査して書き戻す（`apply`。他の行は byte 単位で維持）
 
 ## リポジトリ構成
 

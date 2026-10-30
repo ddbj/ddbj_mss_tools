@@ -1,0 +1,50 @@
+COMMON	SUBMITTER		ab_name	Mishima,T.
+			ab_name	Yata,H.
+			contact	Taro Mishima
+			email	mishima@example.org
+			institute	National Institute of Genetics
+			department	Bioinformation and DDBJ Center
+			country	Japan
+			state	Shizuoka
+			city	Mishima
+			street	Yata 1111
+			zip	411-8540
+	REFERENCE		title	DNA barcoding of freshwater caddisflies in Shizuoka
+			ab_name	Mishima,T.
+			ab_name	Yata,H.
+			status	Unpublished
+			year	2026
+COI_01	source	1..658	organism	Stenopsyche marmorata
+			mol_type	genomic DNA
+			isolate	SZ-001
+			collection_date	2025-05-02
+			geo_loc_name	Japan:Shizuoka, Kano River
+			note	voucher deposited in NSMT
+			ff_definition	@@[organism]@@ @@[isolate]@@ COI gene, partial cds
+	CDS	<1..>658	product	cytochrome c oxidase subunit I
+			gene	COI
+			codon_start	2
+			transl_table	5
+COI_02	source	1..658	organism	Hydropsyche orientalis
+			mol_type	genomic DNA
+			isolate	SZ-014
+			collection_date	2025-05-02
+			geo_loc_name	Japan:Shizuoka, Kano River
+			note	larva
+			note	voucher deposited in NSMT
+			ff_definition	@@[organism]@@ @@[isolate]@@ COI gene, partial cds
+	CDS	<1..>658	product	cytochrome c oxidase subunit I
+			gene	COI
+			codon_start	2
+			transl_table	5
+COI_03	source	1..652	organism	Rhyacophila nigrocephala
+			mol_type	genomic DNA
+			isolate	SZ-027
+			collection_date	2025-06-18
+			geo_loc_name	Japan:Shizuoka, Kise River
+			note	adult male
+			ff_definition	@@[organism]@@ @@[isolate]@@ COI gene, partial cds
+	CDS	<1..>652	product	cytochrome c oxidase subunit I
+			gene	COI
+			codon_start	2
+			transl_table	5
