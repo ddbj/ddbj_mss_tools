@@ -134,14 +134,19 @@ class AnnFile:
                        qualifiers: list[tuple[str, str]]) -> AnnFeature:
         """Insert a new feature before row index *at_row* (``len(rows)`` appends).
 
-        New rows take the line ending of the row before *at_row* ("\n" if there is
-        none). Appending after a final row without a newline gives that row "\n"
+        New rows take the line ending of the row before *at_row* (at the top, of the
+        row at *at_row*; "\n" if neither exists). If the row at *at_row* carries
+        *entry_col* as its entry marker, the marker moves to the inserted block so an
+        entry never has two markers (another entry's marker is left alone). Appending after a final row without a newline gives that row "\n"
         and leaves the new last row without one, so the file keeps its shape.
         """
         if not 0 <= at_row <= len(self.rows):
             raise IndexError(f"insert position out of range: {at_row}")
         prev = self.rows[at_row - 1] if at_row > 0 else None
-        eol = (prev.eol if prev else "") or "\n"
+        nxt = self.rows[at_row] if at_row < len(self.rows) else None
+        eol = (prev.eol if prev else (nxt.eol if nxt else "")) or "\n"
+        if entry_col and nxt is not None and nxt.cols[0] == entry_col:
+            nxt.cols[0] = ""                    # the inserted block takes over the entry marker
         quals = qualifiers or [("", "")]
         new_rows = [AnnRow([entry_col if i == 0 else "", key if i == 0 else "",
                             location if i == 0 else "", k, v], eol)

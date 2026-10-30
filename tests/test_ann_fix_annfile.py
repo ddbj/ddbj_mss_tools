@@ -78,7 +78,9 @@ def test_insert_feature_middle(tmp_path):
     ann.write(tmp_path / "out.ann")
     out = (tmp_path / "out.ann").read_bytes()
     lines = out.splitlines(keepends=True)
-    assert b"".join(lines[2:]) == data                          # every other row unchanged
+    orig = data.splitlines(keepends=True)
+    assert lines[2] == orig[0].replace(b"COMMON", b"", 1)       # marker moved to the inserted block
+    assert b"".join(lines[3:]) == b"".join(orig[1:])            # every other row unchanged
 
 
 def test_insert_feature_at_end_keeps_missing_newline(tmp_path):
@@ -111,3 +113,36 @@ def test_insert_feature_crlf(tmp_path):
     gene = next(f for f in ann.features() if f.key == "gene")
     assert gene.qualifiers(ann.rows) == []
     assert ann.rows[gene.last + 1].cols[1] == "tRNA"
+
+
+def test_insert_feature_at_start_keeps_crlf(tmp_path):
+    crlf = FX.read_bytes().replace(b"\n", b"\r\n")
+    p = tmp_path / "in.ann"
+    p.write_bytes(crlf)
+    ann = AnnFile.read(p)
+    ann.insert_feature(0, "COMMON", "DBLINK", "", [("project", "PRJDB1"), ("biosample", "SAMD1")])
+    assert ann.rows[0].eol == ann.rows[1].eol == "\r\n"
+    ann.write(tmp_path / "out.ann")
+    out = (tmp_path / "out.ann").read_bytes()
+    assert out.startswith(b"COMMON\tDBLINK\t\tproject\tPRJDB1\r\n\t\t\tbiosample\tSAMD1\r\n")
+    assert b"\n" not in out.replace(b"\r\n", b"")
+
+
+def test_insert_feature_before_entry_first_row_moves_marker():
+    ann = AnnFile.read(FX)
+    common_first = next(i for i, r in enumerate(ann.rows) if r.cols[0] == "COMMON")
+    feat = ann.insert_feature(common_first, "COMMON", "DBLINK", "", [("project", "PRJDB1")])
+    marked = [i for i, r in enumerate(ann.rows) if r.cols[0] == "COMMON"]
+    assert marked == [feat.first]
+    feats = ann.features()
+    assert (feats[0].key, feats[0].entry, feats[0].first) == ("DBLINK", "COMMON", feat.first)
+    assert feats[1].entry == "COMMON" and ann.rows[feats[1].first].cols[0] == ""
+
+
+def test_insert_feature_before_other_entry_keeps_its_marker():
+    ann = AnnFile.read(FX)
+    src = next(f for f in ann.features() if f.key == "source")
+    assert ann.rows[src.first].cols[0] == "NC_001133.9"
+    feat = ann.insert_feature(src.first, "", "misc_feature", "1..2", [("note", "x")])
+    assert ann.rows[feat.last + 1].cols[0] == "NC_001133.9"
+    assert ann.rows[feat.first].cols[0] == ""
