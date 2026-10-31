@@ -103,6 +103,17 @@ def entry_dblink_quals(feats: list[AnnFeature], rows) -> list[list[tuple[str, st
     return [f.qualifiers(rows) for f in feats if f.key == "DBLINK"]
 
 
+def _sketch_dblink(feats: list[AnnFeature], rows) -> dict[str, list[str]]:
+    """Raw DBLINK values of an entry as {mss_name: [values]} (aliases mapped via _DBLINK_NAMES)."""
+    out: dict[str, list[str]] = {}
+    for block in entry_dblink_quals(feats, rows):
+        for q, v in block:
+            name = _DBLINK_NAMES.get(q)
+            if name and v is not None and v.strip():
+                out.setdefault(name, []).append(v.strip())
+    return out
+
+
 def _entry_dblink(eid: str, feats: list[AnnFeature], rows, notes: list[Note]) -> dict:
     """The entry's own DBLINK, folded like COMMON's. Rows that do not fold and a repeated DBLINK get notes."""
     blocks = entry_dblink_quals(feats, rows)
@@ -310,12 +321,13 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
         has_topology = any(f.key == "TOPOLOGY" for f in by_entry.get(eid, []))
         e.topology = _topology(eid, by_entry.get(eid, []), rows, notes)
         e.dblink = _entry_dblink(eid, by_entry.get(eid, []), rows, notes)
+        sk_dblink = _sketch_dblink(by_entry.get(eid, []), rows)
         if has_common:
             own_names = {q for q, _ in entry_src.get(eid, [])}
             e.inherited = sorted({q for q, _ in common_src}
                                  - own_names - set(_DROPPED) - set(ROLE_QUALIFIERS) - {"ff_definition"})
         if quals is None:
-            sketches.append(EntrySketch(eid, has_topology, None, {}))
+            sketches.append(EntrySketch(eid, has_topology, None, {}, sk_dblink))
             continue
         counts: dict[str, int] = {}
         for q, _ in quals:
@@ -354,7 +366,7 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
         sketch_quals: dict[str, str] = {}
         for q, v in quals:
             sketch_quals.setdefault(q, v)
-        sketches.append(EntrySketch(eid, has_topology, e.ff_definition, sketch_quals))
+        sketches.append(EntrySketch(eid, has_topology, e.ff_definition, sketch_quals, sk_dblink))
 
     # qualifiers with the same value in every entry that has a source -> file-level source
     with_src = [eid for eid in entry_ids if eid in candidates]

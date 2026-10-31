@@ -1,9 +1,9 @@
 from ann_meta.category import CategoryGuess, EntrySketch, detect_category
 
 
-def _entry(seq_id="seq1", has_topology=False, ff_definition=None, **qualifiers):
+def _entry(seq_id="seq1", has_topology=False, ff_definition=None, dblink=None, **qualifiers):
     return EntrySketch(seq_id=seq_id, has_topology=has_topology, ff_definition=ff_definition,
-                       qualifiers=dict(qualifiers))
+                       qualifiers=dict(qualifiers), dblink=dblink or {})
 
 
 def _plain_entries():
@@ -228,3 +228,35 @@ def test_misc_plasmid_only_with_topology():
     g = detect_category({}, entries, 60_000)
     assert g.value == "MISC"
     assert g.evidence == ["ff_definition 'plasmid ... complete sequence' (all entries)"]
+
+
+def test_keyword_gnm_is_gnm():
+    g = detect_category({"KEYWORD": [("keyword", "GNM")]}, [_entry("A", organism="Escherichia coli")], 5000)
+    assert g.value == "GNM" and "KEYWORD GNM" in g.evidence
+
+
+def test_keyword_finished_level_is_gnm():
+    g = detect_category({"KEYWORD": [("keyword", "Finished level genomic sequences")]}, [_entry("A")], 10)
+    assert g.value == "GNM"
+
+
+def test_mag_keyword_wins_over_gnm_keyword():
+    g = detect_category({"KEYWORD": [("keyword", "MAG"), ("keyword", "GNM")]}, [_entry("A")], 10)
+    assert g.value == "MAG"
+
+
+def test_virus_with_common_bioproject_and_biosample_is_gnm():
+    common = {"DBLINK": [("project", "PRJDB1"), ("biosample", "SAMD1")]}
+    g = detect_category(common, [_entry("A", organism="Severe acute respiratory syndrome coronavirus 2")], 29903)
+    assert g.value == "GNM"
+    assert "organism contains 'virus'" in g.evidence and "DBLINK project and biosample" in g.evidence
+
+
+def test_virus_with_entry_dblink_is_gnm():
+    s = _entry("A", organism="Escherichia phage T4", dblink={"project": ["PRJDB1"], "sample": ["SAMD1"]})
+    assert detect_category({}, [s], 168903).value == "GNM"
+
+
+def test_virus_without_biosample_stays_misc():
+    common = {"DBLINK": [("project", "PRJDB1")]}
+    assert detect_category(common, [_entry("A", organism="Influenza A virus")], 1000).value == "MISC"
