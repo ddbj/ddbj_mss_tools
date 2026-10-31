@@ -5,6 +5,11 @@
     for symmetry) and optionally write the entry table TSV. Exit 0, or 1 when
     the .ann / FASTA cannot be read.
 
+``ann_meta apply --common-only --ann X --common C.json --out Z``
+    Rewrite only COMMON SUBMITTER / REFERENCE / COMMENT / DATE. The common JSON may hold
+    only those keys and ``_extra`` for them (else exit 2, ``not_allowed_with_common_only``).
+    ``--entries`` / ``--category`` / ``--fasta`` / ``--allow-unknown`` are usage errors.
+
 ``ann_meta apply --ann X --common C.json --entries E.tsv --out Z --category CAT
 [--fasta Y] [--allow-unknown q1,q2]``
     Check the inputs; on any problem print ``{"issues": [{"field", "entry",
@@ -27,7 +32,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ann_fix.annfile import AnnFile
-from ann_meta.apply import apply
+from ann_meta.apply import COMMON_ONLY_TARGETS, apply, apply_common
 from ann_meta.entries_tsv import read_entries, write_entries
 from ann_meta.extract import COMMON_TARGETS, extract, read_fasta_lengths
 from ann_meta.shape import LenientCommon, alias_clashes, normalize_common
@@ -199,7 +204,33 @@ def _write_atomic(ann: AnnFile, out: str) -> None:
         raise
 
 
+def _common_only_issues(common: dict) -> list[Issue]:
+    issues = [Issue(k, None, "not_allowed_with_common_only")
+              for k in common if k not in COMMON_ONLY_TARGETS and k != "_extra"]
+    extra = common.get("_extra")
+    if isinstance(extra, dict):
+        issues += [Issue(f"_extra.{k}", None, "not_allowed_with_common_only")
+                   for k in extra if k not in COMMON_ONLY_TARGETS]
+    return issues
+
+
+def _cmd_apply_common_only(args) -> int:
+    common = _load_common(args.common)
+    issues = char_issues(common) or _shape_issues(common) or _common_only_issues(common)
+    if issues:
+        return _issues_out(issues)
+    ann = _read_ann(args.ann)
+    apply_common(ann, common)
+    try:
+        _write_atomic(ann, args.out)
+    except OSError as exc:
+        raise _UserError(f"cannot write {args.out}: {exc}") from None
+    return 0
+
+
 def _cmd_apply(args) -> int:
+    if args.common_only:
+        return _cmd_apply_common_only(args)
     common = _load_common(args.common)
     shape = char_issues(common) or _shape_issues(common)
     if shape:
@@ -259,15 +290,29 @@ def main(argv: list[str] | None = None) -> int:
     apl = sub.add_parser("apply", help="rewrite COMMON / source from a common JSON and an entry table")
     apl.add_argument("--ann", required=True)
     apl.add_argument("--common", required=True, help="common JSON (DBLINK, SUBMITTER, ..., SOURCE, _extra)")
-    apl.add_argument("--entries", required=True, help="entry table TSV (as written by extract --entries-out)")
+    apl.add_argument("--entries", help="entry table TSV (as written by extract --entries-out)")
     apl.add_argument("--out", required=True, help="output .ann (may equal --ann)")
-    apl.add_argument("--category", required=True, help="submission category (GNM, WGS, ..., NONE, GENE)")
+    apl.add_argument("--category", help="submission category (GNM, WGS, ..., NONE, GENE)")
+    apl.add_argument("--common-only", action="store_true",
+                     help="rewrite only COMMON SUBMITTER / REFERENCE / COMMENT / DATE "
+                          "(no --entries / --category / --fasta / --allow-unknown)")
     apl.add_argument("--fasta", help="FASTA: checks seq_id and gives sequence lengths")
     apl.add_argument("--allow-unknown", metavar="Q1,Q2",
                      help="qualifier names allowed besides the known ones "
                           "(default: the unknown names already in --ann)")
     try:
         args = ap.parse_args(argv)
+        if args.command == "apply":
+            if args.common_only:
+                bad = [f for f, v in (("--entries", args.entries), ("--category", args.category),
+                                      ("--fasta", args.fasta), ("--allow-unknown", args.allow_unknown))
+                       if v is not None]
+                if bad:
+                    ap.error(f"{', '.join(bad)} not allowed with --common-only")
+            else:
+                missing = [f for f, v in (("--entries", args.entries), ("--category", args.category)) if v is None]
+                if missing:
+                    ap.error(f"the following arguments are required: {', '.join(missing)}")
     except _UsageError as exc:
         ap.print_usage(sys.stderr)
         _err(str(exc))

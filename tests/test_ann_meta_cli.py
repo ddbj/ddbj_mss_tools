@@ -444,3 +444,59 @@ def test_bad_shape_field_is_a_data_path(tmp_path, capsys):
     assert _apply(tmp_path, common, tsv) == 2
     issues = json.loads(capsys.readouterr().out)["issues"]
     assert [i["field"] for i in issues] == ["SOURCE.note"]
+
+
+# -- apply --common-only -------------------------------------------------------------
+
+def _common_only(tmp_path, common_obj, *extra, ann="dfast_complete"):
+    c = tmp_path / "c.json"
+    c.write_text(json.dumps(common_obj), encoding="utf-8")
+    out = tmp_path / "o.ann"
+    rc = main(["apply", "--common-only", "--ann", str(FIX / f"{ann}.ann"), "--common", str(c),
+               "--out", str(out), *extra])
+    return rc, out
+
+
+def _dblink_rows(path: Path) -> list[bytes]:
+    return [r for r in path.read_bytes().splitlines() if r.split(b"\t")[1:2] == [b"DBLINK"]]
+
+
+def test_common_only_cli_writes_ann(tmp_path, capsys):
+    rc, out = _common_only(tmp_path, {"SUBMITTER": {"ab_name": ["Doe,J."], "contact": "J Doe"}})
+    assert rc == 0
+    assert _dblink_rows(out) == _dblink_rows(FIX / "dfast_complete.ann")
+    assert b"J Doe" in out.read_bytes()
+
+
+def test_common_only_rejects_dblink_key(tmp_path, capsys):
+    rc, out = _common_only(tmp_path, {"DBLINK": {"project": "PRJDB1"}})
+    assert rc == 2
+    issues = json.loads(capsys.readouterr().out)["issues"]
+    assert issues[0]["message"] == "not_allowed_with_common_only"
+    assert issues[0]["field"] == "DBLINK"
+    assert not out.exists()
+
+
+def test_common_only_rejects_extra_for_st_comment(tmp_path, capsys):
+    rc, out = _common_only(tmp_path, {"_extra": {"ST_COMMENT": [["tag", "x"]]}})
+    assert rc == 2
+    issues = json.loads(capsys.readouterr().out)["issues"]
+    assert issues[0]["field"] == "_extra.ST_COMMENT"
+    assert issues[0]["message"] == "not_allowed_with_common_only"
+
+
+def test_common_only_with_entries_is_usage_error(tmp_path, capsys):
+    tsv = tmp_path / "e.tsv"
+    tsv.write_text("", encoding="utf-8")
+    rc, _ = _common_only(tmp_path, {}, "--entries", str(tsv))
+    assert rc == 1
+    assert capsys.readouterr().out == ""
+
+
+def test_apply_without_common_only_still_needs_entries(tmp_path, capsys):
+    c = tmp_path / "c.json"
+    c.write_text("{}", encoding="utf-8")
+    rc = main(["apply", "--ann", str(FIX / "dfast_complete.ann"), "--common", str(c),
+               "--out", str(tmp_path / "o.ann"), "--category", "GNM"])
+    assert rc == 1
+    assert capsys.readouterr().out == ""

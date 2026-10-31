@@ -28,6 +28,9 @@ line ending), so annotation features survive unchanged:
    pass-through categories (GENE / NONE), whose roles and topology are also
    written as given.
 
+:func:`apply_common` (``ann_meta apply --common-only``) rewrites only the SUBMITTER /
+REFERENCE / COMMENT / DATE part of item 1 and nothing else.
+
 The entry table must cover every entry of the .ann: an entry missing from it
 raises ``ValueError("entry_missing_from_table: <id>")`` before anything is
 changed. DBLINK aliases are renamed and ``null`` COMMON fields dropped
@@ -110,16 +113,19 @@ def _insert_blocks(ann: AnnFile, at: int, blocks: list[tuple[str, str, Quals]]) 
 
 # -- COMMON --------------------------------------------------------------------
 
-def _apply_common_targets(ann: AnnFile, common: dict) -> None:
-    targets = [f for f in ann.features() if f.entry == "COMMON" and f.key in COMMON_TARGETS]
-    at = targets[0].first if targets else None
-    for f in reversed(targets):
+COMMON_ONLY_TARGETS = ("SUBMITTER", "REFERENCE", "COMMENT", "DATE")
+
+
+def _apply_common_targets(ann: AnnFile, common: dict, targets: tuple[str, ...] = COMMON_TARGETS) -> None:
+    doomed = [f for f in ann.features() if f.entry == "COMMON" and f.key in targets]
+    at = doomed[0].first if doomed else None
+    for f in reversed(doomed):
         ann.delete_feature(f)
     if at is None:
         at = _common_end(ann)
     extra = common.get("_extra") or {}
     blocks: list[tuple[str, str, Quals]] = []
-    for name in COMMON_TARGETS:
+    for name in targets:
         own = _blocks(create_common({name: common[name]})) if common.get(name) else []
         # True / None -> valueless (flag) row; False -> no row
         pairs = [(str(k), "" if v is None or v is True else str(v))
@@ -131,6 +137,16 @@ def _apply_common_targets(ann: AnnFile, common: dict) -> None:
                 own = [(name, "", pairs)]
         blocks.extend(own)
     _insert_blocks(ann, at, blocks)
+
+
+def apply_common(ann: AnnFile, common: dict) -> AnnFile:
+    """Rewrite only COMMON SUBMITTER / REFERENCE / COMMENT / DATE of *ann* (in place); return it.
+
+    DBLINK, ST_COMMENT, source, TOPOLOGY and every entry row are left alone; only the
+    ``_extra`` of those four features is used.
+    """
+    _apply_common_targets(ann, normalize_common(common), COMMON_ONLY_TARGETS)
+    return ann
 
 
 def _common_source_blocks(common: dict, category: str, source_identifier: str) -> list[tuple[str, str, Quals]]:

@@ -622,6 +622,9 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
   必須項目（DBLINK の sample、SUBMITTER の著者、REFERENCE の status の値など）は検査しないので、一部だけ埋まった COMMON もそのまま保存できます。
   DBLINK の別名（`bioproject`、`biosample`、`sra`、`DRA`、`sequence read archive`）は MSS の名前で書きます（同じ項目を 2 つの名前で渡すと `bad_shape`）。
   `SOURCE_IDENTIFIER` は既知（または許可した）qualifier 名に限ります（`bad_source_identifier`）。
+- `--common-only`: COMMON の SUBMITTER / REFERENCE / COMMENT / DATE の 4 種だけを書き戻します（DBLINK・ST_COMMENT・source・TOPOLOGY・エントリの行は触りません）。
+  `ann_meta apply --common-only --ann NAME.ann --common common.json --out NAME.ann`。`--common` には 4 種と、その `_extra` だけを書けます
+  （他のキーは終了 2、`not_allowed_with_common_only`）。`--entries` / `--category` / `--fasta` / `--allow-unknown` は付けられません（使い方の誤り、終了 1）。
 - エントリ表 TSV（タブ区切り）: `#seq_id type seq_name status topology ff_definition` の後に qualifier 名の列。空欄は「指定なし」、flag は `yes`（例: `sequence1⇥chromosome⇥⇥complete⇥circular⇥⇥...`、⇥ はタブ）。
   同じ qualifier が 1 エントリに複数ある（`/note` 2 行など）ときは同じ名前の列を繰り返し、左から順に読み書きします。
   未知の qualifier の `yes` は flag（値なし行）として読みます。値が文字どおり `yes` の未知 qualifier とは区別できません（既知の非 flag qualifier の `yes` は値のまま）。
@@ -1328,6 +1331,9 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
   partially filled COMMON can be saved unchanged. DBLINK aliases (`bioproject`, `biosample`, `sra`, `DRA`,
   `sequence read archive`) are written with the MSS names (one item under two names is `bad_shape`).
   `SOURCE_IDENTIFIER` must be a known (or allowed) qualifier name (`bad_source_identifier`).
+- `--common-only`: rewrites only COMMON SUBMITTER / REFERENCE / COMMENT / DATE (DBLINK, ST_COMMENT, source, TOPOLOGY and entry rows are untouched).
+  `ann_meta apply --common-only --ann NAME.ann --common common.json --out NAME.ann`. `--common` may hold only those four keys and their `_extra`
+  (anything else exits 2 with `not_allowed_with_common_only`). `--entries` / `--category` / `--fasta` / `--allow-unknown` are usage errors (exit 1).
 - Entry table TSV: `#seq_id type seq_name status topology ff_definition`, then one column per qualifier; empty = not specified, flags = `yes`.
   A qualifier repeated in an entry (two `/note` rows, ...) gets a repeated column, read and written left to right.
   `yes` under an unknown qualifier is read as a flag (valueless row): it cannot be told from the literal value `yes`

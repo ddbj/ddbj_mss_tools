@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from ann_fix.annfile import AnnFile
-from ann_meta.apply import apply
+from ann_meta.apply import COMMON_ONLY_TARGETS, apply, apply_common
 from ann_meta.entries_tsv import read_entries, write_entries
 from ann_meta.extract import COMMON_TARGETS, extract, read_fasta_lengths
 from ann_meta.model import Entry, MetaDoc
@@ -707,3 +707,54 @@ def test_unnamed_chromosome_round_trip_is_stable(tmp_path):
     ann.write(out2)
     assert out2.read_bytes() == out1.read_bytes()
     assert extract(AnnFile.read(out2), lengths).entries == doc2.entries
+
+
+# -- apply_common (--common-only) ----------------------------------------------------
+
+def non_target_rows(ann: AnnFile) -> list[tuple[list[str], str]]:
+    """(cols, eol) of every row outside the COMMON SUBMITTER / REFERENCE / COMMENT / DATE features."""
+    skip: set[int] = set()
+    for f in ann.features():
+        if f.entry == "COMMON" and f.key in COMMON_ONLY_TARGETS:
+            skip.update(range(f.first, f.last + 1))
+    return [(list(r.cols), r.eol) for i, r in enumerate(ann.rows) if i not in skip]
+
+
+@pytest.mark.parametrize("name", ["handmade", "dfast_draft", "dfast_complete", "marker_set",
+                                  "plasmid_only", "single_chromosome", "wgs_featureless"])
+def test_common_only_round_trip_keeps_other_rows(name):
+    path = FIX / f"{name}.ann"
+    before = AnnFile.read(path)
+    doc = extract(AnnFile.read(path))
+    common = {k: v for k, v in doc.common.items() if k in COMMON_ONLY_TARGETS}
+    common["_extra"] = {k: [list(p) for p in v] for k, v in doc.common_extra.items() if k in COMMON_ONLY_TARGETS}
+    after = apply_common(AnnFile.read(path), common)
+    assert non_target_rows(after) == non_target_rows(before)
+    again = extract(after)
+    assert {k: again.common.get(k) for k in COMMON_ONLY_TARGETS} == {k: doc.common.get(k) for k in COMMON_ONLY_TARGETS}
+
+
+def test_common_only_changes_submitter():
+    after = apply_common(AnnFile.read(FIX / "handmade.ann"), {"SUBMITTER": {"ab_name": ["Doe,J."], "contact": "J Doe"}})
+    assert extract(after).common["SUBMITTER"]["contact"] == "J Doe"
+
+
+SUBMITTER_FIRST_ANN = (
+    "COMMON\tSUBMITTER\t\tab_name\tDoe,J.\n"
+    "\tDBLINK\t\tproject\tPRJDB1\n"
+    "seq1\tsource\t1..10\torganism\tEscherichia coli\n"
+)
+
+
+def test_common_only_keeps_common_marker(tmp_path):
+    p = tmp_path / "x.ann"
+    p.write_text(SUBMITTER_FIRST_ANN, encoding="utf-8")
+    after = apply_common(AnnFile.read(p), {})
+    assert after.rows[0].cols[0] == "COMMON" and after.rows[0].cols[1] == "DBLINK"
+
+
+def test_common_only_leaves_dblink_and_source():
+    ann = AnnFile.read(FIX / "dfast_complete.ann")
+    before = [(list(r.cols), r.eol) for r in ann.rows if r.cols[1] in ("DBLINK", "source")]
+    apply_common(ann, {"SUBMITTER": {"contact": "X"}})
+    assert [(list(r.cols), r.eol) for r in ann.rows if r.cols[1] in ("DBLINK", "source")] == before
