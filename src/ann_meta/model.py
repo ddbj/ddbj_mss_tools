@@ -24,6 +24,8 @@ class Entry:
     overrides: dict[str, QualValue] = field(default_factory=dict)
     ff_definition: str | None = None
     extra: list[tuple[str, QualValue]] = field(default_factory=list)
+    dblink: dict[str, str | list[str]] = field(default_factory=dict)   # the entry's own DBLINK (MSS names)
+    inherited: list[str] = field(default_factory=list)  # qualifiers whose value came from the COMMON source
 
 
 @dataclass
@@ -76,7 +78,9 @@ class MetaDoc:
             source_identifier=d.get("source_identifier"),
             entries=[
                 Entry(**{**e, "extra": [(q, v) for q, v in e.get("extra", [])],
-                         "overrides": dict(e.get("overrides", {}))})
+                         "overrides": dict(e.get("overrides", {})),
+                         "dblink": copy.deepcopy(e.get("dblink", {})),
+                         "inherited": list(e.get("inherited", []))})
                 for e in d.get("entries", [])
             ],
             layout=d.get("layout", "per_entry"),

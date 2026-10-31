@@ -364,3 +364,71 @@ def test_entries_follow_fasta_order(tmp_path):
     assert [e.seq_id for e in doc.entries] == ["c0", "c1", "x1", "c2", "c3"]
     # without a FASTA the ann order is kept
     assert [e.seq_id for e in extract(_ann_from_rows(tmp_path, rows)).entries] == ["c3", "c1", "x1"]
+
+
+# -- per-entry DBLINK / inherited ----------------------------------------------
+
+def test_entry_dblink_is_read(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "COMMON\tDBLINK\t\tproject\tPRJDB1",
+        "A\tsource\t1..10\torganism\tX y",
+        "\tDBLINK\t\tproject\tPRJDB2",
+        "\t\t\tbiosample\tSAMD1",
+        "B\tsource\t1..10\torganism\tX y",
+    ])
+    doc = extract(ann, {"A": 10, "B": 10})
+    a, b = doc.entries
+    assert a.dblink == {"project": "PRJDB2", "sample": "SAMD1"}
+    assert b.dblink == {}
+    assert doc.common["DBLINK"] == {"project": "PRJDB1"}
+
+
+def test_unknown_entry_dblink_qualifier_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "A\tsource\t1..10\torganism\tX y",
+        "\tDBLINK\t\tproject\tPRJDB2",
+        "\t\t\tfoo\tbar",
+    ])
+    doc = extract(ann, {"A": 10})
+    assert Note("entry_dblink_extra", "A", "foo") in doc.notes
+
+
+def test_repeated_entry_dblink_is_noted(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "A\tsource\t1..10\torganism\tX y",
+        "\tDBLINK\t\tproject\tPRJDB2",
+        "\tDBLINK\t\tproject\tPRJDB3",
+    ])
+    doc = extract(ann, {"A": 10})
+    assert doc.entries[0].dblink == {"project": "PRJDB2"}
+    assert Note("repeated_entry_dblink", "A", "") in doc.notes
+
+
+def test_inherited_lists_common_source_names(tmp_path):
+    ann = _ann_from_rows(tmp_path, [
+        "COMMON\tsource\t1..E\torganism\tX y",
+        "\t\t\tmol_type\tgenomic DNA",
+        "\t\t\tstrain\tS0",
+        "A\tsource\t1..10\tstrain\tS1",
+        "\t\t\tchromosome\t1",
+        "B\tTOPOLOGY\t\tcircular\t",
+    ])
+    doc = extract(ann, {"A": 10, "B": 10})
+    a, b = doc.entries
+    assert a.inherited == ["mol_type", "organism"]
+    assert b.inherited == ["mol_type", "organism", "strain"]
+
+
+def test_inherited_empty_without_common_source(tmp_path):
+    ann = _ann_from_rows(tmp_path, ["A\tsource\t1..10\torganism\tX y"])
+    assert extract(ann, {"A": 10}).entries[0].inherited == []
+
+
+def test_entry_fields_round_trip():
+    doc = _doc("dfast_draft")
+    doc.entries[0].dblink = {"project": "PRJDB2", "sample": ["SAMD1", "SAMD2"]}
+    doc.entries[0].inherited = ["organism"]
+    d = doc.to_json()
+    assert d["entries"][0]["dblink"] == {"project": "PRJDB2", "sample": ["SAMD1", "SAMD2"]}
+    assert d["entries"][0]["inherited"] == ["organism"]
+    assert MetaDoc.from_json(d) == doc

@@ -98,6 +98,24 @@ def _fold_dblink(quals: list[tuple[str, str]]) -> tuple[dict, list[tuple[str, st
     return out, extra
 
 
+def entry_dblink_quals(feats: list[AnnFeature], rows) -> list[list[tuple[str, str]]]:
+    """Raw qualifier rows of each DBLINK feature of one entry."""
+    return [f.qualifiers(rows) for f in feats if f.key == "DBLINK"]
+
+
+def _entry_dblink(eid: str, feats: list[AnnFeature], rows, notes: list[Note]) -> dict:
+    """The entry's own DBLINK, folded like COMMON's. Rows that do not fold and a repeated DBLINK get notes."""
+    blocks = entry_dblink_quals(feats, rows)
+    if not blocks:
+        return {}
+    if len(blocks) > 1:
+        notes.append(Note("repeated_entry_dblink", eid, ""))
+    value, extra = _fold_dblink(blocks[0])
+    for q, _ in extra:
+        notes.append(Note("entry_dblink_extra", eid, q))
+    return value
+
+
 def _read_common(feats: list[AnnFeature], rows, notes: list[Note]):
     common: dict = {}
     common_extra: dict[str, list[tuple[str, str]]] = {}
@@ -291,6 +309,11 @@ def extract(ann: AnnFile, fasta_lengths: dict[str, int] | None = None) -> MetaDo
         quals = merged.get(eid)
         has_topology = any(f.key == "TOPOLOGY" for f in by_entry.get(eid, []))
         e.topology = _topology(eid, by_entry.get(eid, []), rows, notes)
+        e.dblink = _entry_dblink(eid, by_entry.get(eid, []), rows, notes)
+        if has_common:
+            own_names = {q for q, _ in entry_src.get(eid, [])}
+            e.inherited = sorted({q for q, _ in common_src}
+                                 - own_names - set(_DROPPED) - set(ROLE_QUALIFIERS) - {"ff_definition"})
         if quals is None:
             sketches.append(EntrySketch(eid, has_topology, None, {}))
             continue

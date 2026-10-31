@@ -151,10 +151,12 @@ def test_roundtrip_meta_equal(name, tmp_path):
     assert doc2.source == doc.source
     assert doc2.untouched_common_features == doc.untouched_common_features
     if _category(doc) == "GENE":
-        assert doc2.entries == doc.entries          # ff_definition is written as-is
+        # inherited depends on the layout (apply moves source to COMMON), so compare without it
+        assert [dataclasses.replace(e, inherited=[]) for e in doc2.entries] == \
+            [dataclasses.replace(e, inherited=[]) for e in doc.entries]   # ff_definition is written as-is
     else:
-        strip = [dataclasses.replace(e, ff_definition=None) for e in doc.entries]
-        assert [dataclasses.replace(e, ff_definition=None) for e in doc2.entries] == strip
+        strip = [dataclasses.replace(e, ff_definition=None, inherited=[]) for e in doc.entries]
+        assert [dataclasses.replace(e, ff_definition=None, inherited=[]) for e in doc2.entries] == strip
     # a second pass changes nothing
     out2 = tmp_path / "out2.ann"
     apply(AnnFile.read(out), _common(doc2), doc2.entries, category=_category(doc)).write(out2)
@@ -427,7 +429,7 @@ def test_read_entries_tsv_roundtrip(tmp_path):
     entries: list[Entry] = []
     for name in FIXTURES:
         for e in _load(name)[1].entries:
-            entries.append(dataclasses.replace(e, length=None))
+            entries.append(dataclasses.replace(e, length=None, inherited=[]))   # not a TSV column
     entries.append(Entry("x1", None, type="organelle", seq_name="mitochondrion", status="complete",
                          topology="circular", overrides={"environmental_sample": True, "strain": "A"},
                          ff_definition="@@[organism]@@ mitochondrial DNA, complete genome",

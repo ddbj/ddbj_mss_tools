@@ -626,6 +626,9 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
   同じ qualifier が 1 エントリに複数ある（`/note` 2 行など）ときは同じ名前の列を繰り返し、左から順に読み書きします。
   未知の qualifier の `yes` は flag（値なし行）として読みます。値が文字どおり `yes` の未知 qualifier とは区別できません（既知の非 flag qualifier の `yes` は値のまま）。
   `chromosome` / `plasmid` / `organelle` / `segment` / `submitter_seqid` / `ff_definition` の列は `reserved_qualifier`（役割は `type` / `seq_name` で指定）。
+- `extract` の JSON の各エントリには、そのエントリ自身の DBLINK（`dblink`。MSS の名前 `project` / `sample` / `sequence_read_archive`、`sample` が 1 つなら文字列）と、
+  値が COMMON の source から来た qualifier 名（`inherited`。名前順。ROLE・`submitter_seqid`・`ff_definition` は除く）が入ります。どちらも `apply` は読みません。
+  畳めない DBLINK の行は `entry_dblink_extra`、1 エントリに DBLINK が 2 つあるときは `repeated_entry_dblink`（2 つ目は読まない）の note になります。
 - `--fasta` があれば seq_id を FASTA と照合し長さに使います。無ければ既存 source の `1..N` から長さを取ります。
   `extract` は `--fasta` があればエントリを FASTA の順に並べ、`apply` は `.ann` に行の無いエントリを FASTA の順の位置（次のエントリの前）に差し込みます。
 - `--allow-unknown` を省くと、入力 `.ann` に既にある未知の qualifier 名だけを許可します（そのままの往復はフラグ不要）。
@@ -1330,6 +1333,10 @@ ann_meta apply --ann NAME.ann --common common.json --entries entries.tsv --out N
   `yes` under an unknown qualifier is read as a flag (valueless row): it cannot be told from the literal value `yes`
   (a known non-flag qualifier keeps `yes` as its value). Columns `chromosome` / `plasmid` / `organelle` / `segment` /
   `submitter_seqid` / `ff_definition` are `reserved_qualifier` (give the role with `type` / `seq_name`).
+- Each entry in `extract`'s JSON carries its own DBLINK (`dblink`: MSS names `project` / `sample` / `sequence_read_archive`, `sample` a string
+  when single) and `inherited`, the sorted names of qualifiers whose value came from the COMMON source (roles, `submitter_seqid` and
+  `ff_definition` excluded). `apply` ignores both. DBLINK rows that do not fold give an `entry_dblink_extra` note; a second DBLINK in one
+  entry gives `repeated_entry_dblink` and is not read.
 - `--fasta` checks seq_ids and gives lengths; without it lengths come from existing `1..N` sources. With `--fasta`,
   `extract` lists entries in FASTA order and `apply` inserts an entry that has no rows at its FASTA position (before the next entry).
   Without `--allow-unknown`, the unknown qualifier names already in the input `.ann` are allowed.
