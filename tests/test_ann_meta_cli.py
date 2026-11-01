@@ -500,3 +500,22 @@ def test_apply_without_common_only_still_needs_entries(tmp_path, capsys):
                "--out", str(tmp_path / "o.ann"), "--category", "GNM"])
     assert rc == 1
     assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("name", ["handmade", "dfast_draft", "dfast_complete", "marker_set",
+                                  "plasmid_only", "single_chromosome", "wgs_featureless"])
+def test_common_only_keeps_other_lines_byte_identical(tmp_path, name):
+    src = tmp_path / f"{name}.ann"
+    shutil.copy(FIX / f"{name}.ann", src)
+    before = src.read_bytes().splitlines(keepends=True)
+    skip: set[int] = set()
+    for f in AnnFile.read(src).features():
+        if f.entry == "COMMON" and f.key in ("SUBMITTER", "REFERENCE", "COMMENT", "DATE"):
+            skip.update(range(f.first, f.last + 1))
+    common = tmp_path / "c.json"
+    common.write_text(json.dumps({"SUBMITTER": {"contact": "Z"}}), encoding="utf-8")
+    assert main(["apply", "--common-only", "--ann", str(src), "--common", str(common), "--out", str(src)]) == 0
+    after = src.read_bytes().splitlines(keepends=True)
+    kept = [l for i, l in enumerate(before) if i not in skip]
+    it = iter(after)                      # every untouched line appears, in order, byte for byte
+    assert all(any(l == a for a in it) for l in kept)

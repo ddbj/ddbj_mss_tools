@@ -6,7 +6,7 @@ is the contiguous run of rows starting at a row with a non-empty column 2.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 _NCOLS = 5
@@ -16,6 +16,15 @@ _NCOLS = 5
 class AnnRow:
     cols: list[str]
     eol: str
+    # the line as read (without eol) and the cols it was parsed into: while cols are
+    # unchanged the row is written back as read (no padding to 5 columns)
+    raw: str | None = field(default=None, compare=False, repr=False)
+    parsed: tuple | None = field(default=None, compare=False, repr=False)
+
+    def text(self) -> str:
+        if self.raw is not None and tuple(self.cols) == self.parsed:
+            return self.raw
+        return "\t".join(self.cols)
 
 
 @dataclass
@@ -49,7 +58,7 @@ def _split(line: str) -> AnnRow:
         body, eol = line, ""
     cols = body.split("\t")
     cols = (cols + [""] * _NCOLS)[:_NCOLS] if len(cols) <= _NCOLS else cols
-    return AnnRow(cols, eol)
+    return AnnRow(cols, eol, body, tuple(cols))
 
 
 class AnnFile:
@@ -65,7 +74,7 @@ class AnnFile:
     def write(self, path: str | Path) -> None:
         with open(path, "w", newline="", encoding="utf-8") as fh:
             for r in self.rows:
-                fh.write("\t".join(r.cols) + r.eol)
+                fh.write(r.text() + r.eol)
 
     # -- structure ---------------------------------------------------------
 
