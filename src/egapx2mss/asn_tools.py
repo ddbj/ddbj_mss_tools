@@ -5,7 +5,9 @@ Tools are downloaded from https://ftp.ncbi.nih.gov/toolbox/ncbi_tools/cmdline/
 and cached in a user-specified directory (default: ~/.local/share/ddbj_mss_tools/bin).
 
 If a cached binary produces no valid output (indicating it has expired), it is
-automatically re-downloaded and the operation is retried once.
+automatically re-downloaded and the operation is retried once. A binary that
+cannot start at all (e.g. a missing shared library) is reported immediately with
+its stderr, since re-downloading would not help.
 """
 
 from __future__ import annotations
@@ -113,14 +115,25 @@ def _iter_asn_blocks(filepath: str):
 
 # ── Tool runners ──────────────────────────────────────────────────────────────
 
-def _run_asn2gb_tbl_once(asn2gb: Path, asn_path: str, out_tbl: str) -> None:
+def _run(cmd: list[str], **kwargs) -> str:
+    """Run an NCBI tool and return its stderr.
+
+    Exit status 126/127 means the binary could not start (not executable, or a
+    shared library such as libidn.so.11 is missing); raise with its stderr.
+    """
+    r = subprocess.run(cmd, stderr=subprocess.PIPE, text=True, **kwargs)
+    if r.returncode in (126, 127):
+        raise RuntimeError(f"{Path(cmd[0]).name} could not run:\n{r.stderr.strip()}")
+    return r.stderr.strip()
+
+
+def _stderr_note(name: str, err: str) -> str:
+    return f"\n  {name} stderr: {err}" if err else ""
+
+
+def _run_asn2gb_tbl_once(asn2gb: Path, asn_path: str, out_tbl: str) -> str:
     with open(out_tbl, "w") as fout:
-        subprocess.run(
-            [str(asn2gb), "-f", "t", "-a", "q", "-i", asn_path],
-            stdout=fout,
-            stderr=subprocess.PIPE,
-            check=True,
-        )
+        return _run([str(asn2gb), "-f", "t", "-a", "q", "-i", asn_path], stdout=fout)
 
 
 def run_asn2gb_tbl(asn2gb: Path, asn_path: str, out_tbl: str) -> Path:
@@ -133,28 +146,31 @@ def run_asn2gb_tbl(asn2gb: Path, asn_path: str, out_tbl: str) -> Path:
 
     Returns the (possibly updated) path to the asn2gb binary.
     """
-    _run_asn2gb_tbl_once(asn2gb, asn_path, out_tbl)
+    err = _run_asn2gb_tbl_once(asn2gb, asn_path, out_tbl)
 
     if not _is_valid_tbl(out_tbl):
         print(
             "[asn2gb]  Output is empty or invalid — binary may have expired. "
-            "Re-downloading ...",
+            "Re-downloading ..." + _stderr_note("asn2gb", err),
             file=sys.stderr,
         )
         asn2gb = _download_tool("asn2gb", asn2gb.parent, force=True)
-        _run_asn2gb_tbl_once(asn2gb, asn_path, out_tbl)
+        err = _run_asn2gb_tbl_once(asn2gb, asn_path, out_tbl)
         if not _is_valid_tbl(out_tbl):
             raise RuntimeError(
                 "asn2gb produced no valid output even after re-download. "
                 "Check that the input file is a valid ASN.1 file."
+                + _stderr_note("asn2gb", err)
             )
 
     print(f"[asn2gb]  → {out_tbl}", file=sys.stderr)
     return asn2gb
 
 
-def _run_asn2fsa_once(asn2fsa: Path, asn_path: str, tmpdir: str) -> list[str]:
+def _run_asn2fsa_once(asn2fsa: Path, asn_path: str, tmpdir: str) -> tuple[list[str], str]:
+    """Return the FASTA text of each block and the last non-empty stderr."""
     parts: list[str] = []
+    last_err = ""
 
     for i, lines in enumerate(_iter_asn_blocks(asn_path)):
         tmp_asn = os.path.join(tmpdir, f"record_{i}.asn")
@@ -163,17 +179,15 @@ def _run_asn2fsa_once(asn2fsa: Path, asn_path: str, tmpdir: str) -> list[str]:
         with open(tmp_asn, "w") as f:
             f.write("\n".join(lines) + "\n")
 
-        subprocess.run(
-            [str(asn2fsa), "-a", "a", "-i", tmp_asn, "-o", tmp_fsa],
-            capture_output=True,
-        )
+        last_err = _run([str(asn2fsa), "-a", "a", "-i", tmp_asn, "-o", tmp_fsa],
+                        stdout=subprocess.DEVNULL) or last_err
 
         if os.path.exists(tmp_fsa):
             content = open(tmp_fsa).read()
             if content.strip():
                 parts.append(content)
 
-    return parts
+    return parts, last_err
 
 
 def run_asn2fsa(asn2fsa: Path, asn_path: str, out_fsa: str, tmpdir: str) -> Path:
@@ -189,20 +203,21 @@ def run_asn2fsa(asn2fsa: Path, asn_path: str, out_fsa: str, tmpdir: str) -> Path
 
     Returns the (possibly updated) path to the asn2fsa binary.
     """
-    parts = _run_asn2fsa_once(asn2fsa, asn_path, tmpdir)
+    parts, err = _run_asn2fsa_once(asn2fsa, asn_path, tmpdir)
 
     if not parts:
         print(
             "[asn2fsa] Output is empty — binary may have expired. "
-            "Re-downloading ...",
+            "Re-downloading ..." + _stderr_note("asn2fsa", err),
             file=sys.stderr,
         )
         asn2fsa = _download_tool("asn2fsa", asn2fsa.parent, force=True)
-        parts = _run_asn2fsa_once(asn2fsa, asn_path, tmpdir)
+        parts, err = _run_asn2fsa_once(asn2fsa, asn_path, tmpdir)
         if not parts:
             raise RuntimeError(
                 "asn2fsa produced no output even after re-download. "
                 "Check that the input file is a valid ASN.1 file."
+                + _stderr_note("asn2fsa", err)
             )
 
     with open(out_fsa, "w") as f:

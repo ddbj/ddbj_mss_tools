@@ -127,6 +127,9 @@ def main() -> None:
         parser.error("input .asn file is required unless both --tbl and --fsa are provided")
     if args.input and (args.tbl or args.fsa):
         parser.error("input .asn cannot be combined with --tbl / --fsa")
+    for f in (args.input, args.tbl, args.fsa):
+        if f and not os.path.isfile(f):
+            parser.error(f"file not found: {f}")
     validate_prefix(args, parser)
     if args.locus_tag_prefix and not re.fullmatch(r"[A-Za-z][A-Za-z0-9]{2,11}", args.locus_tag_prefix):
         parser.error("--locus-tag-prefix must be 3-12 alphanumeric characters starting with a letter")
@@ -162,7 +165,13 @@ def main() -> None:
             print(f"[step 1/3] Skipping — {out_tbl} already exists.", file=sys.stderr)
         else:
             print("[step 1/3] Generating feature table (asn2gb) ...", file=sys.stderr)
-            run_asn2gb_tbl(asn2gb, asn_path, out_tbl)
+            try:
+                run_asn2gb_tbl(asn2gb, asn_path, out_tbl)
+            except (RuntimeError, OSError) as exc:
+                # drop the partial .tbl so a re-run does not skip step 1
+                if os.path.exists(out_tbl):
+                    os.unlink(out_tbl)
+                sys.exit(f"Error: {exc}")
 
     # ── Step 2: FASTA ────────────────────────────────────────────────────
     if args.fsa:
@@ -182,6 +191,8 @@ def main() -> None:
             tmpdir = tempfile.mkdtemp(prefix="egapx2mss_")
             try:
                 run_asn2fsa(asn2fsa, asn_path, out_fsa_raw, tmpdir)
+            except (RuntimeError, OSError) as exc:
+                sys.exit(f"Error: {exc}")
             finally:
                 if not args.keep_tmp:
                     shutil.rmtree(tmpdir, ignore_errors=True)

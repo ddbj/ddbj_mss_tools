@@ -7,7 +7,8 @@ DDBJ MSS (Mass Submission System) 登録ファイルを生成するPythonツー�
 - **egapx2mss**: NCBI EGAPx の出力 (ASN.1形式) を DDBJ MSS形式 (.ann / .fa) に変換。既存の .tbl / .fa ファイルから直接変換することも可能
 - **batch_wgs_builder**: FASTAファイルと TSV のメタデータから DDBJ MSS WGS/MAG-WGS形式ファイルを一括生成
 - **mss2ff**: MSS アノテーションファイル (.ann / .annt.tsv) と FASTA から DDBJ Flat File を生成
-- **mss_builder**: MSS 登録ファイルのビルド支援ツール
+- **mss_builder**: FASTA と共通メタデータ JSON から MSS 登録ファイル (.ann / .fa) を生成（GNM / WGS / MAG など submission category に対応）
+- **gff2mss**: INSDC 準拠の GFF3 + FASTA から MSS 登録ファイルを生成（`ddbj-gff` が必要。後述の optional extra）
 - **tsa2mss**: トランスクリプトームアセンブリ FASTA から DDBJ MSS TSA 登録ファイルを生成（READ ARCHIVE 引用型のみ。`--meta` でメタトランスクリプトーム = KEYWORD ENV + /environmental_sample）。中身は mss_builder の `write_mss_ann` に submission category `TSA` / `TSA-ENV` を渡す薄い CLI
 - **ann_fix**: ddbj-validator の指摘（validation_report_details.txt）を gff2mss 出力の .ann 上で解消する（misc_feature 格下げ、artificial_location 付与、重なりの片側削除）
 - **ann_meta**: 持ち込んだ .ann の COMMON（DBLINK / SUBMITTER / REFERENCE ほか）と source を JSON・エントリ表 TSV に読み取り（`extract`）、編集結果を検査して書き戻す（`apply`。他の行は byte 単位で維持）
@@ -19,13 +20,16 @@ src/
 ├── common/
 │   ├── cli_args.py          # 共通CLIオプション (-o/--outdir, -p/--prefix) のargparseヘルパー
 │   ├── common_builder.py    # MSS COMMON行生成ユーティリティ（各ツール共通）
-│   ├── models.py            # 共通 pydantic モデル
+│   ├── models.py            # 共通 pydantic モデル (common JSON)
 │   ├── fasta.py             # FASTA読み書きユーティリティ
 │   ├── gap_annotator.py     # assembly_gap フィーチャー生成
-│   └── source_builder.py   # source フィーチャー生成
+│   ├── source_builder.py    # source フィーチャー・ff_definition 生成
+│   ├── qualifiers.py        # source qualifier 定義 (data/source_qualifiers.json) の参照
+│   ├── submission_category.py  # submission category ルールの解決・既定値注入・必須項目検査
+│   └── data/                # source_qualifiers.json, submission_categories.json
 ├── egapx2mss/
 │   ├── cli.py               # エントリーポイント (egapx2mss コマンド)
-│   ├── asn_tools.py         # asn2gb/asn2fsa のダウンロード・実行・期限切れリトライ
+│   ├── asn_tools.py         # asn2gb/asn2fsa のダウンロード・実行・期限切れリトライ（起動不能時は stderr を表示して停止）
 │   ├── tbl_parser.py        # NCBI feature table (.tbl) パーサー・ロケーション変換
 │   └── ann_writer.py        # DDBJ MSS アノテーションファイル (.ann) 書き出し
 ├── batch_wgs_builder/
@@ -33,10 +37,13 @@ src/
 │   └── core.py              # メインロジック (TSV → MSS変換)
 ├── mss_builder/
 │   ├── cli.py               # エントリーポイント (mss_builder コマンド)
-│   └── ann_writer.py        # アノテーションファイル書き出し
+│   └── ann_writer.py        # アノテーションファイル書き出し (write_mss_ann。tsa2mss も使用)
 ├── tsa2mss/
 │   └── cli.py               # エントリーポイント (tsa2mss コマンド)
-├── mss2ff/
+├── gff2mss/                 # GFF3 + FASTA → MSS (cli.py, convert.py, emit.py ほか)
+├── ann_fix/                 # validator 指摘の .ann 上での解消 (cli.py, operations.py, report.py, annfile.py)
+├── ann_meta/                # .ann の COMMON / source 読み取り・書き戻し (cli.py, extract.py, apply.py, category.py ほか)
+└── mss2ff/
     ├── __init__.py
     ├── cli.py               # エントリーポイント (mss2ff コマンド)
     ├── ann_parser.py        # MSS .ann/.annt.tsv パーサー
@@ -46,15 +53,17 @@ src/
     └── translate_with_transl_except.py  # transl_except 対応 CDS翻訳
 
 examples/
-├── egapx2mss/               # brapa.asn, common_example.json
-├── batch_wgs_builder/       # sample_list.xlsx, *.fna.gz
-└── mss2ff/                  # DDBJ.annt.tsv, DDBJ.seq.fa (入力例)
+├── egapx2mss/               # common_example.json, common_example_wgs.json, sequence_roles.tsv（入力 .asn は同梱なし）
+├── batch_wgs_builder/       # common_example.json, sample_list_WGS.tsv, sample_list_MAG.tsv
+├── mss_builder/             # example.{gnm,wgs}.fasta / .common.json, example.sequence_roles.tsv
+├── tsa2mss/                 # transcripts.fa, common_tsa.json, common_meta_tsa.json
+└── mss2ff/                  # test.ann
 
-deprecated/                  # 移行前の旧コード (egapx2mss/, wgs_maker/)
-tests/                       # pytest テスト (今後追加予定)
+scripts/build-ddbj-gff-wheel.sh  # Dockerfile.slim 用 ddbj-gff wheel の生成
+tests/                       # pytest テスト
 ```
 
-新規開発は `src/` 以下で行う。`deprecated/` は参照のみ。
+新規開発は `src/` 以下で行う。
 
 ## セットアップ
 
@@ -66,7 +75,8 @@ pip install -e .
 docker build -t ddbj-mss-tools .
 docker run --rm -it -v $(pwd):/app ddbj-mss-tools
 
-# 軽量イメージ (Dockerfile.slim, 約329MB / 通常版は約719MB)
+# 軽量イメージ (Dockerfile.slim, 約350MB / 通常版は約719MB)
+# submission portal（a012）が使う配布イメージ nigyta/ddbj_mss_tools はこちら
 # build-essential と examples/ を含めず、NCBI バイナリ (asn2gb/asn2fsa) は /app/bin に焼き込み済み
 # gff2mss 用の ddbj-gff wheel を ../gff_submission から先に生成する（コミットされない。ddbj-gff 更新時は再実行）
 scripts/build-ddbj-gff-wheel.sh
@@ -84,7 +94,7 @@ docker run --rm -it -v $(pwd):/data -w /data ddbj-mss-tools:slim
 pydantic>=2.0, biopython, pandas, openpyxl, jsonschema
 ```
 
-`gff2mss` サブツールだけが必要とする `ddbj-gff` は**コア依存ではなく optional extra**（`pyproject.toml` の `[project.optional-dependencies]` の `gff2mss`）。他ツール（egapx2mss / mss_builder / mss2ff / batch_wgs_builder）は `ddbj-gff` 無しで install・実行できる。gff2mss を使う場合のみ `pip install ".[gff2mss]"`（または別途 `ddbj-gff` を導入）。`ddbj-gff` は PyPI 非公開のため、コンテナ/CI では wheel を導入する。`gff2mss` 実行時に未導入なら親切なエラーで終了する（`src/gff2mss/cli.py`。パッケージ import 時に `ddbj-gff` を要求しないよう `src/gff2mss/__init__.py` は遅延 re-export）。
+`gff2mss` サブツールだけが必要とする `ddbj-gff` は**コア依存ではなく optional extra**（`pyproject.toml` の `[project.optional-dependencies]` の `gff2mss`）。他ツール（egapx2mss / mss_builder / tsa2mss / mss2ff / batch_wgs_builder / ann_fix / ann_meta）は `ddbj-gff` 無しで install・実行できる。gff2mss を使う場合のみ `pip install ".[gff2mss]"`（または別途 `ddbj-gff` を導入）。`ddbj-gff` は PyPI 非公開のため、コンテナ/CI では wheel を導入する。`gff2mss` 実行時に未導入なら親切なエラーで終了する（`src/gff2mss/cli.py`。パッケージ import 時に `ddbj-gff` を要求しないよう `src/gff2mss/__init__.py` は遅延 re-export）。
 
 
 ## DDBJ MSSファイル形式
@@ -100,11 +110,12 @@ pydantic>=2.0, biopython, pandas, openpyxl, jsonschema
 ```
 
 - ファイル先頭に `COMMON` ブロック（submitter, reference, DBLINK等）
-- FASTA ファイル (.fsa) は各エントリの末尾に `//` セパレーター
+- 出力 FASTA (.fa) は各エントリの末尾に `//` セパレーター
 
 ## common_example.json の形式
 
-`DBLINK.project` と `DBLINK.sample` が必須。pydantic でバリデーションされる。
+pydantic（`src/common/models.py` の `CommonModel`）でバリデーションされる。`DBLINK` を書く場合は `project`（別名 `bioproject`）と `sample`（別名 `biosample`）が必須。SRA は `DRA` / `sra` / `"sequence read archive"` のいずれのキーでもよい。
+submission category ごとの必須項目（DIVISION・KEYWORD・ST_COMMENT・source qualifier・DBLINK 等）は `src/common/data/submission_categories.json` に定義され、`_submission_category` キーまたは `--submission_category` で選ぶ。
 
 ```json
 {
@@ -187,6 +198,7 @@ mss_builder input.fa [オプション]
 | `-p/--prefix NAME` | 出力ファイルのベースネーム（ディレクトリ区切り文字不可）。デフォルト: 入力ファイルのベースネーム |
 | `--common JSON` | 共通メタデータ JSON ファイル (DBLINK, SUBMITTER, REFERENCE, ASSEMBLY_GAP 等) |
 | `--sequence_roles TSV` | seq_id → 染色体/organelle マッピング sequence role ファイル (5列 TSV)。旧名 `--chromosomes` も互換のため受け付ける |
+| `--submission_category CAT` | submission category（例 GNM, WGS, MAG-WGS）。common JSON の `_submission_category` より優先 |
 
 **典型的な使い方:**
 ```bash
@@ -212,11 +224,12 @@ egapx2mss [input.asn] [オプション]
 | `--fsa FILE` | 既存の FASTA ファイル (.fa/.fsa) を直接指定。step 2/3 をスキップ |
 | `--common JSON` | 共通メタデータ JSON ファイル (DBLINK, SUBMITTER, REFERENCE 等) |
 | `--sequence_roles TSV` | seq_id → 染色体/organelle マッピング sequence role ファイル (5列 TSV)。旧名 `--chromosomes` も互換のため受け付ける |
+| `--submission_category CAT` | submission category（例 GNM, WGS）。common JSON の `_submission_category` より優先 |
 | `--add_gene` | gene feature も出力する（DDBJ では gene feature を使わないため、既定では出力しない。locus_tag と gene は mRNA・CDS などの子 feature に残る） |
 | `--locus-tag-prefix PREFIX` | EGAPx で付けた locus_tag の prefix を置き換える（例 `egapxtmp_000010` → `PREFIX_000010`）。英字で始まる英数字 3〜12 文字 |
 | `--keep-tmp` | 中間ファイル (.tbl, _raw.fa) を削除せずに保持 |
 | `--preconvert-only` | step 1/3・2/3 のみ実行して終了 (.tbl と .fa を生成) |
-| `--bin-dir DIR` | asn2gb/asn2fsa バイナリの置き場所 |
+| `--bin-dir DIR` | asn2gb/asn2fsa バイナリの置き場所。asn2gb/asn2fsa は共有ライブラリ libidn.so.11 を要する（無いホストではコンテナ内で実行する） |
 
 **`--tbl` と `--fsa` の組み合わせルール:**
 - 両方同時に指定する必要がある（片方のみは不可）
@@ -254,6 +267,6 @@ pytest
 
 - Python 3.10 以上必須 (`match` 文や `X | Y` 型ヒントを使用)
 - `src/common/` は各ツールから使う共有ライブラリ
-- 新しいバリデーションルールは `src/common/models.py` の pydantic モデルに追加する
+- 新しいバリデーションルールは `src/common/models.py` の pydantic モデルに、submission category ごとの必須項目は `src/common/data/submission_categories.json` に追加する（submission portal のフロントエンドが同じ JSON のコピーを持つので、変更時は portal 側にも反映する）
 - `requirements.txt` を更新したら `pyproject.toml` の `dependencies` も合わせて更新する
 - `-o/--outdir` と `-p/--prefix` オプションは `src/common/cli_args.py` の共通ヘルパー (`add_output_args`, `validate_prefix`, `resolve_output`) を使う。新ツールで同パターンを追加する場合はここから import すること
