@@ -1,0 +1,879 @@
+[
+  {
+    "name": "organism",
+    "label": "Organism",
+    "format": "Name of organism (scientific name: genus species). Use the most specific name possible.",
+    "format_ja": "生物の学名（属名 種小名）。可能な限り詳細な分類名を使用。",
+    "example": "Homo sapiens",
+    "tier": "required",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "organism",
+    "definition": "scientific name or higher-level classification of the organism or agent that provided the sequenced genetic material.",
+    "value_format": "\"text\"",
+    "examples": [
+      "/organism=\"Homo sapiens\"",
+      "/organism=\"Lactobacillaceae bacterium\"",
+      "/organism=\"West Nile virus\"",
+      "/organism=\"synthetic construct\"",
+      "/organism=\"uncultured bacterium\""
+    ]
+  },
+  {
+    "name": "mol_type",
+    "label": "mol_type",
+    "format": "Type of in vivo molecule. Select from the list: genomic DNA, genomic RNA, mRNA, tRNA, rRNA, other RNA, other DNA, transcribed RNA, viral cRNA, unassigned DNA, unassigned RNA.",
+    "format_ja": "生体内分子タイプ。リストから選択: genomic DNA, genomic RNA, mRNA, tRNA, rRNA, other RNA, other DNA, transcribed RNA, viral cRNA, unassigned DNA, unassigned RNA。",
+    "example": "genomic DNA",
+    "tier": "required",
+    "boolean": false,
+    "multiple": false,
+    "options": [
+      "genomic DNA",
+      "genomic RNA",
+      "mRNA",
+      "tRNA",
+      "rRNA",
+      "other RNA",
+      "other DNA",
+      "transcribed RNA",
+      "viral cRNA",
+      "unassigned DNA",
+      "unassigned RNA"
+    ],
+    "regex": null,
+    "url_fragment": "mol_type",
+    "definition": "in vivo molecule type of sequence",
+    "value_format": "\"genomic DNA\", \"genomic RNA\", \"mRNA\", \"tRNA\", \"rRNA\", \"other RNA\", \"other DNA\", \"transcribed RNA\", \"viral cRNA\", \"unassigned DNA\", \"unassigned RNA\"",
+    "examples": [
+      "/mol_type=\"genomic DNA\""
+    ]
+  },
+  {
+    "name": "collection_date",
+    "label": "Collection date",
+    "format": "Date of sample collection. Recommended formats: YYYY-MM-DD | YYYY-MM | YYYY.",
+    "format_ja": "サンプルの採集日。推奨形式: YYYY-MM-DD | YYYY-MM | YYYY。",
+    "example": "2024-01-15",
+    "tier": "required",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "collection_date",
+    "definition": "The date on which the specimen was collected. Date/time ranges are supported by providing two collection dates from among the supported value formats, delimited by a forward-slash character. Collection times are supported by adding \"T\", then the hour and minute and seconds, after the date. Collection times must be in Coordinated Universal Time (UTC), otherwise known as \"Zulu Time\" (Z) or be a specified exemption from the missing values controlled vocabulary at Missing Value Reporting",
+    "value_format": "\"DD-Mmm-YYYY\", \"Mmm-YYYY\", \"YYYY\" \"YYYY-MM-DDThh:mmZ\", \"YYYY-MM-DDThh:mm:ssZ\", \"YYYY-MM-DDThhZ\", \"YYYY-MM-DD\", or \"YYYY-MM\" Or either of the missing values controlled vocabulary at Missing Value Reporting",
+    "examples": [
+      "/collection_date=\"21-Oct-1952\"",
+      "/collection_date=\"Oct-1952\"",
+      "/collection_date=\"1952\"",
+      "/collection_date=\"1952-10-21T11:43Z\"",
+      "/collection_date=\"1952-10-21T11Z\"",
+      "/collection_date=\"1952-10-21\"",
+      "/collection_date=\"1952-10\"",
+      "/collection_date=\"21-Oct-1952/15-Feb-1953\"",
+      "/collection_date=\"Oct-1952/Feb-1953\"",
+      "/collection_date=\"1952/1953\"",
+      "/collection_date=\"1952-10-21/1953-02-15\"",
+      "/collection_date=\"1952-10/1953-02\"",
+      "/collection_date=\"1952-10-21T11:43Z/1952-10-21T17:43Z\"",
+      "/collection_date=\"2015-10-11T17:53:03Z\"",
+      "/collection_date=\"missing: control sample\""
+    ]
+  },
+  {
+    "name": "geo_loc_name",
+    "label": "Geographic Location",
+    "format": "Geographical origin of the sample. Format: country[:region][, specific location].",
+    "format_ja": "サンプルの地理的採集地。形式: 国名[:地域][, 詳細場所]。",
+    "example": "Japan:Shizuoka",
+    "tier": "required",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "geo_loc_name",
+    "definition": "locality of isolation of the sequenced sample indicated in terms of political names for nations, oceans or seas, followed by regions and localities",
+    "value_format": "\"<country_value>[:<region>][, <locality>]\" where country_value is any value from the controlled vocabulary at geo_loc_name qualifier vocabulary or a specified exemption from the missing values controlled vocabulary at Missing Value Reporting",
+    "examples": [
+      "/geo_loc_name=\"Canada:Vancouver\"",
+      "/geo_loc_name=\"France:Cote d'Azur, Antibes\"",
+      "/geo_loc_name=\"Atlantic Ocean:Charlie Gibbs Fracture Zone\"",
+      "/geo_loc_name=\"missing: lab stock\""
+    ]
+  },
+  {
+    "name": "strain",
+    "label": "Strain",
+    "format": "Name or identifier of the strain from which the sequence was obtained.",
+    "format_ja": "配列を取得した菌株または系統の名称・識別子。",
+    "example": "ATCC 25922",
+    "tier": "recommended",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "strain",
+    "definition": "strain from which sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/strain=\"BALB/c\""
+    ]
+  },
+  {
+    "name": "isolate",
+    "label": "Isolate",
+    "format": "Individual isolate from which the sequence was obtained.",
+    "format_ja": "配列を取得した個体単離株の名称。",
+    "example": "Patient-1",
+    "tier": "recommended",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "isolate",
+    "definition": "individual isolate from which the sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/isolate=\"Patient #152\"",
+      "/isolate=\"DGGE band PSBAC-13\""
+    ]
+  },
+  {
+    "name": "note",
+    "label": "Note",
+    "format": "Any comment or additional information. Multiple entries allowed.",
+    "format_ja": "コメントや補足情報。複数件入力可。",
+    "example": "Isolated from deep sea sediment",
+    "tier": "recommended",
+    "boolean": false,
+    "multiple": true,
+    "options": null,
+    "regex": null,
+    "url_fragment": "note",
+    "definition": "any comment or additional information",
+    "value_format": "\"text\"",
+    "examples": [
+      "/note=\"This qualifier is equivalent to a comment.\""
+    ]
+  },
+  {
+    "name": "altitude",
+    "label": "altitude",
+    "format": "Height above sea level. Specify unit (m or ft). e.g., 200 m.",
+    "format_ja": "海抜高度。単位 (m または ft) を付記。例: 200 m。",
+    "example": "200 m",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "altitude",
+    "definition": "geographical altitude of the location from which the sample was collected",
+    "value_format": "\"text\"",
+    "examples": [
+      "/altitude=\"-256 m\"",
+      "/altitude=\"330.12 m\""
+    ]
+  },
+  {
+    "name": "bio_material",
+    "label": "bio_material",
+    "format": "Identifier of the biological material. Format: institution:accession.",
+    "format_ja": "生物材料の識別子。形式: 機関:受入番号。",
+    "example": "ATCC:25922",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "bio_material",
+    "definition": "identifier for the biological material from which the nucleic acid sequenced was obtained, with optional institution code and collection code for the place where it is currently stored.",
+    "value_format": "\"[<institution-code>:[<collection-code>:]]<material_id>\"",
+    "examples": [
+      "/bio_material=\"CGC:CB3912\"      <- Caenorhabditis stock centre"
+    ]
+  },
+  {
+    "name": "cell_line",
+    "label": "cell_line",
+    "format": "Established cell line from which the sequence was obtained.",
+    "format_ja": "配列を取得した樹立細胞株名。",
+    "example": "HeLa",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "cell_line",
+    "definition": "cell line from which the sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/cell_line=\"MCF7\""
+    ]
+  },
+  {
+    "name": "cell_type",
+    "label": "cell_type",
+    "format": "Cell type from which the sequence was obtained.",
+    "format_ja": "配列を取得した細胞種。",
+    "example": "lymphocyte",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "cell_type",
+    "definition": "cell type from which the sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/cell_type=\"leukocyte\""
+    ]
+  },
+  {
+    "name": "chromosome",
+    "label": "chromosome",
+    "format": "Chromosome or linkage group from which the sequence was obtained.",
+    "format_ja": "配列を取得した染色体または連鎖群。",
+    "example": "1",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "chromosome",
+    "definition": "chromosome (e.g. Chromosome number) from which the sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/chromosome=\"1\""
+    ]
+  },
+  {
+    "name": "clone",
+    "label": "clone",
+    "format": "Clone from which the sequence was obtained.",
+    "format_ja": "配列を取得したクローン名。",
+    "example": "lambda-clone-1",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "clone",
+    "definition": "clone from which the sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/clone=\"lambda-hIL7.3\""
+    ]
+  },
+  {
+    "name": "collected_by",
+    "label": "collected_by",
+    "format": "Name of person(s) who collected the sample.",
+    "format_ja": "サンプルを採集した人物名。",
+    "example": "T. Yamada",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "collected_by",
+    "definition": "name of persons or institute who collected the specimen",
+    "value_format": "\"text\"",
+    "examples": [
+      "/collected_by=\"Dan Janzen\""
+    ]
+  },
+  {
+    "name": "cultivar",
+    "label": "cultivar",
+    "format": "Cultivar name of the plant from which the sequence was obtained.",
+    "format_ja": "配列を取得した植物の品種名。",
+    "example": "Nipponbare",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "cultivar",
+    "definition": "cultivar (cultivated variety) of plant from which sequence was obtained.",
+    "value_format": "\"text\"",
+    "examples": [
+      "/cultivar=\"Nipponbare\"",
+      "/cultivar=\"Tenuifolius\"",
+      "/cultivar=\"Candy Cane\"",
+      "/cultivar=\"IR36\""
+    ]
+  },
+  {
+    "name": "culture_collection",
+    "label": "culture_collection",
+    "format": "Microbial culture collection identifier. Format: institution:accession. Multiple entries allowed.",
+    "format_ja": "微生物培養コレクションの識別子。形式: 機関:受入番号。複数件入力可。",
+    "example": "ATCC:25922",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": true,
+    "options": null,
+    "regex": null,
+    "url_fragment": "culture_collection",
+    "definition": "institution code and identifier for the culture from which the nucleic acid sequenced was obtained, with optional collection code.",
+    "value_format": "\"<institution-code>:[<collection-code>:]<culture_id>\"",
+    "examples": [
+      "/culture_collection=\"ATCC:26370\""
+    ]
+  },
+  {
+    "name": "dev_stage",
+    "label": "dev_stage",
+    "format": "Developmental stage of the source organism.",
+    "format_ja": "ソース生物の発育段階。",
+    "example": "embryo",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "dev_stage",
+    "definition": "if the sequence was obtained from an organism in a specific developmental stage, it is specified with this qualifier",
+    "value_format": "\"text\"",
+    "examples": [
+      "/dev_stage=\"fourth instar larva\""
+    ]
+  },
+  {
+    "name": "ecotype",
+    "label": "ecotype",
+    "format": "Ecotype of the organism adapted to specific environmental conditions.",
+    "format_ja": "特定の環境条件に適応した生物の生態型。",
+    "example": "Columbia",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "ecotype",
+    "definition": "a population within a given species displaying genetically based, phenotypic traits that reflect adaptation to a local habitat.",
+    "examples": [
+      "/ecotype=\"Columbia\""
+    ]
+  },
+  {
+    "name": "haplogroup",
+    "label": "haplogroup",
+    "format": "Haplogroup to which the sequence belongs.",
+    "format_ja": "配列が属するハプログループ。",
+    "example": "M1",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "haplogroup",
+    "definition": "name for a group of similar haplotypes that share some sequence variation. Haplogroups are often used to track migration of population groups",
+    "value_format": "\"text\"",
+    "examples": [
+      "/haplogroup=\"H*\""
+    ]
+  },
+  {
+    "name": "haplotype",
+    "label": "haplotype",
+    "format": "Haplotype designation for the sequence.",
+    "format_ja": "配列のハプロタイプ表記。",
+    "example": "A",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "haplotype",
+    "definition": "name for a combination of alleles that are linked together on the same physical chromosome. In the absence of recombination, each haplotype is inherited as a unit, and may be used to track gene flow in populations.",
+    "value_format": "\"text\"",
+    "examples": [
+      "/haplotype=\"Dw3 B5 Cw1 A1\"",
+      "/haplotype=\"M3 [.42]\""
+    ]
+  },
+  {
+    "name": "host",
+    "label": "host",
+    "format": "Natural host of the organism. Scientific name preferred.",
+    "format_ja": "生物の自然宿主。学名推奨。",
+    "example": "Homo sapiens",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "host",
+    "definition": "natural (as opposed to laboratory) host to the organism from which sequenced molecule was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/host=\"Homo sapiens\"",
+      "/host=\"Homo sapiens 12 year old girl\"",
+      "/host=\"Rhizobium NGR234\""
+    ]
+  },
+  {
+    "name": "isolation_source",
+    "label": "isolation_source",
+    "format": "Physical, environmental, or local geographical source of the organism. Free text.",
+    "format_ja": "生物の物理的・環境的・地理的な採取元。自由記述。",
+    "example": "soil",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "isolation_source",
+    "definition": "describes the physical, environmental and/or local geographical source of the biological sample from which the sequence was derived",
+    "value_format": "\"text\"",
+    "examples": [
+      "/isolation_source=\"rumen isolates from standard",
+      "Pelleted ration-fed steer #67\"",
+      "/isolation_source=\"permanent Antarctic sea ice\"",
+      "/isolation_source=\"denitrifying activated sludge from",
+      "carbon_limited continuous reactor\""
+    ]
+  },
+  {
+    "name": "lab_host",
+    "label": "lab_host",
+    "format": "Scientific name of the laboratory host organism.",
+    "format_ja": "実験室宿主生物の学名。",
+    "example": "Escherichia coli DH5alpha",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "lab_host",
+    "definition": "scientific name of the laboratory host used to propagate the source organism from which the sequenced molecule was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/lab_host=\"Gallus gallus\"",
+      "/lab_host=\"Gallus gallus embryo\"",
+      "/lab_host=\"Escherichia coli strain DH5 alpha\"",
+      "/lab_host=\"Homo sapiens HeLa cells\""
+    ]
+  },
+  {
+    "name": "lat_lon",
+    "label": "lat_lon",
+    "format": "Latitude and longitude of the sample site. Format: d[d.d] N|S d[dd.d] E|W.",
+    "format_ja": "採集地の緯度と経度。形式: 度[.小数] N|S 度[.小数] E|W。",
+    "example": "47.94 N 28.12 W",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "lat_lon",
+    "definition": "geographical coordinates of the location where the specimen was collected",
+    "value_format": "\"text\"",
+    "examples": [
+      "/lat_lon=\"47.94 N 28.12 W\"",
+      "/lat_lon=\"45.0123 S 4.1234 E\"",
+      "/lat_lon=\"6.385667 N 162.334778 W\"",
+      "/lat_lon=\"5.38566752 N 150.33477811 W\""
+    ]
+  },
+  {
+    "name": "map",
+    "label": "map",
+    "format": "Genomic map position of the sequence.",
+    "format_ja": "配列のゲノムマップ上の位置。",
+    "example": "3q26",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "map",
+    "definition": "genomic map position of feature",
+    "value_format": "\"text\"",
+    "examples": [
+      "/map=\"8q12-q13\""
+    ]
+  },
+  {
+    "name": "mating_type",
+    "label": "mating_type",
+    "format": "Mating type of the organism (for organisms with defined mating types).",
+    "format_ja": "交配型（交配型が定義されている生物のみ）。",
+    "example": "+",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "mating_type",
+    "definition": "mating type of the organism from which the sequence was obtained; mating type is used for prokaryotes, and for eukaryotes that undergo meiosis without sexually dimorphic gametes",
+    "value_format": "\"text\"",
+    "examples": [
+      "/mating_type=\"MAT-1\"",
+      "/mating_type=\"plus\"",
+      "/mating_type=\"-\"",
+      "/mating_type=\"odd\"",
+      "/mating_type=\"even\""
+    ]
+  },
+  {
+    "name": "metagenome_source",
+    "label": "metagenome_source",
+    "format": "Metagenome source. Use together with environmental_sample qualifier. e.g., soil metagenome.",
+    "format_ja": "メタゲノムの由来。environmental_sample qualifier と併用。例: soil metagenome。",
+    "example": "soil metagenome",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "metagenome_source",
+    "definition": "sequences from a Metagenome Assembled Genome (MAG), i.e a single-taxon assembly drawn from a binned metagenome, are specified with this qualifier to indicate that the assembly is derived from a metagenomic source, rather than from an isolated organism. Where this qualifier is present it must contain the word \"metagenome\" and must exist in the NCBI taxonomy database: https://www.ncbi.nlm.nih.gov/Taxonomy/",
+    "value_format": "\"text\"",
+    "examples": [
+      "/metagenome_source=\"human gut metagenome\"",
+      "/metagenome_source=\"soil metagenome\""
+    ]
+  },
+  {
+    "name": "organelle",
+    "label": "organelle",
+    "format": "Organelle or sub-cellular structure from which the sequence was obtained.",
+    "format_ja": "配列を取得した細胞小器官または細胞内構造体。",
+    "example": "mitochondrion",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "organelle",
+    "definition": "type of membrane-bound intracellular structure from which the sequence was obtained",
+    "value_format": "chromatophore, hydrogenosome, mitochondrion, nucleomorph, nitroplast, plastid, mitochondrion:kinetoplast, plastid:chloroplast, plastid:apicoplast, plastid:chromoplast, plastid:cyanelle, plastid:leucoplast, plastid:proplastid",
+    "examples": [
+      "/organelle=\"chromatophore\"",
+      "/organelle=\"hydrogenosome\"",
+      "/organelle=\"mitochondrion\"",
+      "/organelle=\"nucleomorph\"",
+      "/organelle=\"plastid\"",
+      "/organelle=\"mitochondrion:kinetoplast\"",
+      "/organelle=\"plastid:chloroplast\"",
+      "/organelle=\"plastid:apicoplast\"",
+      "/organelle=\"plastid:chromoplast\"",
+      "/organelle=\"plastid:cyanelle\"",
+      "/organelle=\"plastid:leucoplast\"",
+      "/organelle=\"plastid:proplastid\"",
+      "/organelle=\"nitroplast\"",
+      "Please also visit: https://www.insdc.org/submitting-standards/controlled-vocabulary-organelle-qualifier/"
+    ]
+  },
+  {
+    "name": "PCR_primers",
+    "label": "PCR_primers",
+    "format": "PCR primers used to amplify the sequence. Format: fwd_name: NAME, fwd_seq: SEQ, rev_name: NAME, rev_seq: SEQ.",
+    "format_ja": "配列増幅に使用した PCR プライマー。形式: fwd_name: NAME, fwd_seq: SEQ, rev_name: NAME, rev_seq: SEQ。",
+    "example": "fwd_name: COXpF, fwd_seq: ttgattttttggtcayccwgaagttta",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "PCR_primers",
+    "definition": "PCR primers that were used to amplify the sequence. A single /PCR_primers qualifier should contain all the primers used for a single PCR reaction. If multiple forward or reverse primers are present in a single PCR reaction, multiple sets of fwd_name/fwd_seq or rev_name/rev_seq values will be present.",
+    "value_format": "/PCR_primers=\"[fwd_name: XXX1, ]fwd_seq: xxxxx1,[fwd_name: XXX2,] fwd_seq: xxxxx2, [rev_name: YYY1, ]rev_seq: yyyyy1, [rev_name: YYY2, ]rev_seq: yyyyy2\"",
+    "examples": [
+      "/PCR_primers=\"fwd_name: CO1P1, fwd_seq: ttgattttttggtcayccwgaagt,",
+      "rev_name: CO1R4, rev_seq: ccwvytardcctarraartgttg\"",
+      "/PCR_primers=\" fwd_name: hoge1, fwd_seq: cgkgtgtatcttact,",
+      "rev_name: hoge2, rev_seq: cg<i>gtgtatcttact\"",
+      "/PCR_primers=\"fwd_name: CO1P1, fwd_seq: ttgattttttggtcayccwgaagt,",
+      "fwd_name: CO1P2, fwd_seq: gatacacaggtcayccwgaagt, rev_name: CO1R4,",
+      "rev_seq: ccwvytardcctarraartgttg\""
+    ]
+  },
+  {
+    "name": "plasmid",
+    "label": "plasmid",
+    "format": "Plasmid from which the sequence was obtained.",
+    "format_ja": "配列を取得したプラスミド名。",
+    "example": "pBR322",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "plasmid",
+    "definition": "name of naturally occurring plasmid from which the sequence was obtained, where plasmid is defined as an independently replicating genetic unit that cannot be described by /chromosome or /segment",
+    "value_format": "\"text\"",
+    "examples": [
+      "/plasmid=\"C-589\""
+    ]
+  },
+  {
+    "name": "segment",
+    "label": "segment",
+    "format": "Name of the viral or organellar DNA segment.",
+    "format_ja": "ウイルスまたは細胞小器官 DNA セグメントの名称。",
+    "example": "segment 1",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "segment",
+    "definition": "name of viral or phage segment sequenced",
+    "value_format": "\"text\"",
+    "examples": [
+      "/segment=\"6\""
+    ]
+  },
+  {
+    "name": "serotype",
+    "label": "serotype",
+    "format": "Serotype of the organism.",
+    "format_ja": "生物の血清型。",
+    "example": "H3N2",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "serotype",
+    "definition": "serological variety of a species characterized by its antigenic properties",
+    "value_format": "\"text\"",
+    "examples": [
+      "/serotype=\"B1\""
+    ]
+  },
+  {
+    "name": "serovar",
+    "label": "serovar",
+    "format": "Serovariant of the organism.",
+    "format_ja": "生物の血清型変種。",
+    "example": "Typhimurium",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "serovar",
+    "definition": "serological variety of a species (usually a prokaryote) characterized by its antigenic properties",
+    "value_format": "\"text\"",
+    "examples": [
+      "/serovar=\"O157:H7\""
+    ]
+  },
+  {
+    "name": "sex",
+    "label": "sex",
+    "format": "Sex of the organism. e.g., female, male, hermaphrodite, bisexual, asexual.",
+    "format_ja": "生物の性別。例: female, male, hermaphrodite, bisexual, asexual。",
+    "example": "female",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "sex",
+    "definition": "sex of the organism from which the sequence was obtained; sex is used for eukaryotic organisms that undergo meiosis and have sexually dimorphic gametes",
+    "value_format": "\"text\"",
+    "examples": [
+      "/sex=\"female\"",
+      "/sex=\"male\"",
+      "/sex=\"hermaphrodite\"",
+      "/sex=\"unisexual\"",
+      "/sex=\"bisexual\"",
+      "/sex=\"asexual\"",
+      "/sex=\"monoecious\" [or monecious]",
+      "/sex=\"dioecious\" [or diecious]"
+    ]
+  },
+  {
+    "name": "specimen_voucher",
+    "label": "specimen_voucher",
+    "format": "Reference to a physical specimen. Format: institution:accession.",
+    "format_ja": "物理標本への参照。形式: 機関:受入番号。",
+    "example": "USNM:123456",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "specimen_voucher",
+    "definition": "identifier for the specimen from which the nucleic acid sequenced was obtained",
+    "value_format": "/specimen_voucher=\"[<institution-code>:[<collection-code>:]]<specimen_id>\"",
+    "examples": [
+      "/specimen_voucher=\"UAM:Mamm:52179\"",
+      "/specimen_voucher=\"AMCC:101706\"",
+      "/specimen_voucher=\"USNM:field series 8798\"",
+      "/specimen_voucher=\"personal:Dan Janzen:99-SRNP-2003\"",
+      "/specimen_voucher=\"99-SRNP-2003\""
+    ]
+  },
+  {
+    "name": "submitter_seqid",
+    "label": "submitter_seqid",
+    "format": "Submitter-assigned identifier for the sequence.",
+    "format_ja": "投稿者が割り当てた配列識別子。",
+    "example": "SEQ001",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "submitter_seqid",
+    "definition": "identifier attributed to each sequence within an assembly. This identifier is appropriate for WGS, TSA, TLS and CON records. The submitter_seqid should be unique within the context of a single set of assembled sequences.",
+    "value_format": "\"text\"",
+    "examples": [
+      "/submitter_seqid=\"NODE_1\""
+    ]
+  },
+  {
+    "name": "tissue_type",
+    "label": "tissue_type",
+    "format": "Type of tissue from which the sequence was obtained.",
+    "format_ja": "配列を取得した組織種。",
+    "example": "liver",
+    "tier": "optional",
+    "boolean": false,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "tissue_type",
+    "definition": "tissue type from which the sequence was obtained",
+    "value_format": "\"text\"",
+    "examples": [
+      "/tissue_type=\"liver\""
+    ]
+  },
+  {
+    "name": "environmental_sample",
+    "label": "environmental_sample",
+    "format": "Identifies sequences derived by direct molecular isolation from environmental sources. No value required.",
+    "format_ja": "環境サンプルから直接分子単離された配列を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "environmental_sample",
+    "definition": "identifies sequences derived by direct molecular isolation from a bulk environmental DNA sample (by PCR with or without subsequent cloning of the product, DGGE, or other anonymous methods) with no reliable identification of the source organism. Environmental samples include clinical samples, gut contents, and other sequences from anonymous organisms that may be associated with a particular host. They do not include endosymbionts that can be reliably recovered from a particular host, organisms from a readily identifiable but uncultured field sample (e.g., many cyanobacteria), or phytoplasmas that can be reliably recovered from diseased plants (even though these cannot be grown in axenic culture).",
+    "value_format": "none",
+    "examples": [
+      "/environmental_sample"
+    ]
+  },
+  {
+    "name": "focus",
+    "label": "focus",
+    "format": "Identifies the one organism that is the primary focus in a multi-source sequence. No value required.",
+    "format_ja": "複数生物由来配列において主要な生物を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "focus",
+    "definition": "identifies the source feature of primary biological interest for records that have multiple source features originating from different organisms and that are not transgenic.",
+    "value_format": "none",
+    "examples": [
+      "/focus"
+    ]
+  },
+  {
+    "name": "germline",
+    "label": "germline",
+    "format": "Identifies germline immunoglobulin or T-cell receptor gene sequences. No value required.",
+    "format_ja": "免疫グロブリンまたは T 細胞受容体の生殖細胞系列遺伝子配列を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "germline",
+    "definition": "the sequence presented in the entry has not undergone somatic rearrangement as part of an adaptive immune response; it is the unrearranged sequence that was inherited from the parental germline",
+    "value_format": "none",
+    "examples": [
+      "/germline"
+    ]
+  },
+  {
+    "name": "macronuclear",
+    "label": "macronuclear",
+    "format": "Identifies sequences from the macronucleus in ciliates. No value required.",
+    "format_ja": "繊毛虫の大核由来配列を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "macronuclear",
+    "definition": "if the sequence shown is DNA and from an organism which undergoes chromosomal differentiation between macronuclear and micronuclear stages, this qualifier is used to denote that the sequence is from macronuclear DNA.",
+    "value_format": "none",
+    "examples": [
+      "/macronuclear"
+    ]
+  },
+  {
+    "name": "proviral",
+    "label": "proviral",
+    "format": "Identifies sequences integrated into the host genome as a provirus. No value required.",
+    "format_ja": "プロウイルスとして宿主ゲノムに組み込まれた配列を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "proviral",
+    "definition": "this qualifier is used to flag sequence obtained from a virus or phage that is integrated into the genome of another organism",
+    "value_format": "none",
+    "examples": [
+      "/proviral"
+    ]
+  },
+  {
+    "name": "rearranged",
+    "label": "rearranged",
+    "format": "Identifies rearranged immunoglobulin or T-cell receptor gene sequences. No value required.",
+    "format_ja": "再編成した免疫グロブリンまたは T 細胞受容体遺伝子配列を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "rearranged",
+    "definition": "the sequence presented in the entry has undergone somatic rearrangement as part of an adaptive immune response; it is not the unrearranged sequence that was inherited from the parental germline",
+    "value_format": "none",
+    "examples": [
+      "/rearranged"
+    ]
+  },
+  {
+    "name": "transgenic",
+    "label": "transgenic",
+    "format": "Identifies sequences from organisms that contain sequences from another organism. No value required.",
+    "format_ja": "他生物由来配列を含む生物の配列を示す。値は不要。",
+    "example": "",
+    "tier": "optional",
+    "boolean": true,
+    "multiple": false,
+    "options": null,
+    "regex": null,
+    "url_fragment": "transgenic",
+    "definition": "identifies the source feature of the organism which was the recipient of transgenic DNA.",
+    "value_format": "none",
+    "examples": [
+      "/transgenic"
+    ]
+  }
+]

@@ -1,0 +1,34 @@
+COMMON	DATATYPE		type	WGS
+	KEYWORD		keyword	WGS
+			keyword	STANDARD_DRAFT
+	DBLINK		project	PRJDB99904
+			biosample	SAMD99000004
+	SUBMITTER		ab_name	Mishima,T.
+			contact	Taro Mishima
+			email	mishima@example.org
+			institute	National Institute of Genetics
+			country	Japan
+	COMMENT		line	Annotated by DFAST v.1.5.3 (https://dfast.ddbj.nig.ac.jp)
+contig1	source	1..1500	mol_type	genomic DNA
+			organism	Bacillus subtilis
+			strain	NIG-0004
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+	CDS	101..400	product	hypothetical protein
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG4_10010
+contig2	source	1..600	mol_type	genomic DNA
+			organism	Bacillus subtilis
+			strain	NIG-0004
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+contig3	source	1..1200	mol_type	genomic DNA
+			organism	Bacillus subtilis
+			strain	NIG-0004
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+	CDS	101..400	product	hypothetical protein
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG4_30010

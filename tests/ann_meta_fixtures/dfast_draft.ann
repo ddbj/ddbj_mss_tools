@@ -1,0 +1,57 @@
+COMMON	DATATYPE		type	WGS
+	KEYWORD		keyword	WGS
+			keyword	STANDARD_DRAFT
+	DBLINK		project	
+			biosample	
+	SUBMITTER		ab_name	
+			ab_name	
+			ab_name	
+			contact	
+			email	
+			institute	
+			country	
+			city	
+			street	
+			zip	
+	REFERENCE		title	
+			ab_name	
+			ab_name	
+			ab_name	
+			status	Unpublished
+	COMMENT		line	Annotated by DFAST v.1.5.3 (https://dfast.ddbj.nig.ac.jp)
+	ST_COMMENT		tagset_id	Genome-Assembly-Data
+			Assembly Method	
+			Genome Coverage	
+			Sequencing Technology	
+sequence1	source	1..3120	mol_type	genomic DNA
+			organism	
+			strain	
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+	CDS	complement(1305..1700)	product	lytic transglycosylase domain-containing protein
+			inference	COORDINATES:ab initio prediction:MetaGeneAnnotator
+			inference	similar to AA sequence:RefSeq:WP_005173797.1
+			transl_table	11
+			codon_start	1
+			locus_tag	LOCUS_010
+sequence2	source	1..2480	mol_type	genomic DNA
+			organism	
+			strain	
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+	CDS	268..738	product	hypothetical protein
+			inference	COORDINATES:ab initio prediction:MetaGeneAnnotator
+			transl_table	11
+			codon_start	1
+			locus_tag	LOCUS_020
+sequence3	source	1..1870	mol_type	genomic DNA
+			organism	
+			strain	
+			submitter_seqid	@@[entry]@@
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, @@[submitter_seqid]@@
+	CDS	complement(417..1310)	product	LysR family transcriptional regulator
+			inference	COORDINATES:ab initio prediction:MetaGeneAnnotator
+			inference	similar to AA sequence:RefSeq:WP_011071129.1
+			transl_table	11
+			codon_start	1
+			locus_tag	LOCUS_030

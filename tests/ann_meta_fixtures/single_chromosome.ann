@@ -1,0 +1,27 @@
+COMMON	DBLINK		project	PRJDB99903
+			biosample	SAMD99000003
+	SUBMITTER		ab_name	Mishima,T.
+			contact	Taro Mishima
+			email	mishima@example.org
+			institute	National Institute of Genetics
+			country	Japan
+	REFERENCE		title	Complete genome sequence of Bacillus subtilis strain NIG-0003
+			ab_name	Mishima,T.
+			status	Unpublished
+	ST_COMMENT		tagset_id	Genome-Assembly-Data
+			Assembly Method	Flye v. 2.9.5
+			Sequencing Technology	Nanopore MinION
+chr	TOPOLOGY		circular	
+	source	1..4200	organism	Bacillus subtilis
+			strain	NIG-0003
+			mol_type	genomic DNA
+			ff_definition	@@[organism]@@ @@[strain]@@ DNA, complete genome
+	gene	1..1341	gene	dnaA
+			locus_tag	NIG3_0001
+	CDS	1..1341	product	chromosomal replication initiator protein DnaA
+			gene	dnaA
+			locus_tag	NIG3_0001
+			transl_table	11
+			codon_start	1
+	rRNA	2001..3500	product	16S ribosomal RNA
+			locus_tag	NIG3_r001

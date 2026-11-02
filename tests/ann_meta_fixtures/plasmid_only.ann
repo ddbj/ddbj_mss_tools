@@ -1,0 +1,36 @@
+COMMON	DBLINK		project	PRJDB99902
+			biosample	SAMD99000002
+	SUBMITTER		ab_name	Mishima,T.
+			ab_name	Yata,H.
+			contact	Taro Mishima
+			email	mishima@example.org
+			institute	National Institute of Genetics
+			country	Japan
+			city	Mishima
+			street	Yata 1111
+			zip	411-8540
+	REFERENCE		title	Plasmids of Escherichia coli strain NIG-0002
+			ab_name	Mishima,T.
+			status	Unpublished
+			year	2026
+	DATE		hold_date	20271231
+pA	TOPOLOGY		circular	
+	source	1..2400	organism	Escherichia coli
+			strain	NIG-0002
+			mol_type	genomic DNA
+			plasmid	pNIG1
+			ff_definition	@@[organism]@@ @@[strain]@@ plasmid @@[plasmid]@@ DNA, complete sequence
+	CDS	101..1066	product	replication initiation protein
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG2_p001
+pB	TOPOLOGY		circular	
+	source	1..1800	organism	Escherichia coli
+			strain	NIG-0002
+			mol_type	genomic DNA
+			plasmid	pNIG2
+			ff_definition	@@[organism]@@ @@[strain]@@ plasmid @@[plasmid]@@ DNA, complete sequence
+	CDS	complement(201..800)	product	mobilization protein
+			transl_table	11
+			codon_start	1
+			locus_tag	NIG2_p101
