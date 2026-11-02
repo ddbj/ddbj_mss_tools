@@ -212,6 +212,8 @@ egapx2mss [input.asn] [オプション]
 | `--fsa FILE` | 既存の FASTA ファイル (.fa/.fsa) を直接指定。step 2/3 をスキップ |
 | `--common JSON` | 共通メタデータ JSON ファイル (DBLINK, SUBMITTER, REFERENCE 等) |
 | `--sequence_roles TSV` | seq_id → 染色体/organelle マッピング sequence role ファイル (5列 TSV)。旧名 `--chromosomes` も互換のため受け付ける |
+| `--add_gene` | gene feature も出力する（DDBJ では gene feature を使わないため、既定では出力しない。locus_tag と gene は mRNA・CDS などの子 feature に残る） |
+| `--locus-tag-prefix PREFIX` | EGAPx で付けた locus_tag の prefix を置き換える（例 `egapxtmp_000010` → `PREFIX_000010`）。英字で始まる英数字 3〜12 文字 |
 | `--keep-tmp` | 中間ファイル (.tbl, _raw.fa) を削除せずに保持 |
 | `--preconvert-only` | step 1/3・2/3 のみ実行して終了 (.tbl と .fa を生成) |
 | `--bin-dir DIR` | asn2gb/asn2fsa バイナリの置き場所 |
@@ -229,6 +231,9 @@ egapx2mss brapa.asn
 
 # 出力ディレクトリとファイル名を指定
 egapx2mss brapa.asn -o results/ -p output
+
+# locus_tag の prefix を DDBJ 登録用に付け替える（gene feature は既定で出力しない）
+egapx2mss brapa.asn --locus-tag-prefix NIGBRA
 
 # step 1/2 だけ実行して .tbl と .fa を生成
 egapx2mss brapa.asn --preconvert-only -o tmp/

@@ -27,9 +27,11 @@ from __future__ import annotations
 # Qualifiers absent from this mapping are silently dropped.
 _QUAL_ORDER: dict[str, list[str]] = {
     "gene":          ["locus_tag", "gene", "gene_desc", "pseudo", "db_xref"],
-    "mRNA":          ["locus_tag", "gene", "product",   "note",   "pseudo", "db_xref"],
+    "mRNA":          ["locus_tag", "gene", "product",   "note",   "pseudo",
+                      "artificial_location", "db_xref"],
     "CDS":           ["locus_tag", "gene", "product",   "codon_start", "transl_table",
-                      "note", "pseudo", "exception", "db_xref"],
+                      "transl_except", "note", "pseudo", "artificial_location",
+                      "exception", "db_xref"],
     "ncRNA":         ["locus_tag", "gene", "product", "ncRNA_class", "note", "db_xref"],
     "tRNA":          ["locus_tag", "gene", "product",  "note", "db_xref"],
     "rRNA":          ["locus_tag", "gene", "product",  "note", "db_xref"],
@@ -44,7 +46,11 @@ _QUAL_RENAME: dict[str, str | None] = {
     "transcript_id": None,     # NCBI internal → drop
     "protein_id":    None,     # NCBI internal → drop
     "experiment":    None,     # evidence tag  → drop
+    "standard_name": "note",   # EGAPx V_segment/C_region name; not allowed by DDBJ
 }
+
+# NCBI writes these as /exception; INSDC (DDBJ) uses /artificial_location.
+_ARTIFICIAL_LOCATION_VALUES = {"low-quality sequence region", "heterogeneous population sequenced"}
 
 # Default qualifier values added to CDS features when absent from the source.
 _CDS_DEFAULTS = {"codon_start": "1", "transl_table": "1"}
@@ -168,9 +174,10 @@ def format_location(intervals: list[tuple[str, str]]) -> str:
             s_int = _strip_partial(s_raw)
             e_int = _strip_partial(e_raw)
             lo, hi = min(s_int, e_int), max(s_int, e_int)
-            # On minus strand: s_raw is the 3' end, e_raw is the 5' end
-            lo_str = f"<{lo}" if e_raw.startswith("<") else str(lo)
-            hi_str = f">{hi}" if s_raw.startswith(">") else str(hi)
+            # On minus strand s_raw is the 5' end (hi): its '<' (5'-partial)
+            # becomes '>hi'; e_raw is the 3' end (lo): its '>' becomes '<lo'.
+            lo_str = f"<{lo}" if e_raw.startswith(">") else str(lo)
+            hi_str = f">{hi}" if s_raw.startswith("<") else str(hi)
             processed.append((lo, lo_str, hi_str))
 
         processed.sort(key=lambda x: x[0])
@@ -190,7 +197,11 @@ def collect_qualifiers(feat: dict) -> list[tuple[str, str | None]]:
     after applying renaming and filtering rules.
     """
     ftype = feat["type"]
-    raw_quals = feat["qualifiers"]
+    raw_quals = dict(feat["qualifiers"])
+    exceptions = raw_quals.get("exception", [])
+    if any(v in _ARTIFICIAL_LOCATION_VALUES for v in exceptions):
+        raw_quals["artificial_location"] = [v for v in exceptions if v in _ARTIFICIAL_LOCATION_VALUES]
+        raw_quals["exception"] = [v for v in exceptions if v not in _ARTIFICIAL_LOCATION_VALUES]
     allowed = _QUAL_ORDER.get(ftype, list(raw_quals.keys()))
 
     result: list[tuple[str, str | None]] = []

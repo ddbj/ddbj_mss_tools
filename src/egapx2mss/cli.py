@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -90,6 +91,17 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--add_gene", "--add-gene", dest="add_gene", action="store_true",
+        help="Output gene features (DDBJ does not use them, so they are omitted by default)",
+    )
+    parser.add_argument(
+        "--locus-tag-prefix", "--locus_tag_prefix", dest="locus_tag_prefix", metavar="PREFIX",
+        help=(
+            "Replace the locus_tag prefix given to EGAPx (e.g. egapxtmp_000010 -> PREFIX_000010). "
+            "3-12 alphanumeric characters starting with a letter."
+        ),
+    )
+    parser.add_argument(
         "--tbl", default=None,
         help="Pre-existing NCBI feature table (.tbl); skips step 1/3.",
     )
@@ -116,6 +128,8 @@ def main() -> None:
     if args.input and (args.tbl or args.fsa):
         parser.error("input .asn cannot be combined with --tbl / --fsa")
     validate_prefix(args, parser)
+    if args.locus_tag_prefix and not re.fullmatch(r"[A-Za-z][A-Za-z0-9]{2,11}", args.locus_tag_prefix):
+        parser.error("--locus-tag-prefix must be 3-12 alphanumeric characters starting with a letter")
     if args.preconvert_only and direct_mode:
         print("Warning: --preconvert-only has no effect when --tbl and --fsa are both provided.", file=sys.stderr)
 
@@ -203,6 +217,8 @@ def main() -> None:
         common=common,
         sequence_roles=sequence_roles,
         submission_category=args.submission_category,
+        add_gene=args.add_gene,
+        locus_tag_prefix=args.locus_tag_prefix,
     )
 
     if not args.keep_tmp and not tbl_preexisted:

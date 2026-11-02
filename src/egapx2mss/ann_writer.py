@@ -37,11 +37,20 @@ def _lookup_length(entry_id: str, lengths: dict[str, int]) -> int:
     return 0
 
 
-def _feature_rows(first_col: str, feat: dict) -> list[Row]:
-    """Return rows for one feature block."""
+def _feature_rows(first_col: str, feat: dict, locus_tag_prefix: Optional[str] = None) -> list[Row]:
+    """Return rows for one feature block.
+
+    If *locus_tag_prefix* is given, the part of each locus_tag before the last
+    '_' (the EGAPx --locus-tag-prefix, e.g. ``egapxtmp``) is replaced with it.
+    """
     quals = collect_qualifiers(feat)
     if not quals:
         return []
+    if locus_tag_prefix:
+        quals = [
+            (n, f"{locus_tag_prefix}_{v.rpartition('_')[2]}" if n == "locus_tag" and v else v)
+            for n, v in quals
+        ]
 
     ftype    = feat["type"]
     location = format_location(feat["intervals"])
@@ -86,6 +95,8 @@ def write_ddbj_ann(
     common: Optional["CommonModel"] = None,
     sequence_roles: Optional[dict[str, SequenceRoleEntry]] = None,
     submission_category: Optional[str] = None,
+    add_gene: bool = False,
+    locus_tag_prefix: Optional[str] = None,
 ) -> None:
     """
     Parse *tbl_path* (NCBI feature table) and *fsa_path* (FASTA),
@@ -99,6 +110,11 @@ def write_ddbj_ann(
     If *sequence_roles* is provided (entry_name → (qualifier_key, qualifier_value, is_circular)),
     the matching qualifier overrides the corresponding key in the source feature.
     Entries absent from the table get ``submitter_seqid`` set to the entry name.
+
+    gene features are dropped (DDBJ does not use them) unless *add_gene* is True;
+    child features keep their own locus_tag / gene qualifiers, and the dropped
+    gene's gene_desc is added to its mRNA(s) as /note.
+    *locus_tag_prefix* replaces the EGAPx locus_tag prefix (see ``_feature_rows``).
     """
     import sys
 
@@ -197,8 +213,21 @@ def write_ddbj_ann(
         source_entry_col = "" if is_circular else entry_id
         rows.extend(source_feature_rows(source_entry_col, location, source_quals))
 
-        for feat in entries.get(entry_id, []):
-            rows.extend(_feature_rows("", feat))
+        feats = entries.get(entry_id, [])
+        # gene_desc of a dropped gene moves to its mRNA(s) as /note
+        gene_desc = {} if add_gene else {
+            f["qualifiers"]["locus_tag"][0]: f["qualifiers"]["gene_desc"]
+            for f in feats
+            if f["type"] == "gene" and "locus_tag" in f["qualifiers"] and "gene_desc" in f["qualifiers"]
+        }
+        for feat in feats:
+            if feat["type"] == "gene" and not add_gene:
+                continue
+            q = feat["qualifiers"]
+            if feat["type"] == "mRNA" and q.get("locus_tag", [None])[0] in gene_desc:
+                notes = gene_desc[q["locus_tag"][0]] + q.get("note", [])
+                feat = {**feat, "qualifiers": {**q, "note": notes}}
+            rows.extend(_feature_rows("", feat, locus_tag_prefix))
 
         if gap_annotators and entry_id in sequences:
             rows.extend(annotate_gaps(gap_annotators, sequences[entry_id]))

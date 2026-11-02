@@ -3,6 +3,7 @@ example/SAMD*
 bin/
 ~$*
 OUT
+devdata/
 .vscode
 .DS_store
 

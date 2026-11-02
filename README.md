@@ -98,6 +98,8 @@ egapx2mss input.asn \
 | `--submission_category` | 登録カテゴリ（`WGS`, `GNM`, `MAG-WGS` 等）。JSON の `_submission_category` を上書き（後述） |
 | `--sequence_roles` | Sequence role ファイル TSV（後述）。旧名 `--chromosomes` も互換のため受け付けます |
 | `--bin-dir` | asn2gb / asn2fsa バイナリの保存ディレクトリ（デフォルト: `~/.local/share/ddbj_mss_tools/bin`） |
+| `--add_gene` | gene feature も出力する（DDBJ では gene feature を使わないため、既定では出力しない。locus_tag と gene は mRNA・CDS などの子 feature に残る） |
+| `--locus-tag-prefix PREFIX` | EGAPx で付けた locus_tag の prefix を置き換える（例 `egapxtmp_000010` → `PREFIX_000010`）。英字で始まる英数字 3〜12 文字 |
 | `--keep-tmp` | 中間ファイル (.tbl, raw FASTA) を削除せず保持する |
 | `--tbl` | 既存の NCBI feature table (.tbl) を直接指定（step 1/3 をスキップ） |
 | `--fsa` | 既存の FASTA ファイル (.fa/.fsa) を直接指定（step 2/3 をスキップ） |
@@ -794,6 +796,8 @@ The second example above produces `results/output.ann` and `results/output.fa`.
 | `--submission_category` | Submission category (`WGS`, `GNM`, `MAG-WGS`, etc.). Overrides `_submission_category` in the JSON (see below). |
 | `--sequence_roles` | Sequence role file (TSV; see below). The legacy name `--chromosomes` is still accepted. |
 | `--bin-dir` | Directory for asn2gb / asn2fsa binaries (default: `~/.local/share/ddbj_mss_tools/bin`) |
+| `--add_gene` | Also output gene features (DDBJ does not use them, so they are omitted by default; locus_tag and gene stay on child features such as mRNA and CDS) |
+| `--locus-tag-prefix PREFIX` | Replace the locus_tag prefix given to EGAPx (e.g. `egapxtmp_000010` → `PREFIX_000010`); 3-12 alphanumeric characters starting with a letter |
 | `--keep-tmp` | Keep intermediate files (.tbl, raw FASTA) |
 | `--tbl` | Pre-existing NCBI feature table (.tbl); skips step 1/3 |
 | `--fsa` | Pre-existing FASTA file (.fa/.fsa); skips step 2/3 |
